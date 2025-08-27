@@ -1,0 +1,14 @@
+{
+    "extends": "./tsconfig.json",
+    "include": ["src/main/webapp/**/*.ts"],
+    "compilerOptions": {
+        "composite": true,
+        "outDir": "target/out-tsc/spec",
+        "types": ["jest", "node"]
+    },
+    "paths": {
+        "lodash/*": [
+            "node_modules/@types/lodash-es/*"
+        ],
+    }
+}

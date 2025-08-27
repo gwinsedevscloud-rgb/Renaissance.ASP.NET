@@ -1,0 +1,37 @@
+{
+    "PLUGINS": {
+        "TUTORIAL": {
+            "TITLE": "Tutorials",
+            "PAGES": {
+                "EDIT": "Edit",
+                "LIST": "Tutorials",
+                "ADD": "Add"
+            },
+            "LIST_PAGE": {
+                "TITLE": "Tutorials",
+                "ADD_TUTORIAL": "Add Tutorial",
+                "SEARCH_PLACEHOLDER": "Search Tutorial",
+                "VIEW_DETAILS": "View Details",
+                "NO_TUTORIALS": "No Tutorials found"
+            },
+            "DETAILS": {
+                "TITLE": "Title",
+                "TITLE_REQUIRED": "Title is required",
+                "DESCRIPTION": "Description",
+                "DESCRIPTION_REQUIRED": "Description is required",
+                "PUBLISHED": "Published",
+                "EDIT": "Edit",
+                "INFORMATION": "Additional information"
+            },
+            "TITLES": {
+                "NEW_TUTORIAL": "Add Tutorial",
+                "TUTORIAL_DETAILS": "Tutorial details",
+                "TUTORIALS": "Tutorials"
+            },
+            "SAVE": {
+                "SUCCESS": "Success saving tutorial",
+                "ERROR": "There was an error saving tutorial; try again later"
+            }
+        }
+    }
+}

@@ -1,0 +1,37 @@
+{
+  "PLUGINS": {
+    "TUTORIAL": {
+      "TITLE": "Tutoriels",
+      "PAGES": {
+        "EDIT": "Modifier",
+        "LIST": "Tutoriels",
+        "ADD": "Ajouter"
+      },
+      "LIST_PAGE": {
+        "TITLE": "Tutoriels",
+        "ADD_TUTORIAL": "Ajouter un didacticiel",
+        "SEARCH_PLACEHOLDER": "Tutoriel de recherche",
+        "VIEW_DETAILS": "Voir les détails",
+        "NO_TUTORIALS": "Aucun didacticiel trouvé"
+      },
+      "DETAILS": {
+        "TITLE": "Titre",
+        "TITLE_REQUIRED": "Le titre est requis",
+        "DESCRIPTION": "Description",
+        "DESCRIPTION_REQUIRED": "Une description est requise",
+        "PUBLISHED": "Publié",
+        "EDIT": "Modifier",
+        "INFORMATION": "Informations Complémentaires"
+      },
+      "TITLES": {
+        "NEW_TUTORIAL": "Ajouter un didacticiel",
+        "TUTORIAL_DETAILS": "Détails du didacticiel",
+        "TUTORIALS": "Tutoriels"
+      },
+      "SAVE": {
+        "SUCCESS": "Tutoriel de sauvegarde réussie",
+        "ERROR": "Il y avait un didacticiel de sauvegarde d'erreur; Réessayez plus tard"
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+    "PLUGINS": {
+        "TUTORIAL": {
+            "TITLE": "Koyawa",
+            "PAGES": {
+                "EDIT": "Tedit",
+                "LIST": "Koyawa",
+                "ADD": "Ƙara"
+            },
+            "LIST_PAGE": {
+                "TITLE": "Koyawa",
+                "ADD_TUTORIAL": "Ƙara Koyarwa",
+                "SEARCH_PLACEHOLDER": "Neman Koyarwa",
+                "VIEW_DETAILS": "Duba cikakkun bayanai",
+                "NO_TUTORIALS": "Ba a sami koyawa ba"
+            },
+            "DETAILS": {
+                "TITLE": "Take",
+                "TITLE_REQUIRED": "Ana buƙatar taken",
+                "DESCRIPTION": "Bayani",
+                "DESCRIPTION_REQUIRED": "Ana buƙatar bayanin",
+                "PUBLISHED": "Buga",
+                "EDIT": "Gyara",
+                "INFORMATION": "Ƙarin bayani"
+            },
+            "TITLES": {
+                "NEW_TUTORIAL": "Ƙara Koyarwa",
+                "TUTORIAL_DETAILS": "Cikakkun bayanai na koyarwa",
+                "TUTORIALS": "Koyawa"
+            },
+            "SAVE": {
+                "SUCCESS": "Nasara ceto koyawa",
+                "ERROR": "An sami kuskure ceto koyawa; "
+            }
+        }
+    }
+}

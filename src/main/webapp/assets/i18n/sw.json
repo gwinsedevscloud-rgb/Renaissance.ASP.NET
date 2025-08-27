@@ -1,0 +1,15 @@
+{
+    "CORE": {
+        "BUTTONS": {
+            "SAVE": "Hifadhi",
+            "CANCEL": "Ghairi",
+            "DELETE": "Futa",
+            "UPDATE": "Sasisha"
+        },
+        "UTIL": {
+            "TOGGLE_FULLSCREEN": "Geuza skrini nzima"
+        }
+    },
+    "Welcome": "Karibu",
+    "Home": "Nyumbani"
+}

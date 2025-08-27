@@ -1,0 +1,8 @@
+spring:
+  liquibase:
+    change-log: classpath:/installers/renaissance-plugin/schema/schema.xml
+    enabled: true
+  flyway:
+    enabled: false
+
+

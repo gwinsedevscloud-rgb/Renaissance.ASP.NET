@@ -1,0 +1,15 @@
+{
+  "CORE": {
+    "BUTTONS": {
+      "SAVE": "Salvar",
+      "CANCEL": "Cancelar",
+      "DELETE": "Excluir",
+      "UPDATE": "Atualizar"
+    },
+    "UTIL": {
+      "TOGGLE_FULLSCREEN": "Alternar tela cheia"
+    }
+  },
+  "Welcome": "Bem-vindo",
+  "Home": "Lar"
+}

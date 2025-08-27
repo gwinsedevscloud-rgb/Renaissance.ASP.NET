@@ -1,0 +1,12 @@
+[
+    {
+        "category": "CORE.CONFIGURATION.SYSTEM_CONFIGURATIONS",
+        "data": [
+            {
+                "key": "APP_TITLE",
+                "value": "Tutorial",
+                "type": "string"
+            }
+        ]
+    }
+]

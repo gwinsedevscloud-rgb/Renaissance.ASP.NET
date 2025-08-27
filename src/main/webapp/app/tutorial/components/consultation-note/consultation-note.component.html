@@ -1,0 +1,154 @@
+<div class="flex flex-col flex-auto p-6 md:p-8">
+    <ng-container>
+        <div class="relative w-full  sm:px-12 bg-accent-100 dark:bg-transparent">
+            <!-- Close button -->
+            <div class="flex items-center justify-end w-full max-w-3xl mx-auto">
+                <a
+                    mat-icon-button
+                    [matTooltip]="'Close'"
+                    (click)="closeDrawer()">
+                    <mat-icon
+                        class="text-gray"
+                        [svgIcon]="'heroicons_outline:x-circle'"></mat-icon>
+                </a>
+            </div>
+        </div>
+
+        <div class="relative flex flex-col flex-auto items-center px-6">
+            <div class="w-full max-w-10xl">
+                <div class="mt-6">
+                    <h2 class="text-xl font-semibold">General Consultation</h2>
+
+                    <div class="space-y-6">
+                        <!-- Diagnosis (Expandable) -->
+                        <mat-expansion-panel class="mt-5">
+                            <mat-expansion-panel-header>
+                                <mat-panel-title class="font-semibold text-lg text-gray-800">Diagnosis</mat-panel-title>
+                            </mat-expansion-panel-header>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 py-4">
+                                @for (d of diagnosisOptions(); track d) {
+                                    <mat-checkbox [checked]="selectedDiagnoses().includes(d)" class="text-sm" (change)="addDiagnosis(d, $event.checked)">
+                                        {{ d }}
+                                    </mat-checkbox>
+                                }
+                            </div>
+
+                            @if (showOtherDiagnosisInput()) {
+                                <div class="mt-2">
+                                    <label class="block mb-1 text-lg font-medium">Other Diagnosis</label>
+                                    <div class="flex gap-2">
+                                        <input
+                                            matInput
+                                            placeholder="Add other treatment"
+                                            [ngModel]="otherDiagnosisInput()"
+                                            (ngModelChange)="otherDiagnosisInput.set($event)"
+                                            class="flex-1 border p-2 rounded"
+                                        />
+                                        <button mat-button color="primary" (click)="addOtherDiagnosis()">Add</button>
+                                    </div>
+                                    <ul class="mt-2 list-disc list-inside text-lg text-black-700">
+                                        @for (item of otherTreatments(); track trackByFn($index, item)) {
+                                            <li>
+                                                {{ item }}
+                                                <button class="ml-2 text-red-500" mat-icon-button (click)="removeOtherDiagnosis($index)">
+                                                    <mat-icon fontIcon="close" class="text-xs"></mat-icon>
+                                                </button>
+                                            </li>()
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                        </mat-expansion-panel>
+
+                        <!-- Treatment (Expandable) -->
+                        <mat-expansion-panel>
+                            <mat-expansion-panel-header>
+                                <mat-panel-title class="font-semibold text-lg text-gray-800">Treatment</mat-panel-title>
+                            </mat-expansion-panel-header>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 py-4">
+                                @for (t of treatmentOptions(); track t) {
+                                    <mat-checkbox [checked]="selectedTreatments().includes(t)" class="text-sm" (change)="addTreatment(t, $event.checked)">
+                                        {{ t }}
+                                    </mat-checkbox>
+                                }
+                            </div>
+
+                            <!-- Conditionally show extra input for 'OTHERS' -->
+                            @if (showOtherTreatmentInput()) {
+                                <div class="mt-2">
+                                    <label class="block mb-1 text-sm font-medium">Other Treatments</label>
+                                    <div class="flex gap-2">
+                                        <input
+                                            matInput
+                                            placeholder="Add other treatment"
+                                            [ngModel]="otherTreatmentInput()"
+                                            (ngModelChange)="otherTreatmentInput.set($event)"
+                                            class="flex-1 border p-2 rounded"
+                                        />
+                                        <button mat-button color="primary" (click)="addOtherTreatment()">Add</button>
+                                    </div>
+                                    <ul class="mt-2 list-disc list-inside text-sm text-gray-700">
+                                        @for (item of otherTreatments(); track trackByFn($index, item)) {
+                                            <li>
+                                                {{ item }}
+                                                <button class="ml-2 text-red-500" mat-icon-button (click)="removeOtherTreatment($index)">
+                                                    <mat-icon fontIcon="close" class="text-xs"></mat-icon>
+                                                </button>
+                                            </li>()
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </mat-expansion-panel>
+
+                        <div class="pt-4">
+                            <h3 class="font-semibold text-gray-800 text-lg">Should be given ITN</h3>
+                            <mat-radio-group [value]="itnOrder()" (change)="toggleItnOrder($event.value)" class="flex gap-6">
+                                <mat-radio-button [value]="true">Yes</mat-radio-button>
+                                <mat-radio-button [value]="false">No</mat-radio-button>
+                            </mat-radio-group>
+                        </div>
+
+                        <!-- Referred -->
+                        <div class="pt-4">
+                            <h3 class="font-semibold text-gray-800 text-lg">Referred?</h3>
+                            <mat-radio-group [value]="referred()" (change)="toggleReferred($event.value)" class="flex gap-6">
+                                <mat-radio-button [value]="true">Yes</mat-radio-button>
+                                <mat-radio-button [value]="false">No</mat-radio-button>
+                            </mat-radio-group>
+                        </div>
+
+                        <!-- Services Referred -->
+                        @if (servicesReferred().length > 0) {
+                            <div class="pt-4">
+                                <h4 class="text-gray-700 font-medium">Services Referred For:</h4>
+                                <ul class="list-disc pl-5 text-sm text-gray-800">
+                                    @for (s of servicesReferred(); track s) {
+                                        <li>{{ s }}</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+
+                    </div>
+
+                    <!-- Submit -->
+                    <div class="pt-6">
+                        <button mat-flat-button color="primary" type="button" (click)="submit()">
+                            @if (consultationId) {
+                                Update
+                            } @else {
+                                Save
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+</div>
+
+

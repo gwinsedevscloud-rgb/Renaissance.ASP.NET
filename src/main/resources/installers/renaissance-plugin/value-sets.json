@@ -1,0 +1,64 @@
+[
+    {
+        "system": "ORGANISATION_IDENTIFIER_PROVIDER",
+        "description": "The type of identifier provider for base organizations",
+        "lang": "en",
+        "order": 2,
+        "values": [
+            {
+                "code": "system",
+                "display": "System",
+                "active": true
+            }
+        ]
+    },
+    {
+        "system": "ORGANISATION_IDENTIFIER_PROVIDER",
+        "description": "Le type de fournisseur d'identifiant pour les organisations de base",
+        "lang": "fr",
+        "order": 2,
+        "values": [
+            {
+                "code": "system",
+                "display": "Système",
+                "active": true
+            }
+        ]
+    },
+    {
+        "system": "ORGANISATION_TYPE",
+        "description": "The organisation types",
+        "lang": "fr",
+        "order": 2,
+        "values": [
+            {
+                "code": "FACILITY",
+                "display": "Facility",
+                "active": true
+            },
+            {
+                "code": "OUTLET",
+                "display": "Outlet",
+                "active": true
+            }
+        ]
+    },
+    {
+        "system": "ORGANISATION_TYPE",
+        "description": "Les types d'organisation",
+        "lang": "en",
+        "order": 2,
+        "values": [
+            {
+                "code": "FACILITY",
+                "display": "Établissement de santé",
+                "active": true
+            },
+            {
+                "code": "OUTLET",
+                "display": "Point de distribution",
+                "active": true
+            }
+        ]
+    }
+]

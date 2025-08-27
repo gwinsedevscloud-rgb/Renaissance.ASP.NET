@@ -1,0 +1,25 @@
+@if(optometrists) {
+    <div class="space-y-4 mt-6" >
+        <mat-accordion>
+            @for (o of optometrists(); track $index) {
+                <mat-expansion-panel class="bg-white shadow rounded-lg">
+                    <mat-expansion-panel-header>
+                        <mat-panel-title class="text-sm md:text-base font-medium text-blue-900">
+                            Optometrists Detail #{{$index + 1}}
+                        </mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <mat-list>
+                        <mat-list-item>
+                            <p>Visual Acuity Right / Visual Acuity Left</p>
+                            <div class="flex-1">
+                                {{ o.visualAcuityRight }} / {{ o.visualAcuityLeft }}
+                                <span *ngIf="o.glassesDispensed">👓</span>
+                            </div>
+                        </mat-list-item>
+                    </mat-list>
+                </mat-expansion-panel>
+            }
+        </mat-accordion>
+    </div>
+}
+

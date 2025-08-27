@@ -1,0 +1,37 @@
+{
+    "PLUGINS": {
+        "TUTORIAL": {
+            "TITLE": "Mafunzo",
+            "PAGES": {
+                "EDIT": "Thariri",
+                "LIST": "Mafunzo",
+                "ADD": "Ongeza"
+            },
+            "LIST_PAGE": {
+                "TITLE": "Mafunzo",
+                "ADD_TUTORIAL": "Ongeza Mafunzo",
+                "SEARCH_PLACEHOLDER": "Tafuta Mafunzo",
+                "VIEW_DETAILS": "Tazama Maelezo",
+                "NO_TUTORIALS": "Hakuna Mafunzo yaliyopatikana"
+            },
+            "DETAILS": {
+                "TITLE": "Kichwa",
+                "TITLE_REQUIRED": "Kichwa kinahitajika",
+                "DESCRIPTION": "Maelezo",
+                "DESCRIPTION_REQUIRED": "Maelezo inahitajika",
+                "PUBLISHED": "Imechapishwa",
+                "EDIT": "Hariri",
+                "INFORMATION": "Maelezo ya ziada"
+            },
+            "TITLES": {
+                "NEW_TUTORIAL": "Ongeza Mafunzo",
+                "TUTORIAL_DETAILS": "Maelezo ya mafunzo",
+                "TUTORIALS": "Mafunzo"
+            },
+            "SAVE": {
+                "SUCCESS": "Umefaulu kuhifadhi mafunzo",
+                "ERROR": "Kulikuwa na hitilafu katika kuhifadhi mafunzo; "
+            }
+        }
+    }
+}

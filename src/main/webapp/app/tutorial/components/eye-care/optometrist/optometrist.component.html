@@ -1,0 +1,52 @@
+<div class="flex flex-col flex-auto p-6 md:p-8">
+    <ng-container>
+        <div class="relative w-full  sm:px-12 bg-accent-100 dark:bg-transparent">
+            <!-- Close button -->
+            <div class="flex items-center justify-end w-full max-w-3xl mx-auto">
+                <a
+                    mat-icon-button
+                    [matTooltip]="'Close'"
+                    (click)="closeDrawer()">
+                    <mat-icon
+                        class="text-gray"
+                        [svgIcon]="'heroicons_outline:x-circle'"></mat-icon>
+                </a>
+            </div>
+        </div>
+
+        <div class="relative flex flex-col flex-auto items-center px-6">
+            <div class="w-full max-w-10xl">
+                <div class="mt-6">
+                    <h2 class="text-xl font-semibold">Optometrist Service</h2>
+                </div>
+                <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+                    <mat-form-field class="w-full">
+                        <mat-label>Visual Acuity Right</mat-label>
+                        <mat-select formControlName="visualAcuityRight">
+                            <mat-option *ngFor="let acuity of visualAcuityOptions" [value]="acuity">
+                                {{ acuity }}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+
+                    <mat-form-field class="w-full">
+                        <mat-label>Visual Acuity Left</mat-label>
+                        <mat-select formControlName="visualAcuityLeft">
+                            <mat-option *ngFor="let acuity of visualAcuityOptions" [value]="acuity">
+                                {{ acuity }}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+
+                    <mat-checkbox formControlName="glassesDispensed">Glasses Dispensed</mat-checkbox>
+                    <mat-checkbox formControlName="referred">Referred</mat-checkbox>
+
+                    <button mat-flat-button color="primary" type="submit">
+                        {{ editMode ? 'Update' : 'Save' }}
+                    </button>
+
+                </form>
+            </div>
+        </div>
+    </ng-container>
+</div>

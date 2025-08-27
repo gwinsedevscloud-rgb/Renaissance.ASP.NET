@@ -1,0 +1,231 @@
+<div class="absolute inset-0 flex flex-col min-w-0 overflow-hidden min-h-screen">
+    <mat-drawer-container
+        class="flex-auto h-full"
+        (backdropClick)="onBackdropClicked()">
+
+        <!-- Drawer -->
+        <mat-drawer
+            class="w-180 sm:w-160 bg-surface-container text-on-surface-container"
+            [mode]="drawerMode"
+            [opened]="false"
+            [position]="'end'"
+            [disableClose]="true"
+            #matDrawer>
+            <router-outlet></router-outlet>
+        </mat-drawer>
+
+        <mat-drawer-content class="flex h-screen">
+
+            <!-- Main -->
+            <div class="flex-auto">
+                <div
+                    class="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between p-6 sm:py-12 md:px-8 border-b bg-card ">
+                    <!-- Title -->
+                    <div>
+                        <div
+                            class="text-4xl font-extrabold tracking-tight leading-none">
+                            Client Information
+                        </div>
+                        <div class="text-2xl mt-2">
+                            Name:&nbsp;{{client()?.clientNumber}}
+                        </div>
+                        <div class="text-2xl mt-2">
+                            Age:&nbsp;{{client()?.age}}
+                        </div>
+                        <div class="text-2xl mt-2">
+                            Sex:&nbsp;{{ client()?.sex }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-[70%] mx-auto p-6 space-y-6">
+
+                    <ng-container *hasAnyAuthority="['Can See Triage Card']">
+                        <!-- Triage Card -->
+                        <div class="p-4 border rounded-2xl shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold">Triage</h3>
+
+                                <ng-container *hasAnyAuthority="['Create Triage']">
+                                    @if (!triageDone()) {
+                                        <button mat-flat-button [routerLink]="['./triage']">
+                                            + New Record
+                                        </button>
+                                    }
+                                </ng-container>
+
+                                <ng-container *hasAnyAuthority="['Can Modify Triage']">
+                                    @if (triageDone()) {
+                                        <button
+                                            matTooltip="Edit Triage"
+                                            mat-stroked-button
+                                            (click)="onEditTriage()">
+                                            <mat-icon
+                                                class="icon-size-5"
+                                                [svgIcon]="'heroicons_outline:pencil-square'"></mat-icon>
+                                            <span>Edit</span>
+                                        </button>
+                                    }
+                                </ng-container>
+                            </div>
+                            <app-triage-list [patientId]="id" [triages]="triage" class="mt-5"></app-triage-list>
+                        </div>
+                    </ng-container>
+
+                    <ng-container *hasAnyAuthority="['See General Consultation Card']">
+                        <!-- Consultation Card -->
+                        <div class="p-4 border rounded-2xl shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold">Consultation</h3>
+                                <ng-container *hasAnyAuthority="['Can Create Consultation']">
+                                    @if (!consultationDone()) {
+                                        <button mat-flat-button [routerLink]="['./consultation']">
+                                            + New Record
+                                        </button>
+                                    }
+                                </ng-container>
+                                <ng-container *hasAnyAuthority="['Can Modify Consultation']">
+                                    @if (consultationDone()) {
+                                        <button
+                                            matTooltip="Edit Consultation"
+                                            mat-stroked-button
+                                            (click)="onEditConsultation()">
+                                            <mat-icon
+                                                class="icon-size-5"
+                                                [svgIcon]="'heroicons_outline:pencil-square'"></mat-icon>
+                                            <span>Edit</span>
+                                        </button>
+                                    }
+                                </ng-container>
+                            </div>
+
+                            <app-consultation-list [patientId]="id" [consultations]="consultations"></app-consultation-list>
+                        </div>
+                    </ng-container>
+
+                    <ng-container *hasAnyAuthority="['See Pharmacy Card']">
+                        <!-- Pharmacy Card -->
+                        <div class="p-4 border rounded-2xl shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold">Pharmacy</h3>
+                                <ng-container *hasAnyAuthority="['Do Prescription']">
+                                    <button [routerLink]="['./pharmacy']" mat-flat-button>
+                                        + Prescription
+                                    </button>
+                                </ng-container>
+
+                                <ng-container *hasAnyAuthority="['Dispense Drug']">
+                                    @if (hasPending()) {
+                                        <button [routerLink]="['./drug-dispense']" mat-flat-button>
+                                            Dispense Drug
+                                        </button>
+                                    }
+                                </ng-container>
+
+                            </div>
+                            <app-view-prescription [prescriptions]="prescriptions()" class="mt-5"></app-view-prescription>
+                        </div>
+                    </ng-container>
+
+                    <ng-container *hasAnyAuthority="['Can See Laboratory Card']">
+                        <!-- Laboratory Card -->
+                        <div class="p-4 border rounded-2xl shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold">Laboratory Service</h3>
+                                <ng-container *hasAnyAuthority="['Select Test']">
+                                    @if (tests().length == 0) {
+                                        <button mat-flat-button [routerLink]="['./laboratory', 'order']">
+                                            Select Test(s)
+                                        </button>
+                                    }
+                                </ng-container>
+
+                            </div>
+                            <app-view-investigations class="mt-5" [results]="tests"></app-view-investigations>
+                        </div>
+                    </ng-container>
+
+                    <ng-container *hasAnyAuthority="['See Dental Consultation Card']">
+                        <!-- Laboratory Card -->
+                        <div class="p-4 border rounded-2xl shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold">Dental Care Service</h3>
+                                <ng-container *hasAnyAuthority="['Can Open Create Dental Consultation']">
+                                    @if (!dentalConsultationDone()) {
+                                        <button mat-flat-button [routerLink]="['./dental-consultation']">
+                                            + Add
+                                        </button>
+                                    }
+                                </ng-container>
+                                <ng-container *hasAnyAuthority="['Can Modify Dental Consultation']">
+                                    @if (dentalConsultations()) {
+                                        <button
+                                            matTooltip="Edit Consultation"
+                                            mat-stroked-button
+                                            (click)="onEditDentalConsultation()">
+                                            <mat-icon
+                                                class="icon-size-5"
+                                                [svgIcon]="'heroicons_outline:pencil-square'"></mat-icon>
+                                            <span>Edit</span>
+                                        </button>
+                                    }
+                                </ng-container>
+                            </div>
+                            <app-dental-consultation-list class="mt-5" [patientId]="id" [consultations]="dentalConsultations"></app-dental-consultation-list>
+                        </div>
+                    </ng-container>
+
+                    <ng-container *hasAnyAuthority="['See Eye Care Service Card']">
+                        <!-- Laboratory Card -->
+                        <div class="p-4 border rounded-2xl shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold">Eye Care Service</h3>
+                                <ng-container *hasAnyAuthority="['Can Open Ophthalmologists Service']">
+                                    @if (!ophthalmologistDone()) {
+                                        <button mat-flat-button [routerLink]="['./eye-service']">
+                                            + Add
+                                        </button>
+                                    }
+                                </ng-container>
+
+                                <ng-container *hasAnyAuthority="['Can Modify Ophthalmologists Service']">
+                                    @if (ophthalmologistDone()) {
+                                        <button
+                                            matTooltip="Edit Ophthalmologists"
+                                            mat-stroked-button
+                                            (click)="onEditOphthalmologists()">
+                                            <mat-icon
+                                                class="icon-size-5"
+                                                [svgIcon]="'heroicons_outline:pencil-square'"></mat-icon>
+                                            <span>Edit</span>
+                                        </button>
+                                    }
+                                </ng-container>
+
+                            </div>
+                            <app-ophthalmologist-list [ophthalmologists]="ophthalmologists" [patientId]="id"></app-ophthalmologist-list>
+                        </div>
+                    </ng-container>
+
+                    <ng-container *hasAnyAuthority="['See Ancillary Service Card']">
+                        <!-- Laboratory Card -->
+                        <div class="p-4 border rounded-2xl shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold">Ancillary Service</h3>
+                                <ng-container *hasAnyAuthority="['Can Open Ancillary Service']">
+                                    @if (!ancillaryServiceDone()) {
+                                        <button mat-flat-button [routerLink]="['./ancillary-service']">
+                                            + Add
+                                        </button>
+                                    }
+                                </ng-container>
+
+                            </div>
+                            <app-ancillary-service-list class="mt-5" [patientId]="id" [services]="ancillaryServices"></app-ancillary-service-list>
+                        </div>
+                    </ng-container>
+                </div>
+            </div>
+        </mat-drawer-content>
+    </mat-drawer-container>
+</div>

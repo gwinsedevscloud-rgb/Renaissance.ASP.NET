@@ -1,0 +1,37 @@
+{
+    "PLUGINS": {
+        "TUTORIAL": {
+            "TITLE": "Awọn ẹkọ ikẹkọ",
+            "PAGES": {
+                "EDIT": "Tedit",
+                "LIST": "Awọn ẹkọ ikẹkọ",
+                "ADD": "Fi kun"
+            },
+            "LIST_PAGE": {
+                "TITLE": "Awọn ẹkọ ikẹkọ",
+                "ADD_TUTORIAL": "Fi Tutorial",
+                "SEARCH_PLACEHOLDER": "Àwárí Tutorial",
+                "VIEW_DETAILS": "Wo Awọn alaye",
+                "NO_TUTORIALS": "Ko ri Tutorial"
+            },
+            "DETAILS": {
+                "TITLE": "Akọle",
+                "TITLE_REQUIRED": "Akole wa ni ti beere",
+                "DESCRIPTION": "Apejuwe",
+                "DESCRIPTION_REQUIRED": "Apejuwe wa ni ti beere",
+                "PUBLISHED": "Atejade",
+                "EDIT": "Ṣatunkọ",
+                "INFORMATION": "Alaye ni Afikun"
+            },
+            "TITLES": {
+                "NEW_TUTORIAL": "Fi Tutorial",
+                "TUTORIAL_DETAILS": "Tutorial alaye",
+                "TUTORIALS": "Awọn ẹkọ ikẹkọ"
+            },
+            "SAVE": {
+                "SUCCESS": "Aṣeyọri fifipamọ ikẹkọ",
+                "ERROR": "Aṣiṣe wa fifipamọ ikẹkọ; "
+            }
+        }
+    }
+}

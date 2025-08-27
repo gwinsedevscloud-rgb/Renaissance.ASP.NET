@@ -1,0 +1,37 @@
+{
+    "PLUGINS": {
+        "TUTORIAL": {
+            "TITLE": "Nkuzi",
+            "PAGES": {
+                "EDIT": "Tedit",
+                "LIST": "Nkuzi",
+                "ADD": "Tinye"
+            },
+            "LIST_PAGE": {
+                "TITLE": "Nkuzi",
+                "ADD_TUTORIAL": "Tinye nkuzi",
+                "SEARCH_PLACEHOLDER": "Chọọ nkuzi",
+                "VIEW_DETAILS": "Lelee nkọwa",
+                "NO_TUTORIALS": "Enweghị nkuzi ahụrụ"
+            },
+            "DETAILS": {
+                "TITLE": "Aha",
+                "TITLE_REQUIRED": "Achọrọ aha",
+                "DESCRIPTION": "Nkọwa",
+                "DESCRIPTION_REQUIRED": "Achọrọ nkọwa",
+                "PUBLISHED": "Ebipụtara",
+                "EDIT": "Dezie",
+                "INFORMATION": "Ozi Mgbakwunye"
+            },
+            "TITLES": {
+                "NEW_TUTORIAL": "Tinye nkuzi",
+                "TUTORIAL_DETAILS": "Nkọwa nkuzi",
+                "TUTORIALS": "Nkuzi"
+            },
+            "SAVE": {
+                "SUCCESS": "Nkuzi ịchekwa nke ọma",
+                "ERROR": "Enwere nkuzi ịchekwa njehie; "
+            }
+        }
+    }
+}

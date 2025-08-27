@@ -1,0 +1,15 @@
+{
+    "CORE": {
+        "BUTTONS": {
+            "SAVE": "Ahorrar",
+            "CANCEL": "Cancelar",
+            "DELETE": "Borrar",
+            "UPDATE": "Actualizar"
+        },
+        "UTIL": {
+            "TOGGLE_FULLSCREEN": "Alternar pantalla completa"
+        }
+    },
+    "Welcome": "Bienvenido",
+    "Home": "Hogar"
+}

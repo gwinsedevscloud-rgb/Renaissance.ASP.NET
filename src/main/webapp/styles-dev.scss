@@ -1,0 +1,177 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+@import './styles/tailwind';
+@import './styles/themes';
+@import './styles/main';
+
+@include mat.core();
+
+mat.$theme-legacy-inspection-api-compatibility: false;
+
+:root {
+    .cdk-visually-hidden {
+        border: 0;
+        clip: rect(0 0 0 0);
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        padding: 0;
+        position: absolute;
+        width: 1px;
+        white-space: nowrap;
+        outline: 0;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        left: 0
+    }
+
+    [dir=rtl] .cdk-visually-hidden {
+        left: auto;
+        right: 0
+    }
+
+    .cdk-overlay-container, .cdk-global-overlay-wrapper {
+        pointer-events: none;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%
+    }
+
+    .cdk-overlay-container {
+        position: fixed;
+        z-index: 1000
+    }
+
+    .cdk-overlay-container:empty {
+        display: none
+    }
+
+    .cdk-global-overlay-wrapper {
+        display: flex;
+        position: absolute;
+        z-index: 1000
+    }
+
+    .cdk-overlay-pane {
+        position: absolute;
+        pointer-events: auto;
+        box-sizing: border-box;
+        z-index: 1000;
+        display: flex;
+        max-width: 100%;
+        max-height: 100%
+    }
+
+    .cdk-overlay-backdrop {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        pointer-events: auto;
+        -webkit-taplight-color: rgba(0, 0, 0, 0);
+        transition: opacity 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+        opacity: 0
+    }
+
+    .cdk-overlay-backdrop.cdk-overlay-backdrop-showing {
+        opacity: 1
+    }
+
+    .cdk-contrast-active .cdk-overlay-backdrop.cdk-overlay-backdrop-showing {
+        opacity: .6
+    }
+
+    .cdk-overlay-dark-backdrop {
+        background: rgba(0, 0, 0, .32)
+    }
+
+    .cdk-overlay-transparent-backdrop {
+        transition: visibility 1ms linear, opacity 1ms linear;
+        visibility: hidden;
+        opacity: 1
+    }
+
+    .cdk-overlay-transparent-backdrop.cdk-overlay-backdrop-showing {
+        opacity: 0;
+        visibility: visible
+    }
+
+    .cdk-overlay-backdrop-noop-animation {
+        transition: none
+    }
+
+    .cdk-overlay-connected-position-bounding-box {
+        position: absolute;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        min-width: 1px;
+        min-height: 1px
+    }
+
+    .cdk-global-scrollblock {
+        position: fixed;
+        width: 100%;
+        overflow-y: scroll
+    }
+
+    textarea.cdk-textarea-autosize {
+        resize: none
+    }
+
+    textarea.cdk-textarea-autosize-measuring {
+        padding: 2px 0 !important;
+        box-sizing: content-box !important;
+        height: auto !important;
+        overflow: hidden !important
+    }
+
+    textarea.cdk-textarea-autosize-measuring-firefox {
+        padding: 2px 0 !important;
+        box-sizing: content-box !important;
+        height: 0 !important
+    }
+
+    @keyframes cdk-text-field-autofill-start { /*!*/
+    }
+
+    @keyframes cdk-text-field-autofill-end { /*!*/
+    }
+
+    .cdk-text-field-autofill-monitored:-webkit-autofill {
+        animation: cdk-text-field-autofill-start 0s 1ms
+    }
+
+    .cdk-text-field-autofill-monitored:not(:-webkit-autofill) {
+        animation: cdk-text-field-autofill-end 0s 1ms
+    }
+
+    .mat-app-background {
+        background-color: var(--mat-app-background-color, transparent);
+        color: var(--mat-app-text-color, inherit)
+    }
+}
+
+html {
+    color-scheme: light;
+    @include mat.theme((
+            color: mat.$azure-palette,
+            typography: Roboto,
+            density: 0
+    ));
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+}
+body.dark {
+    color-scheme: dark;
+}

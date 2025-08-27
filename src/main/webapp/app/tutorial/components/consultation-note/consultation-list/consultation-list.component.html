@@ -1,0 +1,108 @@
+@if (consultations().length > 0) {
+    <div class="space-y-4 mt-6" >
+        <mat-accordion>
+            @for (c of consultations(); track $index) {
+
+                <ng-container *hasAnyAuthority="['See Consultation Data']">
+                    <mat-expansion-panel class="bg-white shadow rounded-lg">
+                        <mat-expansion-panel-header>
+                            <div class="flex justify-between items-center w-full">
+                                <div>
+                                    <mat-panel-title class="text-sm md:text-base font-medium text-blue-900">
+                                        Consultation #{{$index + 1}}
+                                    </mat-panel-title>
+                                    <mat-panel-description class="text-gray-500">
+                                        @if (c.referred) {
+                                            <span class="text-yellow-700 font-semibold">Referred</span>
+                                        } @else {
+                                            <span class="text-green-700">Not Referred</span>
+                                        }
+                                    </mat-panel-description>
+                                </div>
+                            </div>
+                        </mat-expansion-panel-header>
+
+
+                        <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Diagnoses -->
+                            <div>
+                                <h4 class="font-semibold text-gray-800 mb-1">Diagnoses</h4>
+                                <ul class="list-disc list-inside text-gray-700 text-sm">
+                                    @for (d of c.diagnoses ?? []; track d) {
+                                        <li>{{ d }}</li>
+                                    }
+                                </ul>
+                                <div>
+                                    <h4 class="font-semibold text-gray-800 mb-1">Others Diagnoses</h4>
+                                    <ul class="list-disc list-inside text-gray-700 text-sm">
+                                        @for (od of c.othersDiagnosis ?? []; track od) {
+                                            <li>{{ od }}</li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Treatments -->
+                            <div>
+                                <h4 class="font-semibold text-gray-800 mb-1">Treatments</h4>
+                                <ul class="list-disc list-inside text-gray-700 text-sm">
+                                    @for (t of c.treatments ?? []; track t) {
+                                        <li>{{ t }}</li>
+                                    }
+                                </ul>
+                                <div>
+                                    <h4 class="font-semibold text-gray-800 mb-1">Others Treatment</h4>
+                                    <ul class="list-disc list-inside text-gray-700 text-sm">
+                                        @for (ot of c.othersTreatment ?? []; track ot) {
+                                            <li>{{ ot }}</li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Services Referred -->
+                            @if (c.referred && (c.servicesReferred?.length ?? 0) > 0) {
+                                <div class="md:col-span-2">
+                                    <h4 class="font-semibold text-gray-800 mb-1">Services Referred</h4>
+                                    <ul class="list-disc list-inside text-gray-700 text-sm">
+                                        @for (s of c.servicesReferred ?? []; track s) {
+                                            <li>{{ s }}</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                    </mat-expansion-panel>
+                </ng-container>
+
+                <ng-container *hasAnyAuthority="['Dispense ITN']">
+                    @if (c.itnOrder) {
+                        <div class="pt-5 mt-5">
+                            <div>
+                                <h3> ITN DISPENSE </h3>
+                                @if (!c.itnDispense) {
+                                    <button class="mt-8" mat-flat-button (click)="onToggleItnDispense(true, c.id)">Mark as Dispensed</button>
+                                } @else {
+                                    <button class="mt-8" mat-flat-button (click)="onToggleItnDispense(false, c.id)">Undo Dispense</button>
+                                }
+                            </div>
+                            @if (c.itnDispense){
+                                <div class="pt-5 mt-5">
+                                    Current ITN Dispense: {{ c.itnDispense }}
+                                </div>
+                            }
+                        </div>
+                    }
+                </ng-container>
+            }
+        </mat-accordion>
+    </div>
+} @else {
+    <ng-template>
+        <p class="text-center text-gray-600 italic mt-6">No consultation records found.</p>
+    </ng-template>
+}
+
+
+
+

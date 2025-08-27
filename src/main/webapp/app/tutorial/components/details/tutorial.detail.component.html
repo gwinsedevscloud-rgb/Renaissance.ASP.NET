@@ -1,0 +1,322 @@
+<div class="flex flex-col flex-auto p-6 md:p-8 w-100">
+    <!-- Edit mode -->
+    <ng-container>
+
+        <!-- Header -->
+        <div class="relative w-full h-30 sm:h-38 px-8 sm:px-12 bg-accent-100 dark:bg-transparent">
+            <!-- Close button -->
+            <div class="flex items-center justify-end w-full max-w-3xl mx-auto pt-6">
+                <a
+                    mat-icon-button
+                    [matTooltip]="'Close'"
+                    [routerLink]="[pathHasId ? '../..': '../']">
+                    <mat-icon
+                        class="text-gray"
+                        [svgIcon]="'heroicons_outline:x-circle'"></mat-icon>
+                </a>
+            </div>
+        </div>
+
+        <div class="relative flex flex-col flex-auto items-center px-6 sm:px-12">
+            <div class="w-full max-w-6xl">
+                @if (showAlert) {
+                    <fuse-alert
+                        [appearance]="'outline'"
+                        [showIcon]="false"
+                        [type]="alert.type"
+                        class="mb-4 mt-2">
+                        {{ alert.message | transloco }}
+                    </fuse-alert>
+                }
+                <form [formGroup]="formGroup" class="w-full">
+                    <div class="flex md:flex-row md:space-x-4 mt-4">
+                        <div class="w-full md:w-1/2">
+                            <mat-form-field
+                                class="w-full"
+                                [subscriptSizing]="'dynamic'">
+                                <mat-label>Age</mat-label>
+                                <mat-icon
+                                    matPrefix
+                                    class="hidden sm:flex icon-size-5"
+                                    [svgIcon]="'heroicons_outline:chat-bubble-left'"></mat-icon>
+                                <input
+                                    [readonly]="pathHasView"
+                                    matInput
+                                    [formControlName]="'age'"
+                                    [spellcheck]="false">
+                                @if (formGroup.controls['age'].hasError('required') && formGroup.controls['address'].touched) {
+                                    <mat-error>
+                                        Age is required
+                                    </mat-error>
+                                }
+                            </mat-form-field>
+                        </div>
+                        <div class="w-full md:w-1/2">
+                            <mat-form-field class="w-full " [subscriptSizing]="'dynamic'">
+                                <mat-label>Age Unit</mat-label>
+                                <mat-icon matPrefix class="hidden sm:flex icon-size-5" [svgIcon]="'heroicons_outline:calendar'"></mat-icon>
+                                <mat-select [formControlName]="'ageUnit'">
+                                    <mat-option value="years">Years</mat-option>
+                                    <mat-option value="months">Months</mat-option>
+                                </mat-select>
+                                @if (formGroup.controls['ageUnit'].hasError('required')) {
+                                    <mat-error>Age unit is required</mat-error>
+                                }
+                            </mat-form-field>
+                        </div>
+                    </div>
+
+
+                    @if (!isClientNumberLessThanSixteen()){
+
+                        <div class="flex md:flex-row md:space-x-4 mt-4">
+                            <div class="w-full md:w-1/2">
+                                <mat-form-field class="w-full " [subscriptSizing]="'dynamic'">
+                                    <mat-label>Sex</mat-label>
+                                    <mat-icon matPrefix class="hidden sm:flex icon-size-5" [svgIcon]="'heroicons_outline:calendar'"></mat-icon>
+                                    <mat-select [formControlName]="'sex'" required>
+                                        <mat-option value="Male">Male</mat-option>
+                                        <mat-option value="Female">Female</mat-option>
+                                    </mat-select>
+                                    @if (formGroup.controls['sex'].hasError('required')) {
+                                        <mat-error>Sex is required</mat-error>
+                                    }
+                                </mat-form-field>
+                            </div>
+                            <div class="w-full md:w-1/2">
+                                <mat-form-field class="w-full " [subscriptSizing]="'dynamic'">
+                                    <mat-label>Marital Status</mat-label>
+                                    <mat-icon matPrefix class="hidden sm:flex icon-size-5" [svgIcon]="'heroicons_outline:calendar'"></mat-icon>
+                                    <mat-select [formControlName]="'maritalStatus'">
+                                        <mat-option value="Married">Married</mat-option>
+                                        <mat-option value="Single">Single</mat-option>
+                                        <mat-option value="Divorced/Separated">Divorced/Separated</mat-option>
+                                        <mat-option value="Cohabiting">Cohabiting</mat-option>
+                                    </mat-select>
+                                    @if (formGroup.controls['maritalStatus'].hasError('required')) {
+                                        <mat-error>Occupation is required</mat-error>
+                                    }
+                                </mat-form-field>
+                            </div>
+
+                        </div>
+                        <div class="flex md:flex-row md:space-x-4 mt-4">
+                            <!--<div class="w-full md:w-1/2">
+                                <mat-form-field
+                                    class="w-full"
+                                    [subscriptSizing]="'dynamic'">
+                                    <mat-label>Tribe</mat-label>
+                                    <mat-icon
+                                        matPrefix
+                                        class="hidden sm:flex icon-size-5"
+                                        [svgIcon]="'heroicons_outline:chat-bubble-left'"></mat-icon>
+                                    <input
+                                        [readonly]="pathHasView"
+                                        matInput
+                                        [formControlName]="'tribe'"
+                                        [spellcheck]="false">
+                                    @if (formGroup.controls['tribe'].hasError('required')) {
+                                        <mat-error>
+                                            tribe is required
+                                        </mat-error>
+                                    }
+                                </mat-form-field>
+                            </div>-->
+                            <div class="w-full">
+                                <mat-form-field class="w-full " [subscriptSizing]="'dynamic'">
+                                    <mat-label>Religion</mat-label>
+                                    <mat-icon matPrefix class="hidden sm:flex icon-size-5" [svgIcon]="'heroicons_outline:calendar'"></mat-icon>
+                                    <mat-select [formControlName]="'religion'" >
+                                        <mat-option value="Christian">Christian</mat-option>
+                                        <mat-option value="Islam">Islam</mat-option>
+                                        <mat-option value="Trad">Trad</mat-option>
+                                    </mat-select>
+                                    @if (formGroup.controls['religion'].hasError('required')) {
+                                        <mat-error>Religion is required</mat-error>
+                                    }
+                                </mat-form-field>
+                            </div>
+                        </div>
+
+                        <div class="flex md:flex-row md:space-x-4 mt-4">
+                            <div class="w-full md:w-1/2">
+                                <mat-form-field class="w-full " [subscriptSizing]="'dynamic'">
+                                    <mat-label>Occupation</mat-label>
+                                    <mat-icon matPrefix class="hidden sm:flex icon-size-5" [svgIcon]="'heroicons_outline:calendar'"></mat-icon>
+                                    <mat-select [formControlName]="'occupation'">
+                                        <mat-option value="Unemployed">Unemployed</mat-option>
+                                        <mat-option value="Unskilled">Unskilled</mat-option>
+                                        <mat-option value="Semi skilled">Semi skilled</mat-option>
+                                        <mat-option value="Semi skilled">Skilled</mat-option>
+                                    </mat-select>
+                                    @if (formGroup.controls['occupation'].hasError('required')) {
+                                        <mat-error>Occupation is required</mat-error>
+                                    }
+                                </mat-form-field>
+                            </div>
+                            <div class="w-full md:w-1/2">
+                                <mat-form-field class="w-full " [subscriptSizing]="'dynamic'">
+                                    <mat-label>Education</mat-label>
+                                    <mat-icon matPrefix class="hidden sm:flex icon-size-5" [svgIcon]="'heroicons_outline:calendar'"></mat-icon>
+                                    <mat-select [formControlName]="'education'">
+                                        <mat-option value="None">None</mat-option>
+                                        <mat-option value="Primary">Primary</mat-option>
+                                        <mat-option value="Secondary">Secondary</mat-option>
+                                        <mat-option value="Tertiary">Tertiary</mat-option>
+                                    </mat-select>
+                                    @if (formGroup.controls['education'].hasError('required')) {
+                                        <mat-error>Education is required</mat-error>
+                                    }
+                                </mat-form-field>
+                            </div>
+                        </div>
+
+                        <div class="mt-8">
+                            <mat-form-field
+                                class="w-full"
+                                [subscriptSizing]="'dynamic'">
+                                <mat-label>Phone Number</mat-label>
+                                <mat-icon
+                                    matPrefix
+                                    class="hidden sm:flex icon-size-5"
+                                    [svgIcon]="'heroicons_outline:chat-bubble-left'"></mat-icon>
+                                <input
+                                    [readonly]="pathHasView"
+                                    matInput
+                                    [formControlName]="'phoneNumber'"
+                                    [spellcheck]="false">
+                                @if (formGroup.controls['phoneNumber'].hasError('invalidPhoneNumber')) {
+                                    <mat-error>
+                                        Invalid Nigerian phone number
+                                    </mat-error>
+                                }
+                                @if (formGroup.controls['phoneNumber'].hasError('required')) {
+                                    <mat-error>
+                                        Phone number is required
+                                    </mat-error>
+                                }
+                            </mat-form-field>
+                        </div>
+
+                        <div class="flex md:flex-row md:space-x-4 mt-4">
+                            <mat-form-field
+                                class="w-full"
+                                [subscriptSizing]="'dynamic'">
+                                <mat-label>Address</mat-label>
+                                <mat-icon
+                                    matPrefix
+                                    class="hidden sm:flex icon-size-5"
+                                    [svgIcon]="'heroicons_outline:book-open'"></mat-icon>
+                                <textarea
+                                    [readonly]="pathHasView"
+                                    matInput
+                                    rows="3"
+                                    [formControlName]="'address'"
+                                    [spellcheck]="false"></textarea>
+                                @if (formGroup.controls['address'].hasError('required')) {
+                                    <mat-error>
+                                        Address is require
+                                    </mat-error>
+                                }
+                            </mat-form-field>
+
+                        </div>
+
+
+                    } @else {
+                        <div class="flex md:flex-row md:space-x-4 mt-4">
+                            <div class="w-full md:w-1/2">
+                                <mat-form-field class="w-full " [subscriptSizing]="'dynamic'">
+                                    <mat-label>Sex</mat-label>
+                                    <mat-icon matPrefix class="hidden sm:flex icon-size-5" [svgIcon]="'heroicons_outline:calendar'"></mat-icon>
+                                    <mat-select [formControlName]="'sex'">
+                                        <mat-option value="Male">Male</mat-option>
+                                        <mat-option value="Female">Female</mat-option>
+                                    </mat-select>
+                                    @if (formGroup.controls['sex'].hasError('required')) {
+                                        <mat-error>Sex is required</mat-error>
+                                    }
+                                </mat-form-field>
+                            </div>
+                            <div class="w-full md:w-1/2">
+                                <mat-form-field class="w-full " [subscriptSizing]="'dynamic'">
+                                    <mat-label>Education</mat-label>
+                                    <mat-icon matPrefix class="hidden sm:flex icon-size-5" [svgIcon]="'heroicons_outline:calendar'"></mat-icon>
+                                    <mat-select [formControlName]="'education'">
+                                        <mat-option value="None">None</mat-option>
+                                        <mat-option value="Primary">Primary</mat-option>
+                                        <mat-option value="Secondary">Secondary</mat-option>
+                                        <mat-option value="Tertiary">Tertiary</mat-option>
+                                    </mat-select>
+                                    @if (formGroup.controls['education'].hasError('required')) {
+                                        <mat-error>Education is required</mat-error>
+                                    }
+                                </mat-form-field>
+                            </div>
+
+                        </div>
+                    }
+                    <div class="flex md:flex-row md:space-x-4 mt-4">
+                        <div class="w-full md:w-1/2">
+                            <mat-form-field
+                                class="w-full"
+                                [subscriptSizing]="'dynamic'">
+                                <mat-label>Client Number</mat-label>
+                                <mat-icon
+                                    matPrefix
+                                    class="hidden sm:flex icon-size-5"
+                                    [svgIcon]="'heroicons_outline:chat-bubble-left'"></mat-icon>
+                                <input
+                                    matInput
+                                    [readonly]="true"
+                                    [formControlName]="'clientNumber'"
+                                    [spellcheck]="false">
+                            </mat-form-field>
+                        </div>
+                        <div class="w-full md:w-1/2">
+                            <button
+                                class="ml-2"
+                                mat-flat-button
+                                (click)="generateClientNumber()">
+                                Get Code
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (!pathHasView) {
+                        <div
+                            class="flex items-center mt-10 -mx-6 sm:-mx-12 py-4 pr-4 pl-1 sm:pr-12 sm:pl-7">
+                            <!-- Delete -->
+                            @if (tutorial.id) {
+                                <button
+                                    mat-button
+                                    class="text-on-error bg-error"
+                                    (click)="delete()">
+                                    Delete
+                                </button>
+                            }
+                            <!-- Cancel -->
+                            <button
+                                class="ml-auto"
+                                mat-button
+                                (click)="toggleEditMode(false)">
+                                Cancel
+                            </button>
+                            <!-- Save -->
+                            <button
+                                class="ml-2"
+                                mat-flat-button
+                                [disabled]="formGroup.invalid"
+                                (click)="save()">
+                                {{
+                                    formGroup.value['id'] ?
+                                        'Edit' : 'Save'
+                                }}
+                            </button>
+                        </div>
+                    }
+                </form>
+            </div>
+        </div>
+    </ng-container>
+</div>

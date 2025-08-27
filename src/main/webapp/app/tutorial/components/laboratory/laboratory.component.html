@@ -1,0 +1,88 @@
+<div class="flex flex-col flex-auto p-6 md:p-8">
+    <ng-container>
+        <div class="relative w-full  sm:px-12 bg-accent-100 dark:bg-transparent">
+            <!-- Close button -->
+            <div class="flex items-center justify-end w-full max-w-3xl mx-auto">
+                <a
+                    mat-icon-button
+                    [matTooltip]="'Close'"
+                    (click)="closeDrawer()">
+                    <mat-icon
+                        class="text-gray"
+                        [svgIcon]="'heroicons_outline:x-circle'"></mat-icon>
+                </a>
+            </div>
+        </div>
+
+        <div class="relative flex flex-col flex-auto items-center px-6">
+            <div class="w-full max-w-6xl">
+
+                @if (type() === 'result') {
+                    <form [formGroup]="resultForm" (ngSubmit)="onSubmitResult()" class="mt-4">
+                        <h3 class="text-lg font-semibold">Enter Lab Results</h3>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                            <div *ngFor="let test of requestedTests()">
+                                <mat-form-field class="w-full">
+                                    <mat-label>{{ test }}</mat-label>
+                                    <ng-container [ngSwitch]="test">
+                                        <!-- Numeric input for FBS -->
+                                        <input
+                                            *ngSwitchCase="'Fasting Blood Sugar'"
+                                            matInput
+                                            type="text"
+                                            [formControlName]="formatKey(test)"
+                                            placeholder="e.g. 95"
+                                        />
+
+                                        <!-- Select dropdown for other tests -->
+                                        <mat-select *ngSwitchDefault [formControlName]="formatKey(test)">
+                                            <mat-option value="">Select Result</mat-option>
+                                            <mat-option value="positive">Positive</mat-option>
+                                            <mat-option value="negative">Negative</mat-option>
+                                        </mat-select>
+                                    </ng-container>
+                                </mat-form-field>
+                            </div>
+                        </div>
+
+                        <div class="pt-4">
+                            <button mat-flat-button color="primary" type="submit">
+                                Submit Results
+                            </button>
+                        </div>
+                    </form>
+                } @else {
+                    <form [formGroup]="labForm" class="p-6 shadow space-y-6">
+                        <h3 class="text-lg font-semibold">Laboratory Test Order</h3>
+                        <mat-checkbox
+                            [checked]="labForm.value.selectAll"
+                            (change)="toggleSelectAll($event)"
+                            color="primary"
+                        >
+                            <span class="font-semibold">Select All Tests</span>
+                        </mat-checkbox>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <mat-checkbox *ngFor="let test of tests"
+                                          [checked]="labForm.value.requestedTests.includes(test)"
+                                          (change)="onCheckChange($event, test)"
+                                          color="primary">
+                                {{ test }}
+                            </mat-checkbox>
+                        </div>
+                        <div class="pt-4">
+                            <button (click)="onSubmitOrder()" mat-flat-button>
+                                Submit Request
+                            </button>
+                        </div>
+                    </form>
+                }
+
+            </div>
+        </div>
+    </ng-container>
+</div>
+
+
+

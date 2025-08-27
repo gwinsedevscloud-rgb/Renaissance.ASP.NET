@@ -1,0 +1,15 @@
+{
+    "CORE": {
+        "BUTTONS": {
+            "SAVE": "Fipamọ",
+            "CANCEL": "Fagilee",
+            "DELETE": "Paarẹ",
+            "UPDATE": "Imudojuiwọn"
+        },
+        "UTIL": {
+            "TOGGLE_FULLSCREEN": "Yipada ni kikun iboju"
+        }
+    },
+    "Welcome": "Kaabo",
+    "Home": "Ile"
+}

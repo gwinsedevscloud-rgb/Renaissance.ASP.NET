@@ -1,0 +1,57 @@
+@if (results().length > 0) {
+    <mat-accordion class="mt-6 space-y-3">
+        <mat-expansion-panel class="bg-white rounded shadow-sm border">
+            <mat-expansion-panel-header>
+                <mat-panel-title class="text-blue-800 font-semibold">
+                    Laboratory Results
+                </mat-panel-title>
+                <mat-panel-description class="text-lg text-gray-600">
+                    Total: {{ results().length }}
+                </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            <div class="divide-y divide-gray-200">
+                @for (test of results(); track $index) {
+                    <div class="p-4 text-lg text-gray-700 space-y-1">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <strong class="text-blue-700">{{ test.testName }}</strong>
+                                <p class="text-sm text-gray-600">Result: {{ test.result || 'Pending' }}</p>
+                                <p class="text-sm text-gray-600"><strong>Note:</strong> {{ test.note || 'None' }}</p>
+                            </div>
+
+                            <ng-container *hasAnyAuthority="['Enter Test Result']">
+                                @if (!test.result){
+                                    <button
+                                        mat-stroked-button
+                                        color="primary"
+                                        (click)="openLaboratoryResultForm(test)">
+                                        Enter Result
+                                    </button>
+                                }
+                            </ng-container>
+
+                            <ng-container *hasAnyAuthority="['Can Edit Lab Result']">
+                                @if (test.result) {
+                                    <button
+                                        matTooltip="Edit result"
+                                        mat-stroked-button
+                                        (click)="openLaboratoryResultForm(test)">
+                                        <mat-icon
+                                            class="icon-size-5"
+                                            [svgIcon]="'heroicons_outline:pencil-square'"></mat-icon>
+                                        <span>Edit</span>
+                                    </button>
+                                }
+                            </ng-container>
+                        </div>
+                    </div>
+                }
+            </div>
+        </mat-expansion-panel>
+    </mat-accordion>
+} @else {
+    <ng-template #noResults>
+        <p class="text-center text-gray-600 py-4 italic">No laboratory results available.</p>
+    </ng-template>
+}
