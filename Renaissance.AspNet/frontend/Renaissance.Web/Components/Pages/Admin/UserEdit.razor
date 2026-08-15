@@ -1,0 +1,159 @@
+@page "/admin/users/create"
+@page "/admin/users/edit/{Id:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>@(IsNew ? "New user" : "Edit user") - Renaissance</PageTitle>
+
+<PageHeader Title="@(IsNew ? "New user" : "Edit user")" Subtitle="Assign a role to control module access" Icon="bi-person-gear" BackHref="/admin/users" BackLabel="Users" />
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_loading)
+{
+    <LoadingState Message="Loading..." />
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
+        <DataAnnotationsValidator />
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Full name</label>
+                <InputText class="form-control" @bind-Value="_model.FullName" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Username</label>
+                <InputText class="form-control" @bind-Value="_model.UserName" disabled="@(!IsNew)" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">@(IsNew ? "Password" : "New password (optional)")</label>
+                <InputText type="password" class="form-control" @bind-Value="_model.Password" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Role</label>
+                <InputSelect class="form-select" @bind-Value="_model.RoleId">
+                    @foreach (var role in _roles)
+                    {
+                        <option value="@role.Id">@role.Name</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    <InputCheckbox class="form-check-input" @bind-Value="_model.IsActive" id="active" />
+                    <label class="form-check-label" for="active">Active</label>
+                </div>
+            </div>
+        </div>
+        <FormActions SaveLabel="Save user" CancelHref="/admin/users" />
+        @if (!IsNew)
+        {
+            <button type="button" class="btn btn-outline-danger mt-3" @onclick="DeleteAsync">
+                <i class="bi bi-trash me-1"></i> Delete user
+            </button>
+        }
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private bool IsNew => Id == Guid.Empty;
+    private bool _loading = true;
+    private string? _error;
+    private List<RoleDto> _roles = [];
+    private UserForm _model = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _roles = await Api.GetRolesAsync();
+        if (!IsNew)
+        {
+            var user = await Api.GetUserAsync(Id);
+            if (user is null)
+            {
+                Nav.NavigateTo("/admin/users");
+                return;
+            }
+
+            _model = new UserForm
+            {
+                UserName = user.UserName,
+                FullName = user.FullName,
+                RoleId = user.RoleId,
+                IsActive = user.IsActive
+            };
+        }
+        else if (_roles.Count > 0 && _model.RoleId == Guid.Empty)
+        {
+            _model.RoleId = _roles[0].Id;
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+        try
+        {
+            if (IsNew)
+            {
+                await Api.CreateUserAsync(new CreateUserRequest
+                {
+                    UserName = _model.UserName,
+                    FullName = _model.FullName,
+                    Password = _model.Password ?? string.Empty,
+                    RoleId = _model.RoleId,
+                    IsActive = _model.IsActive
+                });
+                Notifications.ShowSuccess("User created.");
+            }
+            else
+            {
+                await Api.UpdateUserAsync(Id, new UpdateUserRequest
+                {
+                    FullName = _model.FullName,
+                    Password = string.IsNullOrWhiteSpace(_model.Password) ? null : _model.Password,
+                    RoleId = _model.RoleId,
+                    IsActive = _model.IsActive
+                });
+                Notifications.ShowSuccess("User updated.");
+            }
+
+            Nav.NavigateTo("/admin/users");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        try
+        {
+            await Api.DeleteUserAsync(Id);
+            Notifications.ShowSuccess("User deleted.");
+            Nav.NavigateTo("/admin/users");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private sealed class UserForm
+    {
+        public string UserName { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string? Password { get; set; }
+        public Guid RoleId { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}

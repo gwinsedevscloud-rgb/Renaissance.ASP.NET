@@ -1,0 +1,74 @@
+@inject AuthStateService Auth
+@inject RenaissanceApiClient Api
+
+@if (!Auth.IsReady)
+{
+    <div class="ren-app-shell">
+        <main class="ren-main container d-flex align-items-center justify-content-center" style="min-height:60vh;">
+            <LoadingState Message="Restoring session..." />
+        </main>
+    </div>
+}
+else
+{
+    <Routes />
+}
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || Auth.IsReady)
+        {
+            return;
+        }
+
+        try
+        {
+            var token = await ReadTokenWithTimeoutAsync();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                Auth.MarkReady();
+                return;
+            }
+
+            Auth.SetSession(token, null);
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+                var me = await Api.GetMeAsync(cts.Token);
+                if (me is null)
+                {
+                    await Auth.SignOutAsync();
+                }
+                else
+                {
+                    Auth.SetSession(token, me);
+                }
+            }
+            catch
+            {
+                await Auth.SignOutAsync();
+            }
+        }
+        catch
+        {
+            Auth.MarkReady();
+        }
+        finally
+        {
+            if (!Auth.IsReady)
+            {
+                Auth.MarkReady();
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task<string?> ReadTokenWithTimeoutAsync()
+    {
+        var read = Auth.ReadStoredTokenAsync();
+        var completed = await Task.WhenAny(read, Task.Delay(TimeSpan.FromSeconds(3)));
+        return completed == read ? await read : null;
+    }
+}

@@ -1,0 +1,69 @@
+@page "/ancillary"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+
+<PageTitle>Ancillary - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Ancillary services" Subtitle="Family planning and other support services" Icon="bi-bandaid" />
+
+    <ReferralQueuePanel Module="AppModule.Ancillary" />
+
+    <PatientQuickSearch CreateHrefPrefix="/ancillary/create" ActionLabel="New ancillary visit" />
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading ancillary records..." />
+    }
+    else if (_items.Count == 0)
+    {
+        <EmptyPanel Icon="bi-bandaid" Title="No ancillary records yet" Message="Search for a client above to record a visit." />
+    }
+    else
+    {
+        <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
+        <div class="section-card table-card p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Services</th>
+                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var a in _items)
+                    {
+                        <tr>
+                            <td><ClientIdentity Patient="Patient(a.PatientId)" /></td>
+                            <td>@(a.Services.Count == 0 ? "—" : string.Join(", ", a.Services.Take(3)))</td>
+                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(a.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" href="/ancillary/edit/@a.Id">Edit</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private List<Ancillary> _items = [];
+    private Dictionary<Guid, Patient> _patients = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patients = await Api.GetPatientsAsync();
+        _patients = patients.ToDictionary(p => p.Id);
+        _items = (await Api.GetAncillariesAsync()).Take(50).ToList();
+        _loading = false;
+    }
+
+    private Patient? Patient(Guid id) => _patients.GetValueOrDefault(id);
+}

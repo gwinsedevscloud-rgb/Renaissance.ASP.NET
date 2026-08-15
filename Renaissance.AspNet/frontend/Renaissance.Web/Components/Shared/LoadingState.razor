@@ -1,0 +1,9 @@
+<div class="loading-state">
+    <div class="loading-spinner"></div>
+    <p class="mb-0">@Message</p>
+</div>
+
+@code {
+    [Parameter]
+    public string Message { get; set; } = "Loading...";
+}

@@ -1,0 +1,100 @@
+@page "/pharmacy/dispense/{PatientId:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Dispense Drugs - Renaissance</PageTitle>
+
+@if (_loading) { <LoadingState /> }
+else if (_vm is null) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Client not found.</div> }
+else
+{
+    <PageHeader Title="@($"Dispense — {_vm.ClientNumber}")" Subtitle="Update dispensation status for prescriptions" Icon="bi-capsule" IconBgClass="feature-icon-violet" />
+    <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
+        @if (_vm.Items.Count == 0)
+        {
+            <div class="empty-state py-3"><i class="bi bi-inbox d-block"></i> No prescriptions to dispense.</div>
+        }
+        else
+        {
+            @for (var i = 0; i < _vm.Items.Count; i++)
+            {
+                var item = _vm.Items[i];
+                var idx = i;
+                <div class="border rounded-3 p-3 mb-3 bg-light">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-prescription2 text-primary"></i>
+                        <strong>@item.DrugName</strong>
+                    </div>
+                    <div class="text-muted small mb-2">@item.DrugCategory · @item.Dosage · @item.Frequency · @item.Duration</div>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <InputSelect class="form-select" @bind-Value="_vm.Items[idx].Status">
+                                @foreach (var s in Enum.GetValues<DispensationStatus>())
+                                { <option value="@s">@s</option> }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Quantity</label>
+                            <InputNumber class="form-control" @bind-Value="_vm.Items[idx].QuantityDispensed" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Note</label>
+                            <InputText class="form-control" @bind-Value="_vm.Items[idx].DispensationNote" />
+                        </div>
+                    </div>
+                </div>
+            }
+            <FormActions SaveLabel="Save Dispensation" SaveIcon="bi-check2-all" CancelHref="@($"/client-dashboard/{PatientId}")" />
+        }
+        @if (_vm.Items.Count == 0)
+        {
+            <a class="btn btn-outline-secondary mt-2" href="/client-dashboard/@PatientId"><i class="bi bi-arrow-left me-1"></i> Back</a>
+        }
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+    private PharmacyDispenseViewModel? _vm;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patient = await Api.GetPatientAsync(PatientId);
+        if (patient is not null)
+        {
+            var prescriptions = await Api.GetPharmacyByPatientAsync(PatientId);
+            _vm = new PharmacyDispenseViewModel
+            {
+                PatientId = PatientId,
+                ClientNumber = patient.ClientNumber,
+                Items = prescriptions.Select(p => new PharmacyDispenseItemViewModel
+                {
+                    Id = p.Id, DrugCategory = p.DrugCategory, DrugName = p.DrugName,
+                    Dosage = p.Dosage, Frequency = p.Frequency, Duration = p.Duration,
+                    Status = p.Status, QuantityDispensed = p.QuantityDispensed,
+                    DispensationNote = p.DispensationNote
+                }).ToList()
+            };
+        }
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_vm is null) return;
+        var updates = _vm.Items.Select(item => new PharmacyDispenseUpdate
+        {
+            Id = item.Id, Status = item.Status,
+            QuantityDispensed = item.QuantityDispensed,
+            DispensationNote = item.DispensationNote,
+            Dispensed = item.Status == DispensationStatus.DISPENSED
+        });
+        await Api.DispensePharmacyAsync(updates);
+        Notifications.ShowSuccess("Dispensation updated.");
+        Nav.NavigateTo($"/client-dashboard/{PatientId}");
+    }
+}

@@ -1,0 +1,55 @@
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+        @if (!string.IsNullOrEmpty(BackHref))
+        {
+            <a class="form-breadcrumb" href="@BackHref">
+                <i class="bi bi-arrow-left"></i>
+                <span>@BackLabel</span>
+            </a>
+        }
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="section-icon @IconBgClass" style="width:2rem;height:2rem;font-size:1rem;">
+                    <i class="bi @Icon"></i>
+                </span>
+                <h1 class="h3 mb-0">@Title</h1>
+            </div>
+        }
+        else
+        {
+            <h1 class="h3">@Title</h1>
+        }
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <p class="subtitle">@Subtitle</p>
+        }
+    </div>
+    @if (Actions is not null)
+    {
+        <div class="d-flex gap-2 flex-wrap">@Actions</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string? Icon { get; set; }
+
+    [Parameter]
+    public string IconBgClass { get; set; } = "feature-icon-teal";
+
+    [Parameter]
+    public string? BackHref { get; set; }
+
+    [Parameter]
+    public string BackLabel { get; set; } = "Back";
+
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+}

@@ -1,0 +1,14 @@
+@using Renaissance.Web.Models
+
+<FormSection Title="Test Details" Icon="bi-droplet-half" IconBgClass="feature-icon-blue">
+    <div class="row g-3">
+        <div class="col-md-4"><FormLabel Text="Test Name" Icon="bi-flask" /><InputText class="form-control" @bind-Value="Model.TestName" /></div>
+        <div class="col-md-4"><FormLabel Text="Result" Icon="bi-check2-square" /><InputText class="form-control" @bind-Value="Model.Result" /></div>
+        <div class="col-md-12"><FormLabel Text="Note" Icon="bi-journal-text" /><InputTextArea class="form-control" rows="3" @bind-Value="Model.Note" /></div>
+    </div>
+</FormSection>
+
+@code {
+    [Parameter, EditorRequired]
+    public Laboratory Model { get; set; } = null!;
+}

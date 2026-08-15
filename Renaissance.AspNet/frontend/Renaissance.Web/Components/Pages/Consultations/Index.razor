@@ -1,0 +1,71 @@
+@page "/consultations"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+
+<PageTitle>Consultations - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Consultations" Subtitle="Diagnosis, treatment, and referrals" Icon="bi-clipboard2-pulse" IconBgClass="feature-icon-blue" />
+
+    <ReferralQueuePanel Module="AppModule.Consultations" />
+
+    <PatientQuickSearch CreateHrefPrefix="/consultations/create" ActionLabel="New consultation" />
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading consultations..." />
+    }
+    else if (_items.Count == 0)
+    {
+        <EmptyPanel Icon="bi-clipboard2-pulse" Title="No consultations yet" Message="Search for a client above to record a consultation." />
+    }
+    else
+    {
+        <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
+        <div class="section-card table-card p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Diagnoses</th>
+                            <th class="d-none d-md-table-cell">ITN</th>
+                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var c in _items)
+                    {
+                        <tr>
+                            <td><ClientIdentity Patient="Patient(c.PatientId)" /></td>
+                            <td>@(c.Diagnoses.Count == 0 ? "—" : string.Join(", ", c.Diagnoses.Take(3)))</td>
+                            <td class="d-none d-md-table-cell">@(c.ItnOrder == true ? "Ordered" : "—")</td>
+                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(c.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" href="/consultations/edit/@c.Id">Edit</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private List<Consultation> _items = [];
+    private Dictionary<Guid, Patient> _patients = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patients = await Api.GetPatientsAsync();
+        _patients = patients.ToDictionary(p => p.Id);
+        _items = (await Api.GetConsultationsAsync()).Take(50).ToList();
+        _loading = false;
+    }
+
+    private Patient? Patient(Guid id) => _patients.GetValueOrDefault(id);
+}

@@ -161,3 +161,15 @@ Desktop.ini
 .angular/
 /assets
 .github/
+
+######################
+# .NET / ASP.NET Core
+######################
+bin/
+obj/
+publish/
+*.user
+*.suo
+.vs/
+appsettings.Development.json
+**/appsettings.Development.json

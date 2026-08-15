@@ -1,0 +1,69 @@
+@page "/dental"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+
+<PageTitle>Dental - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Dental" Subtitle="Dental consultations and treatments" Icon="bi-emoji-smile" />
+
+    <ReferralQueuePanel Module="AppModule.Dental" />
+
+    <PatientQuickSearch CreateHrefPrefix="/dental/create" ActionLabel="New dental visit" />
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading dental records..." />
+    }
+    else if (_items.Count == 0)
+    {
+        <EmptyPanel Icon="bi-emoji-smile" Title="No dental records yet" Message="Search for a client above to start a dental visit." />
+    }
+    else
+    {
+        <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
+        <div class="section-card table-card p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Diagnoses</th>
+                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var d in _items)
+                    {
+                        <tr>
+                            <td><ClientIdentity Patient="Patient(d.PatientId)" /></td>
+                            <td>@(d.Diagnoses.Count == 0 ? "—" : string.Join(", ", d.Diagnoses.Take(3)))</td>
+                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(d.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" href="/dental/edit/@d.Id">Edit</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private List<DentalConsultation> _items = [];
+    private Dictionary<Guid, Patient> _patients = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patients = await Api.GetPatientsAsync();
+        _patients = patients.ToDictionary(p => p.Id);
+        _items = (await Api.GetDentalsAsync()).Take(50).ToList();
+        _loading = false;
+    }
+
+    private Patient? Patient(Guid id) => _patients.GetValueOrDefault(id);
+}

@@ -1,0 +1,78 @@
+@page "/consultations/create/{PatientId:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>New Consultation - Renaissance</PageTitle>
+
+@if (!_exists) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Client not found.</div> }
+else
+{
+    <PageHeader Title="New Consultation" Subtitle="Record diagnosis, treatment, and referrals" Icon="bi-clipboard2-pulse" IconBgClass="feature-icon-blue" />
+    <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
+        <ConsultationForm Model="_vm" />
+        <FormActions SaveLabel="Save Consultation" SaveIcon="bi-clipboard2-check" CancelHref="@($"/client-dashboard/{PatientId}")" Saving="_saving" />
+    </EditForm>
+
+    <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the client")"
+                         SourceModule="AppModule.Consultations" SourceRecordId="_savedId" OnSkipped="FinishAsync" OnCompleted="FinishAsync" />
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+    private ConsultationFormViewModel _vm = new();
+    private Patient? _patient;
+    private bool _exists;
+    private bool _saving;
+    private bool _showReferral;
+    private Guid? _savedId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _patient = await Api.GetPatientAsync(PatientId);
+        _exists = _patient is not null;
+        _vm.PatientId = PatientId;
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        var entity = Map(_vm);
+        entity.Id = Guid.NewGuid();
+        try
+        {
+            await Api.CreateConsultationAsync(entity);
+            _savedId = entity.Id;
+            Notifications.ShowSuccess(BuildSaveMessage());
+            _showReferral = _vm.Referred;
+            if (!_showReferral)
+            {
+                Nav.NavigateTo($"/client-dashboard/{PatientId}");
+            }
+        }
+        finally { _saving = false; }
+    }
+
+    private string BuildSaveMessage()
+    {
+        var parts = new List<string> { "Consultation saved." };
+        if (_vm.ItnOrder) parts.Add("ITN added to pharmacy queue.");
+        if (_vm.ItnDispense) parts.Add("ITN marked dispensed.");
+        if (_vm.Referred) parts.Add("Select referral destinations next.");
+        return string.Join(" ", parts);
+    }
+
+    private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/client-dashboard/{PatientId}"); return Task.CompletedTask; }
+
+    private static Consultation Map(ConsultationFormViewModel vm) => new()
+    {
+        PatientId = vm.PatientId,
+        Diagnoses = ListTextHelper.FromMultiline(vm.DiagnosesText),
+        Treatments = ListTextHelper.FromMultiline(vm.TreatmentsText),
+        ServicesReferred = ListTextHelper.FromMultiline(vm.ServicesReferredText),
+        Referred = vm.Referred, ItnOrder = vm.ItnOrder, ItnDispense = vm.ItnDispense,
+        OthersDiagnosis = ListTextHelper.FromMultiline(vm.OthersDiagnosisText),
+        OthersTreatment = ListTextHelper.FromMultiline(vm.OthersTreatmentText)
+    };
+}

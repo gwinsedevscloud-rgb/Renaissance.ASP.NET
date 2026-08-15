@@ -1,0 +1,44 @@
+<div class="section-card">
+    <div class="section-card-header">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <span class="section-icon @IconBgClass"><i class="bi @Icon"></i></span>
+        }
+        <h2>@Title</h2>
+        <span class="badge-count">@Count</span>
+    </div>
+    @if (Count == 0)
+    {
+        <div class="empty-state py-3">
+            <i class="bi @EmptyIcon d-block"></i>
+            <span>@EmptyMessage</span>
+        </div>
+    }
+    else
+    {
+        <div>@ChildContent</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Icon { get; set; } = "bi-folder2";
+
+    [Parameter]
+    public string IconBgClass { get; set; } = "feature-icon-teal";
+
+    [Parameter]
+    public string EmptyIcon { get; set; } = "bi-inbox";
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "No records yet.";
+
+    [Parameter]
+    public int Count { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,40 @@
+<div class="form-footer">
+    <button type="submit" class="btn btn-primary btn-form-primary" disabled="@Saving">
+        @if (Saving)
+        {
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        }
+        else
+        {
+            <i class="bi @SaveIcon me-1"></i>
+        }
+        @SaveLabel
+    </button>
+    @if (!string.IsNullOrEmpty(CancelHref))
+    {
+        <a class="btn btn-outline-secondary" href="@CancelHref">
+            <i class="bi bi-x-lg me-1"></i> Cancel
+        </a>
+    }
+    @if (Extra is not null)
+    {
+        @Extra
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string SaveLabel { get; set; } = "Save";
+
+    [Parameter]
+    public string SaveIcon { get; set; } = "bi-check-lg";
+
+    [Parameter]
+    public string? CancelHref { get; set; }
+
+    [Parameter]
+    public bool Saving { get; set; }
+
+    [Parameter]
+    public RenderFragment? Extra { get; set; }
+}

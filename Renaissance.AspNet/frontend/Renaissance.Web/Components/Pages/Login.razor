@@ -1,0 +1,89 @@
+@page "/login"
+@layout LoginLayout
+@inject AuthStateService Auth
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Sign in - Renaissance</PageTitle>
+
+<div class="login-wrap">
+    <div class="login-card">
+        <div class="login-brand">
+            <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
+            <h1>Renaissance</h1>
+            <p>Sign in to access clinical modules assigned to your role.</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="SignInAsync">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label" for="username">Username</label>
+                <div class="form-input-group">
+                    <span class="form-input-icon"><i class="bi bi-person"></i></span>
+                    <InputText id="username" class="form-control" @bind-Value="_model.UserName" autocomplete="username" />
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label" for="password">Password</label>
+                <div class="form-input-group">
+                    <span class="form-input-icon"><i class="bi bi-lock"></i></span>
+                    <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" autocomplete="current-password" />
+                </div>
+            </div>
+            <button class="btn btn-primary w-100" type="submit" disabled="@_busy">
+                @if (_busy) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                <i class="bi bi-box-arrow-in-right me-1"></i> Sign in
+            </button>
+        </EditForm>
+
+        <p class="login-hint">Default admin: <code>admin</code> / <code>Admin@123</code></p>
+    </div>
+</div>
+
+@code {
+    private readonly LoginForm _model = new();
+    private string? _error;
+    private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        if (Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/");
+        }
+    }
+
+    private async Task SignInAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var result = await Api.LoginAsync(_model.UserName, _model.Password);
+            await Auth.SignInAsync(result.Token, result.User);
+            Nav.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private sealed class LoginForm
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string UserName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}

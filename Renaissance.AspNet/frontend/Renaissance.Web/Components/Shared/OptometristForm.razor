@@ -1,0 +1,20 @@
+@using Renaissance.Web.Models
+
+<FormSection Title="Vision Assessment" Icon="bi-eye">
+    <div class="row g-3">
+        <div class="col-md-4"><FormLabel Text="Visual Acuity (Right)" Icon="bi-eye" /><InputText class="form-control" @bind-Value="Model.VisualAcuityRight" /></div>
+        <div class="col-md-4"><FormLabel Text="Visual Acuity (Left)" Icon="bi-eye" /><InputText class="form-control" @bind-Value="Model.VisualAcuityLeft" /></div>
+        <div class="col-md-4 d-flex align-items-end gap-3 flex-wrap">
+            <div class="checkbox-card flex-fill"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="GlassesDispensed" /><label class="form-check-label"><i class="bi bi-eyeglasses me-1"></i> Glasses Dispensed</label></div></div>
+            <div class="checkbox-card flex-fill"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="Referred" /><label class="form-check-label"><i class="bi bi-box-arrow-up-right me-1"></i> Referred</label></div></div>
+        </div>
+    </div>
+</FormSection>
+
+@code {
+    [Parameter, EditorRequired]
+    public Optometrist Model { get; set; } = null!;
+
+    private bool GlassesDispensed { get => Model.GlassesDispensed == true; set => Model.GlassesDispensed = value; }
+    private bool Referred { get => Model.Referred == true; set => Model.Referred = value; }
+}

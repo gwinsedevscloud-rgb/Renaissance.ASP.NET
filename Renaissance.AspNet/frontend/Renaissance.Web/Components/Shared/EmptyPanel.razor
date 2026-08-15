@@ -1,0 +1,23 @@
+<div class="section-card record-empty">
+    <i class="bi @Icon"></i>
+    <h2>@Title</h2>
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <p>@Message</p>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public string Icon { get; set; } = "bi-inbox";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

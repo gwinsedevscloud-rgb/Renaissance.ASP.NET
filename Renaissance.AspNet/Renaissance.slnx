@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/Renaissance.Api/Renaissance.Api.csproj" />
+    <Project Path="backend/Renaissance.Application/Renaissance.Application.csproj" />
+    <Project Path="backend/Renaissance.Domain/Renaissance.Domain.csproj" />
+    <Project Path="backend/Renaissance.Infrastructure/Renaissance.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/frontend/">
+    <Project Path="frontend/Renaissance.Web/Renaissance.Web.csproj" />
+  </Folder>
+</Solution>

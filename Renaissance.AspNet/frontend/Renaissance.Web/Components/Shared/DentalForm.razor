@@ -1,0 +1,23 @@
+@using Renaissance.Web.ViewModels
+
+<FormSection Title="Clinical Assessment" Icon="bi-emoji-smile">
+    <div class="row g-3">
+        <div class="col-md-6"><FormLabel Text="Diagnoses" Icon="bi-search" /><InputTextArea class="form-control" rows="3" @bind-Value="Model.DiagnosesText" /></div>
+        <div class="col-md-6"><FormLabel Text="Treatments" Icon="bi-tools" /><InputTextArea class="form-control" rows="3" @bind-Value="Model.TreatmentsText" /></div>
+        <div class="col-md-6"><FormLabel Text="Other Diagnoses" /><InputTextArea class="form-control" rows="2" @bind-Value="Model.OthersDiagnosisText" /></div>
+        <div class="col-md-6"><FormLabel Text="Other Treatments" /><InputTextArea class="form-control" rows="2" @bind-Value="Model.OthersTreatmentText" /></div>
+    </div>
+</FormSection>
+
+<FormSection Title="Dispensing & Referrals" Icon="bi-box-seam" IconBgClass="feature-icon-blue">
+    <div class="row g-3">
+        <div class="col-md-6"><FormLabel Text="Dispensed Items" Icon="bi-bag-check" /><InputTextArea class="form-control" rows="2" @bind-Value="Model.DispensedItemsText" /></div>
+        <div class="col-md-6"><FormLabel Text="Services Referred" Icon="bi-send" /><InputTextArea class="form-control" rows="2" @bind-Value="Model.ServicesReferredText" /></div>
+        <div class="col-12"><div class="checkbox-card d-inline-block"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="Model.Referred" /><label class="form-check-label"><i class="bi bi-box-arrow-up-right me-1"></i> Referred</label></div></div></div>
+    </div>
+</FormSection>
+
+@code {
+    [Parameter, EditorRequired]
+    public DentalFormViewModel Model { get; set; } = null!;
+}

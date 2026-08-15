@@ -1,0 +1,53 @@
+@page "/optometrists/create/{PatientId:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>New Optometrist Visit - Renaissance</PageTitle>
+
+@if (!_exists) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Client not found.</div> }
+else
+{
+    <PageHeader Title="New Optometrist Visit" Icon="bi-eye" />
+    <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
+        <OptometristForm Model="_model" />
+        <FormActions SaveLabel="Save" SaveIcon="bi-eye" CancelHref="@($"/client-dashboard/{PatientId}")" Saving="_saving" />
+    </EditForm>
+
+    <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the client")"
+                         SourceModule="AppModule.Optometrists" SourceRecordId="_savedId" OnSkipped="FinishAsync" OnCompleted="FinishAsync" />
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+    private Optometrist _model = new();
+    private Patient? _patient;
+    private bool _exists;
+    private bool _saving;
+    private bool _showReferral;
+    private Guid? _savedId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _patient = await Api.GetPatientAsync(PatientId);
+        _exists = _patient is not null;
+        _model.PatientId = PatientId;
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        if (_model.Id == Guid.Empty) _model.Id = Guid.NewGuid();
+        try
+        {
+            await Api.CreateOptometristAsync(_model);
+            _savedId = _model.Id;
+            Notifications.ShowSuccess("Optometrist visit saved.");
+            _showReferral = true;
+        }
+        finally { _saving = false; }
+    }
+
+    private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/client-dashboard/{PatientId}"); return Task.CompletedTask; }
+}

@@ -1,0 +1,66 @@
+@page "/ophthalmologists/create/{PatientId:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>New Ophthalmologist Visit - Renaissance</PageTitle>
+
+@if (!_exists) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Client not found.</div> }
+else
+{
+    <PageHeader Title="New Ophthalmologist Visit" Icon="bi-eye-fill" />
+    <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
+        <OphthalmologistForm Model="_vm" />
+        <FormActions SaveLabel="Save" SaveIcon="bi-eye-fill" CancelHref="@($"/client-dashboard/{PatientId}")" Saving="_saving" />
+    </EditForm>
+
+    <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the client")"
+                         SourceModule="AppModule.Ophthalmologists" SourceRecordId="_savedId" OnSkipped="FinishAsync" OnCompleted="FinishAsync" />
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+    private OphthalmologistFormViewModel _vm = new();
+    private Patient? _patient;
+    private bool _exists;
+    private bool _saving;
+    private bool _showReferral;
+    private Guid? _savedId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _patient = await Api.GetPatientAsync(PatientId);
+        _exists = _patient is not null;
+        _vm.PatientId = PatientId;
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        var entity = Map(_vm);
+        entity.Id = Guid.NewGuid();
+        try
+        {
+            await Api.CreateOphthalmologistAsync(entity);
+            _savedId = entity.Id;
+            Notifications.ShowSuccess("Ophthalmologist visit saved.");
+            _showReferral = true;
+        }
+        finally { _saving = false; }
+    }
+
+    private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/client-dashboard/{PatientId}"); return Task.CompletedTask; }
+    private static Ophthalmologist Map(OphthalmologistFormViewModel vm) => new()
+    {
+        PatientId = vm.PatientId, Referred = vm.Referred,
+        Diagnoses = ListTextHelper.FromMultiline(vm.DiagnosesText),
+        Treatments = ListTextHelper.FromMultiline(vm.TreatmentsText),
+        Surgeries = ListTextHelper.FromMultiline(vm.SurgeriesText),
+        OthersDiagnosis = ListTextHelper.FromMultiline(vm.OthersDiagnosisText),
+        OthersTreatment = ListTextHelper.FromMultiline(vm.OthersTreatmentText),
+        OtherSurgery = ListTextHelper.FromMultiline(vm.OtherSurgeryText),
+        VisualAcuityRight = vm.VisualAcuityRight, VisualAcuityLeft = vm.VisualAcuityLeft,
+        GlassesDispensed = vm.GlassesDispensed
+    };
+}

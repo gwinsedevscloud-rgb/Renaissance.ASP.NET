@@ -1,0 +1,88 @@
+@inject ReferralRealtimeService Realtime
+@inject NavigationManager Nav
+@inject AuthStateService Auth
+@implements IDisposable
+
+<div class="referral-toast-host">
+    @foreach (var toast in _toasts)
+    {
+        <div class="referral-toast @toast.VisibleClass @ReferralDisplayHelper.PriorityClass(toast.Notification.Priority)" role="alert">
+            <div class="referral-toast-icon"><i class="bi bi-bell-fill"></i></div>
+            <div class="referral-toast-body">
+                <strong>@ReferralDisplayHelper.PriorityLabel(toast.Notification.Priority) referral</strong>
+                <p>@toast.Notification.PatientFullName <span class="client-number">@toast.Notification.ClientNumber</span></p>
+                <small>From @ModuleNav.DisplayName(toast.Notification.SourceModule) → @ModuleNav.DisplayName(toast.Notification.TargetModule)</small>
+            </div>
+            <div class="referral-toast-actions">
+                @if (Auth.HasModule(toast.Notification.TargetModule))
+                {
+                    <a class="btn btn-sm btn-primary" href="@ModuleHref(toast.Notification.TargetModule)">View queue</a>
+                }
+                <button type="button" class="btn-close" @onclick="() => Dismiss(toast.Id)"></button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<ToastEntry> _toasts = [];
+    private int _nextId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Realtime.ReferralReceived += OnReferralReceived;
+        await Realtime.EnsureConnectedAsync();
+    }
+
+    private void OnReferralReceived(ReferralNotification notification)
+    {
+        if (!Auth.HasModule(notification.TargetModule)) return;
+
+        InvokeAsync(async () =>
+        {
+            var title = $"{ReferralDisplayHelper.PriorityLabel(notification.Priority)} referral";
+            var body = $"{notification.PatientFullName} ({notification.ClientNumber})";
+            await Realtime.PlayNotificationAsync(title, body);
+
+            var entry = new ToastEntry(++_nextId, notification);
+            _toasts.Insert(0, entry);
+            StateHasChanged();
+
+            await Task.Delay(50);
+            entry.VisibleClass = "show";
+            StateHasChanged();
+            _ = AutoDismissAsync(entry.Id);
+        });
+    }
+
+    private async Task AutoDismissAsync(int id)
+    {
+        await Task.Delay(15000);
+        await InvokeAsync(() => { Dismiss(id); return Task.CompletedTask; });
+    }
+
+    private void Dismiss(int id)
+    {
+        var toast = _toasts.FirstOrDefault(t => t.Id == id);
+        if (toast is null) return;
+        toast.VisibleClass = "";
+        StateHasChanged();
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(300);
+            await InvokeAsync(() => { _toasts.RemoveAll(t => t.Id == id); StateHasChanged(); return Task.CompletedTask; });
+        });
+    }
+
+    private static string ModuleHref(AppModule module)
+        => ModuleNav.Clinical.FirstOrDefault(m => m.Module == module)?.Href ?? "/";
+
+    public void Dispose() => Realtime.ReferralReceived -= OnReferralReceived;
+
+    private sealed class ToastEntry(int id, ReferralNotification notification)
+    {
+        public int Id { get; } = id;
+        public ReferralNotification Notification { get; } = notification;
+        public string VisibleClass { get; set; } = "";
+    }
+}

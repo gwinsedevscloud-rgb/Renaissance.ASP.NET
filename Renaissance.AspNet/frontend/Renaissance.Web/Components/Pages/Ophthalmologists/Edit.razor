@@ -1,0 +1,76 @@
+@page "/ophthalmologists/edit/{Id:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Edit Ophthalmologist Visit - Renaissance</PageTitle>
+
+@if (_loading) { <LoadingState /> }
+else if (_vm is null) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Record not found.</div> }
+else
+{
+    <PageHeader Title="Edit Ophthalmologist Visit" Icon="bi-eye-fill" />
+    <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
+        <OphthalmologistForm Model="_vm" />
+        <FormActions SaveLabel="Update" CancelHref="@($"/client-dashboard/{_vm.PatientId}")" />
+    </EditForm>
+    <button class="btn btn-outline-danger mt-2" @onclick="ArchiveAsync"><i class="bi bi-archive me-1"></i> Archive</button>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private OphthalmologistFormViewModel? _vm;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var e = await Api.GetOphthalmologistAsync(Id);
+        _vm = e is null ? null : ToVm(e);
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_vm is null) return;
+        var entity = Map(_vm);
+        entity.Id = Id;
+        await Api.UpdateOphthalmologistAsync(Id, entity);
+        Notifications.ShowSuccess("Ophthalmologist visit updated.");
+        Nav.NavigateTo($"/client-dashboard/{_vm.PatientId}");
+    }
+
+    private async Task ArchiveAsync()
+    {
+        var e = await Api.GetOphthalmologistAsync(Id);
+        if (e is null) return;
+        await Api.DeleteOphthalmologistAsync(Id);
+        Nav.NavigateTo($"/client-dashboard/{e.PatientId}");
+    }
+
+    private static OphthalmologistFormViewModel ToVm(Ophthalmologist e) => new()
+    {
+        Id = e.Id, PatientId = e.PatientId, Referred = e.Referred == true,
+        DiagnosesText = ListTextHelper.ToMultiline(e.Diagnoses),
+        TreatmentsText = ListTextHelper.ToMultiline(e.Treatments),
+        SurgeriesText = ListTextHelper.ToMultiline(e.Surgeries),
+        OthersDiagnosisText = ListTextHelper.ToMultiline(e.OthersDiagnosis),
+        OthersTreatmentText = ListTextHelper.ToMultiline(e.OthersTreatment),
+        OtherSurgeryText = ListTextHelper.ToMultiline(e.OtherSurgery),
+        VisualAcuityRight = e.VisualAcuityRight, VisualAcuityLeft = e.VisualAcuityLeft,
+        GlassesDispensed = e.GlassesDispensed == true
+    };
+
+    private static Ophthalmologist Map(OphthalmologistFormViewModel vm) => new()
+    {
+        PatientId = vm.PatientId, Referred = vm.Referred,
+        Diagnoses = ListTextHelper.FromMultiline(vm.DiagnosesText),
+        Treatments = ListTextHelper.FromMultiline(vm.TreatmentsText),
+        Surgeries = ListTextHelper.FromMultiline(vm.SurgeriesText),
+        OthersDiagnosis = ListTextHelper.FromMultiline(vm.OthersDiagnosisText),
+        OthersTreatment = ListTextHelper.FromMultiline(vm.OthersTreatmentText),
+        OtherSurgery = ListTextHelper.FromMultiline(vm.OtherSurgeryText),
+        VisualAcuityRight = vm.VisualAcuityRight, VisualAcuityLeft = vm.VisualAcuityLeft,
+        GlassesDispensed = vm.GlassesDispensed
+    };
+}

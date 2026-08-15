@@ -1,0 +1,68 @@
+@page "/admin/roles"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+
+<PageTitle>Roles - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Roles &amp; module access" Subtitle="Decide which modules each role can open" Icon="bi-key">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="/admin/users">
+                <i class="bi bi-people me-1"></i> Users
+            </a>
+            <a class="btn btn-primary" href="/admin/roles/create">
+                <i class="bi bi-plus-lg me-1"></i> New role
+            </a>
+        </Actions>
+    </PageHeader>
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading roles..." />
+    }
+    else if (_roles.Count == 0)
+    {
+        <EmptyPanel Icon="bi-key" Title="No roles yet" Message="Create a role and assign the modules it can open.">
+            <a class="btn btn-primary" href="/admin/roles/create">
+                <i class="bi bi-plus-lg me-1"></i> New role
+            </a>
+        </EmptyPanel>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var role in _roles)
+            {
+                <div class="col-md-6">
+                    <div class="section-card role-card h-100">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div>
+                                <h2 class="h5 mb-1">@role.Name</h2>
+                                <p class="text-muted small mb-0">@role.Description</p>
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary" href="/admin/roles/edit/@role.Id">Edit</a>
+                        </div>
+                        <p class="small text-muted mb-2">@role.UserCount user(s)</p>
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var module in role.Modules)
+                            {
+                                <span class="module-chip">@ModuleNav.DisplayName(module)</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<RoleDto> _roles = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _roles = await Api.GetRolesAsync();
+        _loading = false;
+    }
+}

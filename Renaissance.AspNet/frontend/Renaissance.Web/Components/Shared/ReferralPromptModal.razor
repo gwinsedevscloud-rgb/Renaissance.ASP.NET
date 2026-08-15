@@ -1,0 +1,214 @@
+@inject RenaissanceApiClient Api
+@inject NotificationService Notifications
+
+@if (Visible)
+{
+    <div class="referral-modal-overlay" @onclick="SkipAsync">
+        <div class="referral-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="referral-modal-title" @onclick:stopPropagation="true">
+            <header class="referral-modal-header">
+                <div class="referral-modal-header-icon">
+                    <i class="bi bi-send-check"></i>
+                </div>
+                <div class="referral-modal-header-text">
+                    <h2 id="referral-modal-title" class="referral-modal-title">Refer to another module</h2>
+                    <p class="referral-modal-subtitle">
+                        From <strong>@ModuleNav.DisplayName(SourceModule)</strong>
+                        · client <strong>@PatientName</strong>
+                    </p>
+                </div>
+                <button type="button" class="referral-modal-close" aria-label="Close" @onclick="SkipAsync">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+
+            <div class="referral-modal-body">
+                <section class="referral-modal-section">
+                    <div class="referral-modal-section-label">
+                        <span class="referral-step">1</span>
+                        <div>
+                            <h3>Priority</h3>
+                            <p>How urgently should staff see this client?</p>
+                        </div>
+                    </div>
+                    <div class="referral-priority-group" role="radiogroup" aria-label="Referral priority">
+                        @foreach (var option in _priorityOptions)
+                        {
+                            var isSelected = _priority == option.Priority;
+                            <button type="button"
+                                    role="radio"
+                                    aria-checked="@isSelected"
+                                    class="referral-priority-option @option.CssClass @(isSelected ? "is-selected" : "")"
+                                    @onclick="() => SelectPriority(option.Priority)">
+                                <span class="referral-priority-option-icon"><i class="bi @option.Icon"></i></span>
+                                <span class="referral-priority-option-text">
+                                    <span class="referral-priority-option-label">@option.Label</span>
+                                    <span class="referral-priority-option-hint">@option.Hint</span>
+                                </span>
+                                <span class="referral-priority-option-check">
+                                    <i class="bi @(isSelected ? "bi-check-circle-fill" : "bi-circle")"></i>
+                                </span>
+                            </button>
+                        }
+                    </div>
+                </section>
+
+                <section class="referral-modal-section">
+                    <div class="referral-modal-section-label">
+                        <span class="referral-step">2</span>
+                        <div>
+                            <h3>Destination modules</h3>
+                            <p>Select one or more departments for this client.</p>
+                        </div>
+                    </div>
+                    <div class="referral-target-grid">
+                        @foreach (var target in AvailableTargets)
+                        {
+                            var selected = _selected.Contains(target.Module);
+                            <button type="button"
+                                    class="referral-target-card @(selected ? "selected" : "")"
+                                    aria-pressed="@selected"
+                                    @onclick="() => Toggle(target.Module)">
+                                <span class="referral-target-icon feature-icon-teal"><i class="bi @target.Icon"></i></span>
+                                <span class="referral-target-label">@target.Label</span>
+                                <span class="referral-target-check"><i class="bi @(selected ? "bi-check-circle-fill" : "bi-circle")"></i></span>
+                            </button>
+                        }
+                    </div>
+                </section>
+
+                <section class="referral-modal-section">
+                    <div class="referral-modal-section-label">
+                        <span class="referral-step">3</span>
+                        <div>
+                            <h3>Notes <span class="text-muted fw-normal">(optional)</span></h3>
+                        </div>
+                    </div>
+                    <textarea class="form-control referral-notes-input"
+                              rows="2"
+                              @bind="_notes"
+                              placeholder="e.g. elevated BP, needs dental review…"></textarea>
+                </section>
+            </div>
+
+            <footer class="referral-modal-footer">
+                <div class="referral-modal-summary">
+                    @if (_selected.Count > 0)
+                    {
+                        <span class="referral-summary-priority @ReferralDisplayHelper.PriorityClass(_priority)">
+                            @ReferralDisplayHelper.PriorityLabel(_priority)
+                        </span>
+                        <span>@_selected.Count module@(_selected.Count == 1 ? "" : "s") selected</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Pick at least one destination module</span>
+                    }
+                </div>
+                <div class="referral-modal-actions">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="SkipAsync">Skip for now</button>
+                    <button type="button"
+                            class="btn btn-primary"
+                            disabled="@(_submitting || _selected.Count == 0)"
+                            @onclick="SubmitAsync">
+                        @if (_submitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <i class="bi bi-send-check me-1"></i>
+                        Refer client
+                    </button>
+                </div>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public Guid PatientId { get; set; }
+    [Parameter] public string PatientName { get; set; } = "the client";
+    [Parameter] public AppModule SourceModule { get; set; } = AppModule.Triage;
+    [Parameter] public Guid? SourceRecordId { get; set; }
+    [Parameter] public EventCallback OnSkipped { get; set; }
+    [Parameter] public EventCallback OnCompleted { get; set; }
+
+    private readonly HashSet<AppModule> _selected = [];
+    private ReferralPriority _priority = ReferralPriority.Routine;
+    private string? _notes;
+    private bool _submitting;
+
+    private readonly PriorityOption[] _priorityOptions =
+    [
+        new(ReferralPriority.Emergency, "Emergency", "Seen within 5 minutes", "priority-emergency", "bi-lightning-charge-fill"),
+        new(ReferralPriority.Urgent, "Urgent", "Seen within 15 minutes", "priority-urgent", "bi-exclamation-triangle-fill"),
+        new(ReferralPriority.Routine, "Routine", "Standard queue · 30 min target", "priority-routine", "bi-clock-history")
+    ];
+
+    private IEnumerable<ModuleNavItem> AvailableTargets =>
+        ModuleNav.ReferralTargets.Where(t => t.Module != SourceModule);
+
+    private void SelectPriority(ReferralPriority priority) => _priority = priority;
+
+    private void Toggle(AppModule module)
+    {
+        if (!_selected.Add(module))
+        {
+            _selected.Remove(module);
+        }
+    }
+
+    private async Task SkipAsync()
+    {
+        _selected.Clear();
+        _notes = null;
+        _priority = ReferralPriority.Routine;
+        await OnSkipped.InvokeAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_selected.Count == 0)
+        {
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            var result = await Api.CreateReferralsAsync(new CreateReferralsRequest
+            {
+                PatientId = PatientId,
+                SourceModule = SourceModule,
+                SourceRecordId = SourceRecordId,
+                TargetModules = _selected.ToList(),
+                Notes = _notes,
+                Priority = _priority
+            });
+
+            var msg = result.Created.Count > 0
+                ? $"Client referred to {result.Created.Count} module(s)."
+                : "No new referrals created.";
+            if (result.SkippedDuplicates.Count > 0)
+            {
+                msg += $" Skipped {result.SkippedDuplicates.Count} duplicate(s) already in queue.";
+            }
+
+            Notifications.ShowSuccess(msg);
+            _selected.Clear();
+            _notes = null;
+            _priority = ReferralPriority.Routine;
+            await OnCompleted.InvokeAsync();
+        }
+        catch
+        {
+            _submitting = false;
+        }
+    }
+
+    private sealed record PriorityOption(
+        ReferralPriority Priority,
+        string Label,
+        string Hint,
+        string CssClass,
+        string Icon);
+}

@@ -1,0 +1,158 @@
+@page "/admin/roles/create"
+@page "/admin/roles/edit/{Id:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>@(IsNew ? "New role" : "Edit role") - Renaissance</PageTitle>
+
+<PageHeader Title="@(IsNew ? "New role" : "Edit role")" Subtitle="Tick the modules this role may access" Icon="bi-key" BackHref="/admin/roles" BackLabel="Roles" />
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_loading)
+{
+    <LoadingState Message="Loading..." />
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label class="form-label">Role name</label>
+                <InputText class="form-control" @bind-Value="_model.Name" disabled="@_isSystem" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Description</label>
+                <InputText class="form-control" @bind-Value="_model.Description" />
+            </div>
+        </div>
+
+        @if (_isSystem)
+        {
+            <div class="alert alert-info">Administrator always has every module.</div>
+        }
+
+        <h2 class="h6 mb-3">Modules</h2>
+        <div class="row g-2 mb-3">
+            @foreach (var module in _catalog)
+            {
+                var selected = _selected.Contains(module.Module);
+                <div class="col-md-6">
+                    <label class="form-check module-check @(_isSystem ? "opacity-75" : "")">
+                        <input class="form-check-input" type="checkbox"
+                               checked="@selected"
+                               disabled="@_isSystem"
+                               @onchange="e => Toggle(module.Module, e.Value)" />
+                        <span>
+                            <strong>@module.Name</strong>
+                            <span class="d-block small text-muted">@module.Description</span>
+                        </span>
+                    </label>
+                </div>
+            }
+        </div>
+
+        <FormActions SaveLabel="Save role" CancelHref="/admin/roles" />
+        @if (!IsNew && !_isSystem)
+        {
+            <button type="button" class="btn btn-outline-danger mt-3" @onclick="DeleteAsync">
+                <i class="bi bi-trash me-1"></i> Delete role
+            </button>
+        }
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private bool IsNew => Id == Guid.Empty;
+    private bool _loading = true;
+    private bool _isSystem;
+    private string? _error;
+    private List<ModuleDescriptorDto> _catalog = [];
+    private HashSet<AppModule> _selected = [];
+    private RoleForm _model = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _catalog = await Api.GetModuleCatalogAsync();
+        if (!IsNew)
+        {
+            var role = await Api.GetRoleAsync(Id);
+            if (role is null)
+            {
+                Nav.NavigateTo("/admin/roles");
+                return;
+            }
+
+            _isSystem = role.IsSystem;
+            _model.Name = role.Name;
+            _model.Description = role.Description ?? string.Empty;
+            _selected = role.Modules.ToHashSet();
+        }
+
+        _loading = false;
+    }
+
+    private void Toggle(AppModule module, object? value)
+    {
+        var on = value is true || value?.ToString() == "True";
+        if (on) _selected.Add(module);
+        else _selected.Remove(module);
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+        var request = new SaveRoleRequest
+        {
+            Name = _model.Name,
+            Description = _model.Description,
+            Modules = _selected.ToList()
+        };
+
+        try
+        {
+            if (IsNew)
+            {
+                await Api.CreateRoleAsync(request);
+                Notifications.ShowSuccess("Role created.");
+            }
+            else
+            {
+                await Api.UpdateRoleAsync(Id, request);
+                Notifications.ShowSuccess("Role updated. Users must sign in again to pick up module changes.");
+            }
+
+            Nav.NavigateTo("/admin/roles");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        try
+        {
+            await Api.DeleteRoleAsync(Id);
+            Notifications.ShowSuccess("Role deleted.");
+            Nav.NavigateTo("/admin/roles");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private sealed class RoleForm
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,107 @@
+<div class="ren-page">
+    @if (loading()) {
+        <app-loading-state message="Loading clinical dashboard..." />
+    } @else {
+        @if (dashboard(); as d) {
+            <div class="ren-patient-hero">
+                <div class="ren-patient-hero-main">
+                    <span class="ren-patient-avatar">
+                        <mat-icon [svgIcon]="'heroicons_solid:user'"></mat-icon>
+                    </span>
+                    <div>
+                        <div class="ren-patient-label">Clinical dashboard</div>
+                        <h1>{{ d.patient?.clientNumber }}</h1>
+                        <p class="ren-patient-meta">
+                            {{ d.patient?.age }} {{ d.patient?.ageUnit }} · {{ d.patient?.sex }}
+                            @if (d.hasPendingPharmacy) {
+                                <span class="ren-badge ren-badge-warning">Pending pharmacy</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+                <div class="ren-patient-hero-actions">
+                    <a mat-stroked-button [routerLink]="['/clients', d.patient?.id]">
+                        <mat-icon [svgIcon]="'heroicons_outline:user'"></mat-icon>
+                        <span>Profile</span>
+                    </a>
+                    <a mat-button routerLink="/clients">
+                        <mat-icon [svgIcon]="'heroicons_outline:arrow-left'"></mat-icon>
+                        <span>Clients</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="ren-dashboard-summary">
+                <div class="ren-summary-card">
+                    <mat-icon [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
+                    <div>
+                        <div class="ren-summary-value">{{ completedCount(d) }}/{{ chips(d).length }}</div>
+                        <div class="ren-summary-label">Modules with records</div>
+                    </div>
+                </div>
+                <div class="ren-summary-card">
+                    <mat-icon [svgIcon]="'heroicons_outline:document-text'"></mat-icon>
+                    <div>
+                        <div class="ren-summary-value">{{ totalRecords(d) }}</div>
+                        <div class="ren-summary-label">Total records</div>
+                    </div>
+                </div>
+                @if (d.hasPendingPharmacy) {
+                    <div class="ren-summary-card ren-summary-card-warning">
+                        <mat-icon [svgIcon]="'heroicons_outline:exclamation-triangle'"></mat-icon>
+                        <div>
+                            <div class="ren-summary-value">Action needed</div>
+                            <div class="ren-summary-label">Pharmacy pending</div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <app-page-header title="Clinical Modules" subtitle="Overview of all department records" icon="heroicons_outline:squares-2x2"></app-page-header>
+
+            <div class="ren-action-grid">
+                @for (chip of chips(d); track chip.title) {
+                    <div class="ren-action-chip" [class.done]="chip.done" [class.pending]="chip.pending">
+                        <div class="ren-action-chip-icon">
+                            <mat-icon [svgIcon]="chip.icon"></mat-icon>
+                        </div>
+                        <span class="ren-action-chip-title">{{ chip.title }}</span>
+                        <span class="ren-action-chip-count">{{ chip.count }} record{{ chip.count === 1 ? '' : 's' }}</span>
+                        @if (chip.done) {
+                            <span class="ren-action-chip-status">
+                                <mat-icon [svgIcon]="'heroicons_solid:check-circle'"></mat-icon>
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="ren-dashboard-sections">
+                @for (section of sections(d); track section.title) {
+                    <section class="ren-section-card">
+                        <div class="ren-section-card-header">
+                            <span class="ren-section-icon"><mat-icon [svgIcon]="section.icon"></mat-icon></span>
+                            <span>{{ section.title }}</span>
+                            <span class="ren-section-count" [class.ren-section-count-empty]="section.items.length === 0">
+                                {{ section.items.length }}
+                            </span>
+                        </div>
+                        @if (section.items.length === 0) {
+                            <div class="ren-section-empty">
+                                <mat-icon [svgIcon]="'heroicons_outline:inbox'"></mat-icon>
+                                <span>No records yet</span>
+                            </div>
+                        } @else {
+                            @for (item of section.items; track $index) {
+                                <div class="ren-record-item">
+                                    <mat-icon [svgIcon]="'heroicons_outline:document-text'"></mat-icon>
+                                    <span>{{ item }}</span>
+                                </div>
+                            }
+                        }
+                    </section>
+                }
+            </div>
+        }
+    }
+</div>

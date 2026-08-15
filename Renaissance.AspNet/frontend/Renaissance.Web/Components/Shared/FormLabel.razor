@@ -1,0 +1,22 @@
+<label class="form-label">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <i class="bi @Icon me-1 text-muted"></i>
+    }
+    @Text
+    @if (Required)
+    {
+        <span class="form-label-required">*</span>
+    }
+</label>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Icon { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+}

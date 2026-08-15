@@ -1,0 +1,71 @@
+@page "/triage"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+
+<PageTitle>Triage - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Triage" Subtitle="Record vitals and open a new encounter" Icon="bi-activity" />
+
+    <PatientQuickSearch CreateHrefPrefix="/triage/create" ActionLabel="New triage" />
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading triage records..." />
+    }
+    else if (_items.Count == 0)
+    {
+        <EmptyPanel Icon="bi-activity" Title="No triage records yet" Message="Search for a client above to start a new encounter." />
+    }
+    else
+    {
+        <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
+        <div class="section-card table-card p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>BP</th>
+                            <th class="d-none d-sm-table-cell">Temp</th>
+                            <th class="d-none d-md-table-cell">Pulse</th>
+                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var t in _items)
+                    {
+                        <tr>
+                            <td><ClientIdentity Patient="Patient(t.PatientId)" /></td>
+                            <td>@t.SystolicBp/@t.DiastolicBp</td>
+                            <td class="d-none d-sm-table-cell">@(t.Temperature?.ToString("0.0") ?? "—")</td>
+                            <td class="d-none d-md-table-cell">@(t.PulseRate?.ToString() ?? "—")</td>
+                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(t.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" href="/triage/edit/@t.Id">Edit</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private List<Triage> _items = [];
+    private Dictionary<Guid, Patient> _patients = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patients = await Api.GetPatientsAsync();
+        _patients = patients.ToDictionary(p => p.Id);
+        _items = (await Api.GetTriagesAsync()).Take(50).ToList();
+        _loading = false;
+    }
+
+    private Patient? Patient(Guid id) => _patients.GetValueOrDefault(id);
+}

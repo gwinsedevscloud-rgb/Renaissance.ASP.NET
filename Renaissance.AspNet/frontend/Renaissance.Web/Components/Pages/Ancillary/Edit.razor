@@ -1,0 +1,59 @@
+@page "/ancillary/edit/{Id:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Edit Ancillary Service - Renaissance</PageTitle>
+
+@if (_loading) { <LoadingState /> }
+else if (_vm is null) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Record not found.</div> }
+else
+{
+    <PageHeader Title="Edit Ancillary Service" Icon="bi-bandaid" />
+    <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
+        <AncillaryForm Model="_vm" />
+        <FormActions SaveLabel="Update" CancelHref="@($"/client-dashboard/{_vm.PatientId}")" />
+    </EditForm>
+    <button class="btn btn-outline-danger mt-2" @onclick="DeleteAsync"><i class="bi bi-trash me-1"></i> Delete</button>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private AncillaryFormViewModel? _vm;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var e = await Api.GetAncillaryAsync(Id);
+        _vm = e is null ? null : new AncillaryFormViewModel
+        {
+            Id = e.Id, PatientId = e.PatientId,
+            ServicesText = ListTextHelper.ToMultiline(e.Services),
+            PregnancyStatus = e.PregnancyStatus
+        };
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_vm is null) return;
+        var entity = new Ancillary
+        {
+            Id = Id, PatientId = _vm.PatientId,
+            Services = ListTextHelper.FromMultiline(_vm.ServicesText),
+            PregnancyStatus = _vm.PregnancyStatus
+        };
+        await Api.UpdateAncillaryAsync(Id, entity);
+        Notifications.ShowSuccess("Ancillary service updated.");
+        Nav.NavigateTo($"/client-dashboard/{_vm.PatientId}");
+    }
+
+    private async Task DeleteAsync()
+    {
+        var e = await Api.GetAncillaryAsync(Id);
+        if (e is null) return;
+        await Api.DeleteAncillaryAsync(Id);
+        Nav.NavigateTo($"/client-dashboard/{e.PatientId}");
+    }
+}

@@ -1,0 +1,71 @@
+@page "/laboratory"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+
+<PageTitle>Laboratory - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Laboratory" Subtitle="Record tests and results" Icon="bi-droplet-half" IconBgClass="feature-icon-blue" />
+
+    <ReferralQueuePanel Module="AppModule.Laboratory" />
+
+    <PatientQuickSearch CreateHrefPrefix="/laboratory/create" ActionLabel="New test" />
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading laboratory records..." />
+    }
+    else if (_items.Count == 0)
+    {
+        <EmptyPanel Icon="bi-droplet-half" Title="No laboratory records yet" Message="Search for a client above to record a test." />
+    }
+    else
+    {
+        <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
+        <div class="section-card table-card p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Test</th>
+                            <th>Result</th>
+                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var l in _items)
+                    {
+                        <tr>
+                            <td><ClientIdentity Patient="Patient(l.PatientId)" /></td>
+                            <td>@(l.TestName ?? "—")</td>
+                            <td>@(l.Result ?? "pending")</td>
+                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(l.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" href="/laboratory/edit/@l.Id">Edit</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private List<Laboratory> _items = [];
+    private Dictionary<Guid, Patient> _patients = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patients = await Api.GetPatientsAsync();
+        _patients = patients.ToDictionary(p => p.Id);
+        _items = (await Api.GetLaboratoriesAsync()).Take(50).ToList();
+        _loading = false;
+    }
+
+    private Patient? Patient(Guid id) => _patients.GetValueOrDefault(id);
+}

@@ -1,0 +1,340 @@
+@page "/stakeholders"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>Stakeholders Dashboard - Renaissance</PageTitle>
+
+<PageHeader
+    Title="Stakeholders Dashboard"
+    Subtitle="Operational analysis and forecast across all clinical modules"
+    Icon="bi-graph-up-arrow"
+    IconBgClass="feature-icon-blue">
+    <Actions>
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="RefreshAsync" disabled="@_loading">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+        </button>
+    </Actions>
+</PageHeader>
+
+@if (_loading)
+{
+    <LoadingState Message="Loading operational analytics..." />
+}
+else if (_data is null)
+{
+    <EmptyPanel Icon="bi-exclamation-triangle" Title="Unable to load dashboard" Message="Ensure the API is running, then refresh." />
+}
+else
+{
+    <div class="stakeholders-dashboard">
+        <div class="insights-banner">
+            <div class="insights-banner-icon"><i class="bi bi-lightbulb-fill"></i></div>
+            <div>
+                <div class="insights-banner-label">Executive summary</div>
+                <p class="mb-0">@_data.Insights.Summary</p>
+                <small class="text-muted">Generated @_data.GeneratedAt.ToLocalTime().ToString("f")</small>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon feature-icon-teal"><i class="bi bi-people-fill"></i></div>
+                <div class="kpi-value">@_data.Kpis.TotalClients</div>
+                <div class="kpi-label">Total clients</div>
+                <div class="kpi-sub">+@_data.Kpis.NewClientsThisMonth this month</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon feature-icon-blue"><i class="bi bi-clipboard2-data"></i></div>
+                <div class="kpi-value">@_data.Kpis.TotalEncounters</div>
+                <div class="kpi-label">Total encounters</div>
+                <div class="kpi-sub">@_data.Kpis.EncountersThisMonth this month</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon feature-icon-violet"><i class="bi bi-graph-up"></i></div>
+                <div class="kpi-value @GrowthClass(_data.Kpis.MonthOverMonthGrowthPercent)">@FormatGrowth(_data.Kpis.MonthOverMonthGrowthPercent)</div>
+                <div class="kpi-label">MoM encounter growth</div>
+                <div class="kpi-sub">vs previous month</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon feature-icon-teal"><i class="bi bi-capsule"></i></div>
+                <div class="kpi-value">@_data.Kpis.PharmacyDispenseRate%</div>
+                <div class="kpi-label">Pharmacy dispense rate</div>
+                <div class="kpi-sub">@_data.Kpis.PendingPharmacyOrders pending</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon feature-icon-blue"><i class="bi bi-bar-chart-line"></i></div>
+                <div class="kpi-value">@_data.Kpis.AvgEncountersPerClient</div>
+                <div class="kpi-label">Avg encounters / client</div>
+                <div class="kpi-sub">@_data.Kpis.ActiveModulesUsed modules active</div>
+            </div>
+            <div class="kpi-card kpi-card-forecast">
+                <div class="kpi-icon feature-icon-violet"><i class="bi bi-binoculars-fill"></i></div>
+                <div class="kpi-value">~@_data.Insights.ProjectedMonthlyEncounters.ToString("0")</div>
+                <div class="kpi-label">Projected monthly encounters</div>
+                <div class="kpi-sub">~@_data.Insights.ProjectedMonthlyClients.ToString("0") new clients</div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div class="section-card chart-card">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-teal"><i class="bi bi-activity"></i></span>
+                        <div>
+                            <strong>Encounter volume &amp; forecast</strong>
+                            <div class="chart-subtitle">30-day trend with 14-day linear projection</div>
+                        </div>
+                    </div>
+                    <div class="chart-container chart-container-lg">
+                        <canvas id="chart-activity"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="section-card chart-card h-100">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-violet"><i class="bi bi-pie-chart-fill"></i></span>
+                        <div>
+                            <strong>Module share</strong>
+                            <div class="chart-subtitle">Distribution of all records</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-module-share"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-7">
+                <div class="section-card chart-card">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-blue"><i class="bi bi-bar-chart-fill"></i></span>
+                        <div>
+                            <strong>Records by module</strong>
+                            <div class="chart-subtitle">Total volume across departments</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-modules"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="section-card chart-card h-100">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-teal"><i class="bi bi-person-plus-fill"></i></span>
+                        <div>
+                            <strong>Client registrations &amp; forecast</strong>
+                            <div class="chart-subtitle">New client acquisition trend</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-clients"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="section-card chart-card h-100">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-blue"><i class="bi bi-gender-ambiguous"></i></span>
+                        <strong>Client sex distribution</strong>
+                    </div>
+                    <ul class="distribution-list">
+                        @foreach (var item in _data.SexDistribution)
+                        {
+                            <li>
+                                <span>@item.Label</span>
+                                <div class="distribution-bar-wrap">
+                                    <div class="distribution-bar" style="width: @(item.Percent)%"></div>
+                                </div>
+                                <span class="distribution-count">@item.Count (@item.Percent%)</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="section-card chart-card h-100">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-violet"><i class="bi bi-people"></i></span>
+                        <strong>Age groups</strong>
+                    </div>
+                    <div class="chart-container chart-container-sm">
+                        <canvas id="chart-demographics"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="section-card chart-card h-100">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-teal"><i class="bi bi-capsule"></i></span>
+                        <strong>Pharmacy status</strong>
+                    </div>
+                    <div class="chart-container chart-container-sm">
+                        <canvas id="chart-pharmacy"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-card-header">
+                <span class="section-icon feature-icon-blue"><i class="bi bi-table"></i></span>
+                <strong>Module performance</strong>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover stakeholders-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>Total</th>
+                            <th>This month</th>
+                            <th>Last month</th>
+                            <th>Share</th>
+                            <th>Trend</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in _data.ModuleMetrics)
+                        {
+                            var delta = m.ThisMonth - m.LastMonth;
+                            <tr>
+                                <td><i class="bi @m.Icon me-2 text-muted"></i>@m.Module</td>
+                                <td><strong>@m.Total</strong></td>
+                                <td>@m.ThisMonth</td>
+                                <td>@m.LastMonth</td>
+                                <td>@m.SharePercent%</td>
+                                <td>
+                                    <span class="trend-badge @TrendClass(delta)">
+                                        @if (delta > 0) { <i class="bi bi-arrow-up-short"></i> }
+                                        else if (delta < 0) { <i class="bi bi-arrow-down-short"></i> }
+                                        @FormatDelta(delta)
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="insights-grid mt-4">
+            <div class="insight-card">
+                <i class="bi bi-trophy"></i>
+                <div>
+                    <div class="insight-label">Busiest module</div>
+                    <div class="insight-value">@_data.Insights.BusiestModule</div>
+                </div>
+            </div>
+            <div class="insight-card">
+                <i class="bi bi-rocket-takeoff"></i>
+                <div>
+                    <div class="insight-label">Fastest growing</div>
+                    <div class="insight-value">@_data.Insights.FastestGrowingModule</div>
+                </div>
+            </div>
+            <div class="insight-card">
+                <i class="bi bi-speedometer2"></i>
+                <div>
+                    <div class="insight-label">Avg daily encounters</div>
+                    <div class="insight-value">@_data.Insights.AvgDailyEncounters</div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private StakeholdersDashboardViewModel? _data;
+    private bool _loading = true;
+    private bool _chartsRendered;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_loading && _data is not null && !_chartsRendered)
+        {
+            _chartsRendered = true;
+            await JS.InvokeVoidAsync("renaissanceCharts.renderAll", BuildChartPayload(_data));
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _chartsRendered = false;
+        _data = await Api.GetStakeholdersDashboardAsync();
+        _loading = false;
+    }
+
+    private async Task RefreshAsync()
+    {
+        await JS.InvokeVoidAsync("renaissanceCharts.destroyAll");
+        await LoadAsync();
+        if (_data is not null)
+        {
+            _chartsRendered = true;
+            await JS.InvokeVoidAsync("renaissanceCharts.renderAll", BuildChartPayload(_data));
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("renaissanceCharts.destroyAll"); } catch { /* circuit may be gone */ }
+    }
+
+    private static object BuildChartPayload(StakeholdersDashboardViewModel d)
+    {
+        var activityLabels = d.ActivityTrend.Select(x => x.Date.ToString("MMM d")).ToList();
+        activityLabels.AddRange(d.ActivityForecast.Select(x => x.Date.ToString("MMM d")));
+
+        var activityActual = d.ActivityTrend.Select(x => (double?)x.Count).ToList();
+        activityActual.AddRange(Enumerable.Repeat((double?)null, d.ActivityForecast.Count));
+
+        var activityForecast = Enumerable.Repeat((double?)null, d.ActivityTrend.Count - 1).ToList();
+        if (d.ActivityTrend.Count > 0)
+        {
+            activityForecast.Add(d.ActivityTrend[^1].Count);
+        }
+        activityForecast.AddRange(d.ActivityForecast.Select(x => (double?)x.Projected));
+
+        var clientLabels = d.ClientRegistrationTrend.Select(x => x.Date.ToString("MMM d")).ToList();
+        clientLabels.AddRange(d.ClientForecast.Select(x => x.Date.ToString("MMM d")));
+
+        var clientActual = d.ClientRegistrationTrend.Select(x => (double?)x.Count).ToList();
+        clientActual.AddRange(Enumerable.Repeat((double?)null, d.ClientForecast.Count));
+
+        var clientForecast = Enumerable.Repeat((double?)null, d.ClientRegistrationTrend.Count - 1).ToList();
+        if (d.ClientRegistrationTrend.Count > 0)
+        {
+            clientForecast.Add(d.ClientRegistrationTrend[^1].Count);
+        }
+        clientForecast.AddRange(d.ClientForecast.Select(x => (double?)x.Projected));
+
+        return new
+        {
+            activityCombined = new { labels = activityLabels, actual = activityActual, forecast = activityForecast },
+            modules = new { labels = d.ModuleMetrics.Select(m => m.Module), totals = d.ModuleMetrics.Select(m => m.Total) },
+            moduleShare = new { labels = d.ModuleMetrics.Where(m => m.Total > 0).Select(m => m.Module), values = d.ModuleMetrics.Where(m => m.Total > 0).Select(m => m.Total) },
+            clients = new { labels = clientLabels, actual = clientActual, forecast = clientForecast },
+            demographics = new { labels = d.AgeGroupDistribution.Select(a => a.Label), values = d.AgeGroupDistribution.Select(a => a.Count) },
+            pharmacy = new { labels = d.PharmacyStatusBreakdown.Select(p => p.Label), values = d.PharmacyStatusBreakdown.Select(p => p.Count) }
+        };
+    }
+
+    private static string FormatGrowth(double value) => value >= 0 ? $"+{value}%" : $"{value}%";
+    private static string GrowthClass(double value) => value >= 0 ? "text-success" : "text-danger";
+    private static string TrendClass(int delta) => delta > 0 ? "trend-up" : delta < 0 ? "trend-down" : "trend-flat";
+    private static string FormatDelta(int delta) => delta == 0 ? "—" : delta > 0 ? $"+{delta}" : delta.ToString();
+}

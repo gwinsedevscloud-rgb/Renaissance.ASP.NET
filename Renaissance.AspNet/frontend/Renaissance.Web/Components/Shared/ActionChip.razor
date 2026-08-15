@@ -1,0 +1,18 @@
+<a class="action-chip @CssClass" href="@Href">
+    <span class="chip-icon"><i class="bi @Icon"></i></span>
+    <span>@Label</span>
+</a>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Href { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Icon { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public string CssClass { get; set; } = string.Empty;
+}

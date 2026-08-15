@@ -1,0 +1,50 @@
+@inject RenaissanceApiClient Api
+
+<div class="section-card mb-4 quick-search-card">
+    <div class="section-card-header">
+        <span class="section-icon feature-icon-teal"><i class="bi bi-person-plus"></i></span>
+        <h2>Start for a client</h2>
+    </div>
+    <form class="search-bar mb-0" @onsubmit="SearchAsync" @onsubmit:preventDefault="true">
+        <span class="input-group-text bg-transparent border-0 ps-2">
+            <i class="bi bi-search text-muted"></i>
+        </span>
+        <input class="form-control" @bind="_search" placeholder="Search client number, phone, or name..." />
+        <button class="btn btn-primary px-3" type="submit">Find</button>
+    </form>
+    @if (_searched && _matches.Count == 0)
+    {
+        <p class="quick-search-empty mb-0">No matching clients. Register a client first if you have access.</p>
+    }
+    else if (_matches.Count > 0)
+    {
+        <div class="quick-search-results">
+            @foreach (var p in _matches)
+            {
+                <div class="quick-search-row">
+                    <ClientIdentity Patient="p" />
+                    <a class="btn btn-sm btn-primary" href="@($"{CreateHrefPrefix}/{p.Id}")">@ActionLabel</a>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string CreateHrefPrefix { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ActionLabel { get; set; } = "Open";
+
+    private string? _search;
+    private bool _searched;
+    private List<Patient> _matches = [];
+
+    private async Task SearchAsync()
+    {
+        _searched = true;
+        var all = await Api.GetPatientsAsync(_search);
+        _matches = all.Take(8).ToList();
+    }
+}

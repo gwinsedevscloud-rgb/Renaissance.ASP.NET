@@ -1,0 +1,24 @@
+@inject ReferralRealtimeService Realtime
+@implements IDisposable
+
+@foreach (var item in Clinical)
+{
+    var count = Realtime.GetPendingCount(item.Module);
+    if (count > 0)
+    {
+        <span class="nav-referral-badge">@count</span>
+    }
+}
+
+@code {
+    [Parameter] public List<ModuleNavItem> Clinical { get; set; } = [];
+
+    protected override void OnInitialized()
+    {
+        Realtime.ModuleCountsChanged += OnCountsChanged;
+    }
+
+    private void OnCountsChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Realtime.ModuleCountsChanged -= OnCountsChanged;
+}

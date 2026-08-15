@@ -1,0 +1,37 @@
+<div class="form-section">
+    <div class="form-section-header">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <span class="section-icon @IconBgClass">
+                <i class="bi @Icon"></i>
+            </span>
+        }
+        <div>
+            <h3>@Title</h3>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <p class="form-section-subtitle">@Subtitle</p>
+            }
+        </div>
+    </div>
+    <div class="form-section-body">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string? Icon { get; set; }
+
+    [Parameter]
+    public string IconBgClass { get; set; } = "feature-icon-teal";
+
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = null!;
+}

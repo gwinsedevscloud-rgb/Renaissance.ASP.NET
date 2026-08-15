@@ -1,0 +1,103 @@
+@using Renaissance.Web.Models
+
+<FormSection Title="Identity" Subtitle="Core demographics and identifiers" Icon="bi-person-badge">
+    <div class="row g-3">
+        <div class="col-12">
+            <FormLabel Text="Full Name" Icon="bi-person" Required="true" />
+            <div class="form-input-group">
+                <span class="form-input-icon"><i class="bi bi-person"></i></span>
+                <InputText class="form-control" @bind-Value="Model.FullName" placeholder="Client's full name" />
+            </div>
+            <ValidationMessage For="@(() => Model.FullName)" />
+        </div>
+        @if (ShowClientNumber)
+        {
+            <div class="col-md-4">
+                <FormLabel Text="Client Number" Icon="bi-hash" />
+                <div class="form-input-group">
+                    <span class="form-input-icon"><i class="bi bi-hash"></i></span>
+                    <InputText class="form-control" @bind-Value="Model.ClientNumber" readonly="@ClientNumberReadOnly" />
+                </div>
+                <div class="form-hint">Auto-generated on registration</div>
+                <ValidationMessage For="@(() => Model.ClientNumber)" />
+            </div>
+        }
+        <div class="@(ShowClientNumber ? "col-md-2" : "col-md-3")">
+            <FormLabel Text="Age" Icon="bi-calendar3" />
+            <InputNumber class="form-control" @bind-Value="Model.Age" min="0" />
+            <ValidationMessage For="@(() => Model.Age)" />
+        </div>
+        <div class="@(ShowClientNumber ? "col-md-2" : "col-md-3")">
+            <FormLabel Text="Age Unit" />
+            <InputSelect class="form-select" @bind-Value="Model.AgeUnit">
+                <option>Years</option>
+                <option>Months</option>
+                <option>Days</option>
+            </InputSelect>
+        </div>
+        <div class="@(ShowClientNumber ? "col-md-4" : "col-md-6")">
+            <FormLabel Text="Sex" Icon="bi-gender-ambiguous" Required="true" />
+            <InputSelect class="form-select" @bind-Value="Model.Sex">
+                <option value="">Select sex…</option>
+                <option>Male</option>
+                <option>Female</option>
+            </InputSelect>
+            <ValidationMessage For="@(() => Model.Sex)" />
+        </div>
+    </div>
+</FormSection>
+
+<FormSection Title="Background" Subtitle="Social, cultural, and occupational details" Icon="bi-journal-text" IconBgClass="feature-icon-blue">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <FormLabel Text="Marital Status" />
+            <InputText class="form-control" @bind-Value="Model.MaritalStatus" placeholder="e.g. Single, Married" />
+        </div>
+        <div class="col-md-4">
+            <FormLabel Text="Tribe" />
+            <InputText class="form-control" @bind-Value="Model.Tribe" />
+        </div>
+        <div class="col-md-4">
+            <FormLabel Text="Religion" />
+            <InputText class="form-control" @bind-Value="Model.Religion" />
+        </div>
+        <div class="col-md-4">
+            <FormLabel Text="Occupation" Icon="bi-briefcase" />
+            <InputText class="form-control" @bind-Value="Model.Occupation" placeholder="Current occupation" />
+        </div>
+        <div class="col-md-4">
+            <FormLabel Text="Education" Icon="bi-mortarboard" />
+            <InputText class="form-control" @bind-Value="Model.Education" placeholder="Highest level" />
+        </div>
+    </div>
+</FormSection>
+
+<FormSection Title="Contact" Subtitle="How to reach this client" Icon="bi-telephone" IconBgClass="feature-icon-violet">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <FormLabel Text="Phone Number" Icon="bi-phone" />
+            <div class="form-input-group">
+                <span class="form-input-icon"><i class="bi bi-phone"></i></span>
+                <InputText class="form-control" @bind-Value="Model.PhoneNumber" placeholder="+256…" />
+            </div>
+        </div>
+        <div class="col-12">
+            <FormLabel Text="Address" Icon="bi-geo-alt" />
+            <div class="form-input-group form-input-group-top">
+                <span class="form-input-icon align-top"><i class="bi bi-geo-alt"></i></span>
+                <InputTextArea class="form-control" rows="3" @bind-Value="Model.Address" placeholder="Street, district, region…" />
+            </div>
+        </div>
+    </div>
+</FormSection>
+
+@code {
+    [Parameter, EditorRequired]
+    public Patient Model { get; set; } = null!;
+
+    [Parameter]
+    public bool ClientNumberReadOnly { get; set; } = true;
+
+    [Parameter]
+    public bool ShowClientNumber { get; set; } = true;
+}

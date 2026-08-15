@@ -1,0 +1,107 @@
+@page "/patients/create"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>New Client - Renaissance</PageTitle>
+
+<div class="client-form-page">
+    <PageHeader
+        Title="New Client"
+        Subtitle="Register a new outpatient client and capture demographic details"
+        Icon="bi-person-plus-fill"
+        BackHref="/patients"
+        BackLabel="All clients" />
+
+    <div class="client-form-layout">
+        <aside class="client-form-aside">
+            <div class="client-number-card">
+                <div class="client-number-card-icon">
+                    <i class="bi bi-person-vcard-fill"></i>
+                </div>
+                <div class="client-number-label">Next client number</div>
+                <div class="client-number-value">@(_previewClientNumber ?? "Loading…")</div>
+                <p class="client-number-hint">
+                    <i class="bi bi-lightning-charge-fill me-1"></i>
+                    Preview only · assigned when you save
+                </p>
+            </div>
+
+            <div class="form-tips-card">
+                <h4><i class="bi bi-list-check me-2"></i>Registration checklist</h4>
+                <ul class="form-tips-list">
+                    <li class="@ChecklistClass(!string.IsNullOrWhiteSpace(_patient.FullName))">
+                        <i class="bi @ChecklistIcon(!string.IsNullOrWhiteSpace(_patient.FullName))"></i>
+                        Full name is required
+                    </li>
+                    <li class="@ChecklistClass(!string.IsNullOrWhiteSpace(_patient.Sex))">
+                        <i class="bi @ChecklistIcon(!string.IsNullOrWhiteSpace(_patient.Sex))"></i>
+                        Sex is required
+                    </li>
+                    <li class="@ChecklistClass(_patient.Age > 0)">
+                        <i class="bi @ChecklistIcon(_patient.Age > 0)"></i>
+                        Age and age unit
+                    </li>
+                    <li class="@ChecklistClass(!string.IsNullOrWhiteSpace(_patient.PhoneNumber))">
+                        <i class="bi @ChecklistIcon(!string.IsNullOrWhiteSpace(_patient.PhoneNumber))"></i>
+                        Phone (recommended)
+                    </li>
+                    <li class="@ChecklistClass(!string.IsNullOrWhiteSpace(_patient.Address))">
+                        <i class="bi @ChecklistIcon(!string.IsNullOrWhiteSpace(_patient.Address))"></i>
+                        Address (recommended)
+                    </li>
+                </ul>
+            </div>
+
+            <div class="form-help-card">
+                <i class="bi bi-info-circle"></i>
+                <p>After saving, you'll be redirected to the clients list. Open the client dashboard to add triage, consultation, and other clinical records.</p>
+            </div>
+        </aside>
+
+        <div class="client-form-main">
+            <EditForm Model="_patient" OnValidSubmit="SaveAsync" class="form-card form-card-create">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="validation-summary" role="alert" />
+                <PatientForm Model="_patient" ShowClientNumber="false" />
+                <FormActions SaveLabel="Create Client" SaveIcon="bi-person-check" CancelHref="/patients" Saving="_saving" />
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Patient _patient = new() { AgeUnit = "Years" };
+    private string? _previewClientNumber;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _previewClientNumber = await Api.PeekNextClientNumberAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        if (_patient.Id == Guid.Empty)
+        {
+            _patient.Id = Guid.NewGuid();
+        }
+
+        try
+        {
+            var created = await Api.CreatePatientAsync(_patient);
+            Notifications.ShowSuccess($"Client {created.ClientNumber} created.");
+            Nav.NavigateTo("/patients");
+        }
+        catch
+        {
+            _saving = false;
+        }
+    }
+
+    private static string ChecklistClass(bool done) => done ? "done" : "";
+
+    private static string ChecklistIcon(bool done) => done ? "bi-check-circle-fill" : "bi-circle";
+}

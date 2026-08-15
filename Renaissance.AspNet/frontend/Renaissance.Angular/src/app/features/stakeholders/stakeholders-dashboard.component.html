@@ -1,0 +1,166 @@
+<div class="ren-page">
+    <app-page-header
+        title="Stakeholders Dashboard"
+        subtitle="Operational analysis and forecast across all clinical modules"
+        icon="heroicons_outline:chart-bar">
+        <button mat-stroked-button (click)="load()" [disabled]="loading()">
+            <mat-icon [svgIcon]="'heroicons_outline:arrow-path'"></mat-icon>
+            <span>Refresh</span>
+        </button>
+    </app-page-header>
+
+    @if (loading()) {
+        <app-loading-state message="Loading operational analytics..." />
+    } @else {
+        @if (dashboard(); as d) {
+            <div class="ren-insights-banner">
+                <div class="ren-insights-icon">
+                    <mat-icon [svgIcon]="'heroicons_outline:light-bulb'"></mat-icon>
+                </div>
+                <div>
+                    <div class="ren-insights-label">Executive summary</div>
+                    <p>{{ d.insights.summary }}</p>
+                </div>
+            </div>
+
+            <div class="ren-kpi-grid">
+                <div class="ren-kpi-card">
+                    <div class="ren-kpi-value">{{ d.kpis.totalClients }}</div>
+                    <div class="ren-kpi-label">Total clients</div>
+                    <div class="ren-kpi-sub">+{{ d.kpis.newClientsThisMonth }} this month</div>
+                </div>
+                <div class="ren-kpi-card">
+                    <div class="ren-kpi-value">{{ d.kpis.totalEncounters }}</div>
+                    <div class="ren-kpi-label">Total encounters</div>
+                    <div class="ren-kpi-sub">{{ d.kpis.encountersThisMonth }} this month</div>
+                </div>
+                <div class="ren-kpi-card">
+                    <div class="ren-kpi-value">{{ formatGrowth(d.kpis.monthOverMonthGrowthPercent) }}</div>
+                    <div class="ren-kpi-label">MoM growth</div>
+                    <div class="ren-kpi-sub">encounter volume</div>
+                </div>
+                <div class="ren-kpi-card">
+                    <div class="ren-kpi-value">{{ d.kpis.pharmacyDispenseRate }}%</div>
+                    <div class="ren-kpi-label">Pharmacy dispense rate</div>
+                    <div class="ren-kpi-sub">{{ d.kpis.pendingPharmacyOrders }} pending</div>
+                </div>
+                <div class="ren-kpi-card ren-kpi-forecast">
+                    <div class="ren-kpi-value">~{{ d.insights.projectedMonthlyEncounters | number:'1.0-0' }}</div>
+                    <div class="ren-kpi-label">Projected monthly encounters</div>
+                    <div class="ren-kpi-sub">~{{ d.insights.projectedMonthlyClients | number:'1.0-0' }} clients</div>
+                </div>
+            </div>
+
+            <div class="ren-stakeholders-grid">
+                <section class="ren-section-card">
+                    <div class="ren-section-card-header">
+                        <span class="ren-section-icon"><mat-icon [svgIcon]="'heroicons_outline:chart-bar'"></mat-icon></span>
+                        Module volume
+                    </div>
+                    @for (m of d.moduleMetrics; track m.module) {
+                        <div class="ren-bar-row">
+                            <span class="ren-bar-label">{{ m.module }}</span>
+                            <div class="ren-bar-track">
+                                <div class="ren-bar-fill" [style.width.%]="m.sharePercent"></div>
+                            </div>
+                            <span class="ren-bar-count">{{ m.total }}</span>
+                        </div>
+                    }
+                </section>
+
+                <section class="ren-section-card">
+                    <div class="ren-section-card-header">
+                        <span class="ren-section-icon ren-section-icon-violet"><mat-icon [svgIcon]="'heroicons_outline:users'"></mat-icon></span>
+                        Demographics
+                    </div>
+                    @for (item of d.sexDistribution; track item.label) {
+                        <div class="ren-bar-row">
+                            <span class="ren-bar-label">{{ item.label }}</span>
+                            <div class="ren-bar-track">
+                                <div class="ren-bar-fill ren-bar-fill-blue" [style.width.%]="item.percent"></div>
+                            </div>
+                            <span class="ren-bar-count">{{ item.percent }}%</span>
+                        </div>
+                    }
+                </section>
+
+                <section class="ren-section-card">
+                    <div class="ren-section-card-header">
+                        <span class="ren-section-icon ren-section-icon-blue"><mat-icon [svgIcon]="'heroicons_outline:beaker'"></mat-icon></span>
+                        Pharmacy status
+                    </div>
+                    @for (item of d.pharmacyStatusBreakdown; track item.label) {
+                        <div class="ren-bar-row">
+                            <span class="ren-bar-label">{{ item.label }}</span>
+                            <div class="ren-bar-track">
+                                <div class="ren-bar-fill ren-bar-fill-violet" [style.width.%]="item.percent"></div>
+                            </div>
+                            <span class="ren-bar-count">{{ item.count }}</span>
+                        </div>
+                    }
+                </section>
+            </div>
+
+            <section class="ren-section-card ren-module-table">
+                <div class="ren-section-card-header">
+                    <span class="ren-section-icon"><mat-icon [svgIcon]="'heroicons_outline:table-cells'"></mat-icon></span>
+                    Module performance
+                </div>
+                <div class="ren-table-scroll">
+                    <table class="ren-table w-full">
+                        <thead>
+                            <tr>
+                                <th>Module</th>
+                                <th>Total</th>
+                                <th>This month</th>
+                                <th>Last month</th>
+                                <th>Share</th>
+                                <th>Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (m of d.moduleMetrics; track m.module) {
+                                <tr>
+                                    <td>{{ m.module }}</td>
+                                    <td><strong>{{ m.total }}</strong></td>
+                                    <td>{{ m.thisMonth }}</td>
+                                    <td>{{ m.lastMonth }}</td>
+                                    <td>{{ m.sharePercent }}%</td>
+                                    <td>
+                                        <span class="ren-trend-badge" [ngClass]="trendClass(m.thisMonth - m.lastMonth)">
+                                            {{ formatDelta(m.thisMonth - m.lastMonth) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <div class="ren-insights-grid">
+                <div class="ren-insight-card">
+                    <mat-icon [svgIcon]="'heroicons_outline:trophy'"></mat-icon>
+                    <div>
+                        <div class="ren-insight-label">Busiest module</div>
+                        <div class="ren-insight-value">{{ d.insights.busiestModule }}</div>
+                    </div>
+                </div>
+                <div class="ren-insight-card">
+                    <mat-icon [svgIcon]="'heroicons_outline:rocket-launch'"></mat-icon>
+                    <div>
+                        <div class="ren-insight-label">Fastest growing</div>
+                        <div class="ren-insight-value">{{ d.insights.fastestGrowingModule }}</div>
+                    </div>
+                </div>
+                <div class="ren-insight-card">
+                    <mat-icon [svgIcon]="'heroicons_outline:clock'"></mat-icon>
+                    <div>
+                        <div class="ren-insight-label">Avg daily encounters</div>
+                        <div class="ren-insight-value">{{ d.insights.avgDailyEncounters }}</div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

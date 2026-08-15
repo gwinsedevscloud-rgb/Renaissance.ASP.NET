@@ -1,0 +1,19 @@
+<div class="client-cell">
+    @if (Patient is null)
+    {
+        <span class="text-muted">—</span>
+    }
+    else
+    {
+        <span class="client-avatar">@ClientDisplayHelper.Initials(Patient)</span>
+        <span>
+            <strong>@ClientDisplayHelper.DisplayName(Patient)</strong>
+            <span class="client-number d-block">@Patient.ClientNumber</span>
+        </span>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Patient? Patient { get; set; }
+}

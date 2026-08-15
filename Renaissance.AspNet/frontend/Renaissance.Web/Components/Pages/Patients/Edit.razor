@@ -1,0 +1,66 @@
+@page "/patients/edit/{Id:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Edit Client - Renaissance</PageTitle>
+
+@if (_loading)
+{
+    <LoadingState />
+}
+else if (_patient is null)
+{
+    <div class="empty-state">
+        <i class="bi bi-exclamation-circle d-block"></i>
+        Client not found.
+    </div>
+}
+else
+{
+    <PageHeader Title="@($"Edit — {_patient.ClientNumber}")" Subtitle="Update client demographics" Icon="bi-pencil-square" />
+
+    <EditForm Model="_patient" OnValidSubmit="SaveAsync" class="form-card">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger mb-3" />
+        <PatientForm Model="_patient" ClientNumberReadOnly="true" />
+        <FormActions SaveLabel="Update Client" CancelHref="/patients" Saving="_saving" />
+    </EditForm>
+
+    <button class="btn btn-outline-danger mt-2" @onclick="ArchiveAsync" disabled="@_saving">
+        <i class="bi bi-archive me-1"></i> Archive Client
+    </button>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Patient? _patient;
+    private bool _loading = true;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _patient = await Api.GetPatientAsync(Id);
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_patient is null) return;
+        _saving = true;
+        await Api.UpdatePatientAsync(Id, _patient);
+        Notifications.ShowSuccess("Client updated.");
+        Nav.NavigateTo("/patients");
+    }
+
+    private async Task ArchiveAsync()
+    {
+        _saving = true;
+        await Api.DeletePatientAsync(Id);
+        Notifications.ShowSuccess("Client archived.");
+        Nav.NavigateTo("/patients");
+    }
+}

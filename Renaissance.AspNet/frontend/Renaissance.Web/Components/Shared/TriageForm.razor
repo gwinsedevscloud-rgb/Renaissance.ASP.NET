@@ -1,0 +1,73 @@
+@using Renaissance.Web.Models
+
+<FormSection Title="Medical History" Icon="bi-heart-pulse">
+    <div class="row g-3">
+        <div class="col-md-3"><div class="checkbox-card"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="Diabetes" /><label class="form-check-label"><i class="bi bi-droplet me-1"></i> Diabetes</label></div></div></div>
+        <div class="col-md-3"><div class="checkbox-card"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="Asthma" /><label class="form-check-label"><i class="bi bi-wind me-1"></i> Asthma</label></div></div></div>
+        <div class="col-md-3"><div class="checkbox-card"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="SickleCell" /><label class="form-check-label"><i class="bi bi-heart me-1"></i> Sickle Cell</label></div></div></div>
+        <div class="col-md-3"><div class="checkbox-card"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="Smoking" /><label class="form-check-label"><i class="bi bi-cloud me-1"></i> Smoking</label></div></div></div>
+    </div>
+</FormSection>
+
+<FormSection Title="Vitals" Icon="bi-activity" IconBgClass="feature-icon-blue">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <FormLabel Text="Weight (kg)" Icon="bi-speedometer" />
+            <InputNumber class="form-control" @bind-Value="Model.Weight" @bind-Value:after="OnVitalsChanged" />
+        </div>
+        <div class="col-md-3">
+            <FormLabel Text="Height (cm)" Icon="bi-rulers" />
+            <InputNumber class="form-control" @bind-Value="Model.Height" @bind-Value:after="OnVitalsChanged" />
+        </div>
+        <div class="col-md-3">
+            <FormLabel Text="BMI" Icon="bi-calculator" />
+            <div class="bmi-display @BmiCssClass">
+                @if (Bmi.HasValue)
+                {
+                    <span class="bmi-value">@Bmi.Value.ToString("0.0")</span>
+                    <span class="bmi-category">@BmiCategory</span>
+                }
+                else
+                {
+                    <span class="bmi-placeholder">Enter weight &amp; height</span>
+                }
+            </div>
+        </div>
+        <div class="col-md-3">
+            <FormLabel Text="Temperature (°C)" Icon="bi-thermometer-half" />
+            <InputNumber class="form-control" @bind-Value="Model.Temperature" />
+        </div>
+        <div class="col-md-3">
+            <FormLabel Text="Pulse Rate" Icon="bi-heart-pulse" />
+            <InputNumber class="form-control" @bind-Value="Model.PulseRate" />
+        </div>
+        <div class="col-md-3">
+            <FormLabel Text="Systolic BP" />
+            <InputNumber class="form-control" @bind-Value="Model.SystolicBp" />
+        </div>
+        <div class="col-md-3">
+            <FormLabel Text="Diastolic BP" />
+            <InputNumber class="form-control" @bind-Value="Model.DiastolicBp" />
+        </div>
+        <div class="col-md-3">
+            <FormLabel Text="Respiratory Rate" Icon="bi-lungs" />
+            <InputNumber class="form-control" @bind-Value="Model.RespiratoryRate" />
+        </div>
+    </div>
+</FormSection>
+
+@code {
+    [Parameter, EditorRequired]
+    public Triage Model { get; set; } = null!;
+
+    private bool Diabetes { get => Model.Diabetes == true; set => Model.Diabetes = value; }
+    private bool Asthma { get => Model.Asthma == true; set => Model.Asthma = value; }
+    private bool SickleCell { get => Model.SickleCell == true; set => Model.SickleCell = value; }
+    private bool Smoking { get => Model.Smoking == true; set => Model.Smoking = value; }
+
+    private double? Bmi => TriageVitalsHelper.CalculateBmi(Model.Weight, Model.Height);
+    private string BmiCategory => TriageVitalsHelper.BmiCategory(Bmi);
+    private string BmiCssClass => TriageVitalsHelper.BmiCssClass(Bmi);
+
+    private void OnVitalsChanged() => StateHasChanged();
+}

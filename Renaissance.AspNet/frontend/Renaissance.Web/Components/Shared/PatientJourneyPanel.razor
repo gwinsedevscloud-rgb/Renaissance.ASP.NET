@@ -1,0 +1,149 @@
+@inject RenaissanceApiClient Api
+
+@if (_steps.Count > 0)
+{
+    <div class="section-card mb-4 patient-journey-panel @(_expanded ? "is-expanded" : "is-collapsed") @(_waitingCount > 0 ? "has-waiting" : "")">
+        <button type="button" class="patient-journey-toggle" @onclick="ToggleExpanded" aria-expanded="@_expanded">
+            <span class="section-icon feature-icon-copper"><i class="bi bi-signpost-split"></i></span>
+            <div class="patient-journey-toggle-text">
+                <h2>Visit journey</h2>
+                @if (!_expanded && _waitingCount > 0)
+                {
+                    <p class="patient-journey-toggle-hint">@WaitingSummary</p>
+                }
+            </div>
+            <div class="patient-journey-toggle-badges">
+                @if (_waitingCount > 0)
+                {
+                    <span class="patient-journey-wait-badge" title="Referrals waiting or in progress">
+                        <i class="bi bi-hourglass-split"></i>
+                        @_waitingCount waiting
+                    </span>
+                }
+                @if (_emergencyCount > 0)
+                {
+                    <span class="patient-journey-alert-badge priority-emergency">
+                        @_emergencyCount emergency
+                    </span>
+                }
+                else if (_urgentCount > 0)
+                {
+                    <span class="patient-journey-alert-badge priority-urgent">
+                        @_urgentCount urgent
+                    </span>
+                }
+                @if (_waitingCount == 0 && _completedCount > 0)
+                {
+                    <span class="patient-journey-done-badge">
+                        <i class="bi bi-check-circle-fill"></i> All complete
+                    </span>
+                }
+                <span class="patient-journey-chevron"><i class="bi @(_expanded ? "bi-chevron-up" : "bi-chevron-down")"></i></span>
+            </div>
+        </button>
+
+        @if (!_expanded && _waitingCount > 0)
+        {
+            <div class="patient-journey-collapsed-preview">
+                @foreach (var step in _waitingSteps)
+                {
+                    <span class="patient-journey-preview-chip @JourneyClass(step)">
+                        <i class="bi @PreviewIcon(step)"></i>
+                        @ModuleNav.DisplayName(step.TargetModule)
+                        <span class="referral-priority-chip @ReferralDisplayHelper.PriorityClass(step.Priority)">
+                            @ReferralDisplayHelper.PriorityLabel(step.Priority)
+                        </span>
+                    </span>
+                }
+            </div>
+        }
+
+        @if (_expanded)
+        {
+            <div class="patient-journey">
+                @foreach (var step in _steps)
+                {
+                    <div class="patient-journey-step @JourneyClass(step)">
+                        <span class="patient-journey-icon"><i class="bi @ReferralDisplayHelper.JourneyIcon(step.Status)"></i></span>
+                        <div class="patient-journey-body">
+                            <strong>@ModuleNav.DisplayName(step.TargetModule)</strong>
+                            <small class="d-block text-muted">
+                                @ReferralDisplayHelper.StatusLabel(step.Status)
+                                @if (step.CreatedDate is not null) { <span> · @step.CreatedDate.Value.ToLocalTime().ToString("g")</span> }
+                            </small>
+                            @if (!string.IsNullOrWhiteSpace(step.ReferredBy))
+                            {
+                                <small class="text-muted">Referred by @step.ReferredBy</small>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(step.AttendedBy) && step.Status != ReferralStatus.Completed)
+                            {
+                                <small class="text-muted d-block">Attending: @step.AttendedBy</small>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(step.CompletedBy))
+                            {
+                                <small class="text-success d-block">Completed by @step.CompletedBy</small>
+                            }
+                        </div>
+                        <span class="referral-priority-chip @ReferralDisplayHelper.PriorityClass(step.Priority)">
+                            @ReferralDisplayHelper.PriorityLabel(step.Priority)
+                        </span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid PatientId { get; set; }
+
+    private List<PatientJourneyStep> _steps = [];
+    private bool _expanded;
+
+    private IEnumerable<PatientJourneyStep> _waitingSteps =>
+        _steps.Where(s => s.Status is ReferralStatus.Pending or ReferralStatus.InProgress);
+
+    private int _waitingCount => _waitingSteps.Count();
+    private int _emergencyCount => _waitingSteps.Count(s => s.Priority == ReferralPriority.Emergency);
+    private int _urgentCount => _waitingSteps.Count(s => s.Priority == ReferralPriority.Urgent);
+    private int _completedCount => _steps.Count(s => s.Status == ReferralStatus.Completed);
+
+    private string WaitingSummary
+    {
+        get
+        {
+            var modules = _waitingSteps
+                .Select(s => ModuleNav.DisplayName(s.TargetModule))
+                .Distinct()
+                .ToList();
+            return modules.Count switch
+            {
+                0 => "",
+                1 => $"Queued for {modules[0]}",
+                2 => $"Queued for {modules[0]} and {modules[1]}",
+                _ => $"Queued for {string.Join(", ", modules.Take(2))} +{modules.Count - 2} more"
+            };
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _steps = await Api.GetPatientJourneyAsync(PatientId);
+    }
+
+    private void ToggleExpanded() => _expanded = !_expanded;
+
+    private static string JourneyClass(PatientJourneyStep step) => step.Status switch
+    {
+        ReferralStatus.Completed => "completed",
+        ReferralStatus.InProgress => "active",
+        ReferralStatus.Cancelled => "cancelled",
+        _ => "pending"
+    };
+
+    private static string PreviewIcon(PatientJourneyStep step) => step.Status switch
+    {
+        ReferralStatus.InProgress => "bi-hourglass-split",
+        _ => "bi-circle"
+    };
+}

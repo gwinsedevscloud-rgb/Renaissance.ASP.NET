@@ -1,0 +1,16 @@
+@using Renaissance.Web.Models.Enums
+
+<span class="status-badge @CssClass">@Status</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public DispensationStatus Status { get; set; }
+
+    private string CssClass => Status switch
+    {
+        DispensationStatus.PENDING => "badge-pending",
+        DispensationStatus.DISPENSED => "badge-dispensed",
+        DispensationStatus.DECLINED => "badge-declined",
+        _ => "bg-secondary"
+    };
+}

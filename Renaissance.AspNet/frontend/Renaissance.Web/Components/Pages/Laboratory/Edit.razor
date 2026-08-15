@@ -1,0 +1,47 @@
+@page "/laboratory/edit/{Id:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Edit Laboratory - Renaissance</PageTitle>
+
+@if (_loading) { <LoadingState /> }
+else if (_model is null) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Record not found.</div> }
+else
+{
+    <PageHeader Title="Edit Laboratory Record" Icon="bi-droplet-half" IconBgClass="feature-icon-blue" />
+    <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
+        <LabForm Model="_model" />
+        <FormActions SaveLabel="Update" CancelHref="@($"/client-dashboard/{_model.PatientId}")" />
+    </EditForm>
+    <button class="btn btn-outline-danger mt-2" @onclick="ArchiveAsync"><i class="bi bi-archive me-1"></i> Archive</button>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private Laboratory? _model;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _model = await Api.GetLaboratoryAsync(Id);
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_model is null) return;
+        await Api.UpdateLaboratoryAsync(Id, _model);
+        Notifications.ShowSuccess("Laboratory record updated.");
+        Nav.NavigateTo($"/client-dashboard/{_model.PatientId}");
+    }
+
+    private async Task ArchiveAsync()
+    {
+        if (_model is null) return;
+        var pid = _model.PatientId;
+        await Api.DeleteLaboratoryAsync(Id);
+        Nav.NavigateTo($"/client-dashboard/{pid}");
+    }
+}

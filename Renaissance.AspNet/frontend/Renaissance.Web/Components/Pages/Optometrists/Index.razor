@@ -1,0 +1,71 @@
+@page "/optometrists"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+
+<PageTitle>Optometrists - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Optometrists" Subtitle="Visual acuity exams and glasses" Icon="bi-eye" />
+
+    <ReferralQueuePanel Module="AppModule.Optometrists" />
+
+    <PatientQuickSearch CreateHrefPrefix="/optometrists/create" ActionLabel="New exam" />
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading optometry records..." />
+    }
+    else if (_items.Count == 0)
+    {
+        <EmptyPanel Icon="bi-eye" Title="No optometry records yet" Message="Search for a client above to start an exam." />
+    }
+    else
+    {
+        <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
+        <div class="section-card table-card p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>VA (R/L)</th>
+                            <th>Glasses</th>
+                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var o in _items)
+                    {
+                        <tr>
+                            <td><ClientIdentity Patient="Patient(o.PatientId)" /></td>
+                            <td>@o.VisualAcuityRight / @o.VisualAcuityLeft</td>
+                            <td>@(o.GlassesDispensed == true ? "Yes" : "No")</td>
+                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(o.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" href="/optometrists/edit/@o.Id">Edit</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private List<Optometrist> _items = [];
+    private Dictionary<Guid, Patient> _patients = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patients = await Api.GetPatientsAsync();
+        _patients = patients.ToDictionary(p => p.Id);
+        _items = (await Api.GetOptometristsAsync()).Take(50).ToList();
+        _loading = false;
+    }
+
+    private Patient? Patient(Guid id) => _patients.GetValueOrDefault(id);
+}

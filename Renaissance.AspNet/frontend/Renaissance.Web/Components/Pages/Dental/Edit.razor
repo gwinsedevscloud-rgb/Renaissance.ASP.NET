@@ -1,0 +1,74 @@
+@page "/dental/edit/{Id:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>Edit Dental Consultation - Renaissance</PageTitle>
+
+@if (_loading) { <LoadingState /> }
+else if (_vm is null) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Record not found.</div> }
+else
+{
+    <PageHeader Title="Edit Dental Consultation" Icon="bi-emoji-smile" />
+    <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
+        <DentalForm Model="_vm" />
+        <FormActions SaveLabel="Update" CancelHref="@($"/client-dashboard/{_vm.PatientId}")" />
+    </EditForm>
+    <button class="btn btn-outline-danger mt-2" @onclick="DeleteAsync"><i class="bi bi-trash me-1"></i> Delete</button>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private DentalFormViewModel? _vm;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var e = await Api.GetDentalAsync(Id);
+        _vm = e is null ? null : ToVm(e);
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_vm is null) return;
+        var entity = Map(_vm);
+        entity.Id = Id;
+        await Api.UpdateDentalAsync(Id, entity);
+        Notifications.ShowSuccess("Dental consultation updated.");
+        Nav.NavigateTo($"/client-dashboard/{_vm.PatientId}");
+    }
+
+    private async Task DeleteAsync()
+    {
+        var e = await Api.GetDentalAsync(Id);
+        if (e is null) return;
+        await Api.DeleteDentalAsync(Id);
+        Nav.NavigateTo($"/client-dashboard/{e.PatientId}");
+    }
+
+    private static DentalFormViewModel ToVm(DentalConsultation e) => new()
+    {
+        Id = e.Id, PatientId = e.PatientId,
+        DiagnosesText = ListTextHelper.ToMultiline(e.Diagnoses),
+        TreatmentsText = ListTextHelper.ToMultiline(e.Treatments),
+        DispensedItemsText = ListTextHelper.ToMultiline(e.DispensedItems),
+        ServicesReferredText = ListTextHelper.ToMultiline(e.ServicesReferred),
+        Referred = e.Referred == true,
+        OthersDiagnosisText = ListTextHelper.ToMultiline(e.OthersDiagnosis),
+        OthersTreatmentText = ListTextHelper.ToMultiline(e.OthersTreatment)
+    };
+
+    private static DentalConsultation Map(DentalFormViewModel vm) => new()
+    {
+        PatientId = vm.PatientId,
+        Diagnoses = ListTextHelper.FromMultiline(vm.DiagnosesText),
+        Treatments = ListTextHelper.FromMultiline(vm.TreatmentsText),
+        DispensedItems = ListTextHelper.FromMultiline(vm.DispensedItemsText),
+        ServicesReferred = ListTextHelper.FromMultiline(vm.ServicesReferredText),
+        Referred = vm.Referred,
+        OthersDiagnosis = ListTextHelper.FromMultiline(vm.OthersDiagnosisText),
+        OthersTreatment = ListTextHelper.FromMultiline(vm.OthersTreatmentText)
+    };
+}
