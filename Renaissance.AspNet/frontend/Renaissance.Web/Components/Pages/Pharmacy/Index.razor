@@ -11,40 +11,59 @@
 
     <PatientQuickSearch CreateHrefPrefix="/pharmacy/create" ActionLabel="Prescribe" />
 
+    @if (_pendingItnCount > 0)
+    {
+        <div class="record-meta mb-2">
+            <span class="module-chip"><i class="bi bi-bag-plus me-1"></i>@_pendingItnCount pending ITN order@(_pendingItnCount == 1 ? "" : "s") in queue</span>
+        </div>
+    }
+
     @if (_loading)
     {
         <LoadingState Message="Loading prescriptions..." />
     }
     else if (_items.Count == 0)
     {
-        <EmptyPanel Icon="bi-capsule" Title="No prescriptions yet" Message="Search for a client above to prescribe medication." />
+        <EmptyPanel Icon="bi-capsule" Title="No prescriptions yet" Message="Search for a patient above to prescribe medication." />
     }
     else
     {
         <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
         <div class="section-card table-card p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0 module-record-table module-table-pharmacy">
                     <thead>
                         <tr>
-                            <th>Client</th>
-                            <th>Drug</th>
-                            <th>Status</th>
-                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <ModuleTableTh Label="Patient" Icon="bi-person" />
+                            <ModuleTableTh Label="Drug" Icon="bi-capsule" />
+                            <ModuleTableTh Label="Status" Icon="bi-check2-circle" />
+                            <ModuleTableTh Label="Recorded" Icon="bi-calendar3" CssClass="d-none d-sm-table-cell" />
                             <th></th>
                         </tr>
                     </thead>
                     <tbody>
                     @foreach (var p in _items)
                     {
-                        <tr>
+                        var isPendingItn = p.DrugCategory == "ITN" && p.Status == DispensationStatus.PENDING;
+                        <tr class="@(isPendingItn ? "table-warning-subtle" : null)">
                             <td><ClientIdentity Patient="Patient(p.PatientId)" /></td>
-                            <td>@(p.DrugName ?? "—") <small class="text-muted">@p.Dosage</small></td>
-                            <td><StatusBadge Status="p.Status" /></td>
-                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(p.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="/pharmacy/dispense/@p.PatientId">Dispense</a>
+                            <td>
+                                <span class="record-field">
+                                    <i class="bi bi-capsule"></i>
+                                    @(p.DrugName ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(p.Dosage))
+                                    {
+                                        <span class="record-field-muted">@p.Dosage</span>
+                                    }
+                                </span>
+                                @if (isPendingItn)
+                                {
+                                    <span class="record-chip ms-1"><i class="bi bi-bag-plus"></i>ITN queue</span>
+                                }
                             </td>
+                            <td><StatusBadge Status="p.Status" /></td>
+                            <ModuleRecordDate Value="p.CreatedDate" CssClass="d-none d-sm-table-cell" />
+                            <ModuleTableAction Href="@($"/pharmacy/dispense/{p.PatientId}")" Title="Dispense" Icon="bi-check2-all" Label="Dispense" />
                         </tr>
                     }
                     </tbody>
@@ -56,6 +75,7 @@
 
 @code {
     private bool _loading = true;
+    private int _pendingItnCount;
     private List<PharmacyPrescription> _items = [];
     private Dictionary<Guid, Patient> _patients = [];
 
@@ -63,7 +83,13 @@
     {
         var patients = await Api.GetPatientsAsync();
         _patients = patients.ToDictionary(p => p.Id);
-        _items = (await Api.GetPharmacyPrescriptionsAsync()).Take(50).ToList();
+        var all = await Api.GetPharmacyPrescriptionsAsync();
+        _pendingItnCount = all.Count(p => p.DrugCategory == "ITN" && p.Status == DispensationStatus.PENDING);
+        _items = all
+            .OrderByDescending(p => p.DrugCategory == "ITN" && p.Status == DispensationStatus.PENDING)
+            .ThenByDescending(p => p.CreatedDate)
+            .Take(50)
+            .ToList();
         _loading = false;
     }
 

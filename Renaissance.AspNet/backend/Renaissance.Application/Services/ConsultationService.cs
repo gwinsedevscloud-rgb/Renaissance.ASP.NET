@@ -239,22 +239,27 @@ public class ConsultationService : IConsultationService
 
     private async Task EnsurePharmacyReferralForItnAsync(Consultation consultation, string actor, CancellationToken cancellationToken)
     {
-        try
+        var hasActive = await _db.Referrals.AnyAsync(
+            r => !r.Archived
+                 && r.PatientId == consultation.PatientId
+                 && r.TargetModule == AppModule.Pharmacy
+                 && (r.Status == ReferralStatus.Pending || r.Status == ReferralStatus.InProgress),
+            cancellationToken);
+
+        if (hasActive)
         {
-            await _referrals.CreateAsync(new CreateReferralsRequest
-            {
-                PatientId = consultation.PatientId,
-                SourceModule = AppModule.Consultations,
-                SourceRecordId = consultation.Id,
-                TargetModules = [AppModule.Pharmacy],
-                Notes = "ITN ordered during consultation",
-                Priority = ReferralPriority.Routine
-            }, actor, cancellationToken);
+            return;
         }
-        catch (InvalidOperationException)
+
+        await _referrals.CreateAsync(new CreateReferralsRequest
         {
-            // Duplicate active pharmacy referral — prescription still created.
-        }
+            PatientId = consultation.PatientId,
+            SourceModule = AppModule.Consultations,
+            SourceRecordId = consultation.Id,
+            TargetModules = [AppModule.Pharmacy],
+            Notes = "ITN ordered during consultation",
+            Priority = ReferralPriority.Routine
+        }, actor, cancellationToken);
     }
 
     private async Task DispenseItnPrescriptionAsync(Guid patientId, string actor, CancellationToken cancellationToken)

@@ -15,21 +15,21 @@
     }
     else if (_items.Count == 0)
     {
-        <EmptyPanel Icon="bi-activity" Title="No triage records yet" Message="Search for a client above to start a new encounter." />
+        <EmptyPanel Icon="bi-activity" Title="No triage records yet" Message="Search for a patient above to start a new encounter." />
     }
     else
     {
         <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
         <div class="section-card table-card p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0 module-record-table module-table-triage">
                     <thead>
                         <tr>
-                            <th>Client</th>
-                            <th>BP</th>
-                            <th class="d-none d-sm-table-cell">Temp</th>
-                            <th class="d-none d-md-table-cell">Pulse</th>
-                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <ModuleTableTh Label="Patient" Icon="bi-person" />
+                            <ModuleTableTh Label="BP" Icon="bi-heart-pulse" />
+                            <ModuleTableTh Label="Temp" Icon="bi-thermometer-half" CssClass="d-none d-sm-table-cell" />
+                            <ModuleTableTh Label="Pulse" Icon="bi-activity" CssClass="d-none d-md-table-cell" />
+                            <ModuleTableTh Label="Recorded" Icon="bi-calendar3" CssClass="d-none d-sm-table-cell" />
                             <th></th>
                         </tr>
                     </thead>
@@ -38,13 +38,29 @@
                     {
                         <tr>
                             <td><ClientIdentity Patient="Patient(t.PatientId)" /></td>
-                            <td>@t.SystolicBp/@t.DiastolicBp</td>
-                            <td class="d-none d-sm-table-cell">@(t.Temperature?.ToString("0.0") ?? "—")</td>
-                            <td class="d-none d-md-table-cell">@(t.PulseRate?.ToString() ?? "—")</td>
-                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(t.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="/triage/edit/@t.Id">Edit</a>
+                            <td><span class="record-field"><i class="bi bi-heart-pulse"></i>@t.SystolicBp/@t.DiastolicBp</span></td>
+                            <td class="d-none d-sm-table-cell">
+                                @if (t.Temperature is null)
+                                {
+                                    <span class="record-empty-value">—</span>
+                                }
+                                else
+                                {
+                                    <span class="record-field"><i class="bi bi-thermometer-half"></i>@t.Temperature.Value.ToString("0.0")°C</span>
+                                }
                             </td>
+                            <td class="d-none d-md-table-cell">
+                                @if (t.PulseRate is null)
+                                {
+                                    <span class="record-empty-value">—</span>
+                                }
+                                else
+                                {
+                                    <span class="record-field"><i class="bi bi-activity"></i>@t.PulseRate bpm</span>
+                                }
+                            </td>
+                            <ModuleRecordDate Value="t.CreatedDate" CssClass="d-none d-sm-table-cell" />
+                            <ModuleTableAction Href="@($"/triage/edit/{t.Id}")" Title="Edit triage" Icon="bi-pencil" />
                         </tr>
                     }
                     </tbody>

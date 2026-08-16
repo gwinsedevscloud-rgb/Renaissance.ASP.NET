@@ -1,77 +1,250 @@
 @page "/admin/users/create"
 @page "/admin/users/edit/{Id:guid}"
+
 @rendermode InteractiveServer
+
 @inject RenaissanceApiClient Api
 @inject NavigationManager Nav
 @inject NotificationService Notifications
 
 <PageTitle>@(IsNew ? "New user" : "Edit user") - Renaissance</PageTitle>
 
-<PageHeader Title="@(IsNew ? "New user" : "Edit user")" Subtitle="Assign a role to control module access" Icon="bi-person-gear" BackHref="/admin/users" BackLabel="Users" />
+<div class="module-page">
+    <PageHeader Title="@(IsNew ? "New user" : "Edit user")"
+                Subtitle="Create staff accounts and choose which modules they can open"
+                Icon="bi-person-gear"
+                BackHref="/admin/users"
+                BackLabel="Users" />
 
-@if (!string.IsNullOrEmpty(_error))
-{
-    <div class="alert alert-danger">@_error</div>
-}
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @_error
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _error = null"></button>
+        </div>
+    }
 
-@if (_loading)
-{
-    <LoadingState Message="Loading..." />
-}
-else
-{
-    <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
-        <DataAnnotationsValidator />
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label">Full name</label>
-                <InputText class="form-control" @bind-Value="_model.FullName" />
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Username</label>
-                <InputText class="form-control" @bind-Value="_model.UserName" disabled="@(!IsNew)" />
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">@(IsNew ? "Password" : "New password (optional)")</label>
-                <InputText type="password" class="form-control" @bind-Value="_model.Password" />
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Role</label>
-                <InputSelect class="form-select" @bind-Value="_model.RoleId">
-                    @foreach (var role in _roles)
+    @if (_loading)
+    {
+        <LoadingState Message="Loading user..." />
+    }
+    else
+    {
+        <div class="row g-4 admin-user-layout">
+            <div class="col-lg-4">
+                <div class="section-card admin-user-profile-card">
+                    <div class="admin-user-profile-top">
+                        <span class="client-avatar admin-user-avatar">@ProfileInitials</span>
+                        <div class="admin-user-profile-meta">
+                            <h2 class="admin-user-profile-name">@ProfileName</h2>
+                            @if (!string.IsNullOrWhiteSpace(_model.UserName))
+                            {
+                                <code class="admin-user-profile-username">@_model.UserName</code>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Username not set yet</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="admin-user-profile-badges">
+                        @if (_model.IsActive)
+                        {
+                            <span class="sex-pill sex-male">Active</span>
+                        }
+                        else
+                        {
+                            <span class="sex-pill sex-other">Disabled</span>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(CurrentRoleName))
+                        {
+                            <span class="module-chip">@CurrentRoleName</span>
+                        }
+                    </div>
+
+                    <dl class="admin-user-profile-stats">
+                        <div>
+                            <dt>Modules</dt>
+                            <dd>@_selectedModules.Count assigned</dd>
+                        </div>
+                        <div>
+                            <dt>Access type</dt>
+                            <dd>@(_isAdministratorRole ? "Full administrator" : "Custom modules")</dd>
+                        </div>
+                    </dl>
+
+                    @if (_isAdministratorRole)
                     {
-                        <option value="@role.Id">@role.Name</option>
+                        <div class="admin-user-profile-note">
+                            <i class="bi bi-shield-lock me-1"></i>
+                            Administrators can open every module in the system.
+                        </div>
                     }
-                </InputSelect>
-            </div>
-            <div class="col-12">
-                <div class="form-check">
-                    <InputCheckbox class="form-check-input" @bind-Value="_model.IsActive" id="active" />
-                    <label class="form-check-label" for="active">Active</label>
                 </div>
             </div>
+
+            <div class="col-lg-8">
+                <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card admin-user-form">
+                    <DataAnnotationsValidator />
+
+                    <FormSection Title="Account details"
+                                 Subtitle="Sign-in identity and role template"
+                                 Icon="bi-person-vcard"
+                                 IconBgClass="feature-icon-blue">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="fullName">Full name</label>
+                                <div class="form-input-group">
+                                    <span class="form-input-icon"><i class="bi bi-person"></i></span>
+                                    <InputText id="fullName" class="form-control" @bind-Value="_model.FullName" placeholder="e.g. Ada Okon" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="userName">Username</label>
+                                <div class="form-input-group">
+                                    <span class="form-input-icon"><i class="bi bi-at"></i></span>
+                                    <InputText id="userName" class="form-control" @bind-Value="_model.UserName" disabled="@(!IsNew)" placeholder="e.g. ada.okon" />
+                                </div>
+                                @if (!IsNew)
+                                {
+                                    <div class="form-hint">Usernames cannot be changed after creation.</div>
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="password">@(IsNew ? "Password" : "New password (optional)")</label>
+                                <div class="form-input-group">
+                                    <span class="form-input-icon"><i class="bi bi-lock"></i></span>
+                                    <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" autocomplete="new-password" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="role">Role template</label>
+                                <InputSelect id="role" class="form-select" @bind-Value="_model.RoleId" @bind-Value:after="OnRoleChangedAsync">
+                                    @foreach (var role in _roles)
+                                    {
+                                        <option value="@role.Id">@role.Name</option>
+                                    }
+                                </InputSelect>
+                                <div class="form-hint">Start from a role, then fine-tune module access below.</div>
+                            </div>
+                            <div class="col-12">
+                                <label class="checkbox-card admin-user-status-card">
+                                    <div class="form-check m-0">
+                                        <InputCheckbox class="form-check-input" @bind-Value="_model.IsActive" id="active" />
+                                        <span class="form-check-label">
+                                            <strong>Active account</strong>
+                                            <span class="d-block small text-muted">Inactive users cannot sign in.</span>
+                                        </span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </FormSection>
+
+                    <FormSection Title="Module access"
+                                 Subtitle="Choose which parts of Renaissance this staff member can open"
+                                 Icon="bi-grid-3x3-gap"
+                                 IconBgClass="feature-icon-teal">
+                        @if (_isAdministratorRole)
+                        {
+                            <div class="admin-user-admin-banner">
+                                <span class="admin-user-admin-banner-icon"><i class="bi bi-shield-check"></i></span>
+                                <div>
+                                    <strong>Full access enabled</strong>
+                                    <p class="mb-0 small text-muted">Administrator roles include every module automatically.</p>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                                <div class="record-meta mb-0">
+                                    <strong>@_selectedModules.Count</strong> of @_catalog.Count modules selected
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ApplyRoleModulesAsync">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Apply role defaults
+                                </button>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <ModuleAccessPicker Catalog="_catalog"
+                                                    Selected="_selectedModules"
+                                                    SelectedChanged="OnModulesChanged" />
+                            </div>
+
+                            @if (_selectedModules.Count == 0)
+                            {
+                                <div class="alert alert-warning py-2 mb-0">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    Select at least one module before saving.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="admin-module-summary">
+                                    <span class="text-muted small">Selected modules</span>
+                                    <div class="d-flex flex-wrap gap-1 mt-1">
+                                        @foreach (var module in _selectedModules.OrderBy(m => m))
+                                        {
+                                            <span class="module-chip">@ModuleNav.DisplayName(module)</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </FormSection>
+
+                    <FormActions SaveLabel="Save user"
+                                 SaveIcon="bi-person-check"
+                                 CancelHref="/admin/users"
+                                 Saving="_saving" />
+                </EditForm>
+
+                @if (!IsNew)
+                {
+                    <div class="section-card admin-danger-zone mt-4">
+                        <div>
+                            <h2 class="h6 mb-1">Delete user</h2>
+                            <p class="text-muted small mb-0">Permanently remove this account. This cannot be undone.</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-danger" disabled="@_saving" @onclick="DeleteAsync">
+                            <i class="bi bi-trash me-1"></i> Delete user
+                        </button>
+                    </div>
+                }
+            </div>
         </div>
-        <FormActions SaveLabel="Save user" CancelHref="/admin/users" />
-        @if (!IsNew)
-        {
-            <button type="button" class="btn btn-outline-danger mt-3" @onclick="DeleteAsync">
-                <i class="bi bi-trash me-1"></i> Delete user
-            </button>
-        }
-    </EditForm>
-}
+    }
+</div>
 
 @code {
     [Parameter] public Guid Id { get; set; }
+
     private bool IsNew => Id == Guid.Empty;
     private bool _loading = true;
+    private bool _saving;
+    private bool _isAdministratorRole;
     private string? _error;
     private List<RoleDto> _roles = [];
+    private List<ModuleDescriptorDto> _catalog = [];
+    private HashSet<AppModule> _selectedModules = [];
     private UserForm _model = new();
+
+    private string ProfileName =>
+        string.IsNullOrWhiteSpace(_model.FullName) ? (IsNew ? "New staff member" : "Staff member") : _model.FullName.Trim();
+
+    private string ProfileInitials => ClientDisplayHelper.InitialsFromName(ProfileName);
+
+    private string? CurrentRoleName => _roles.FirstOrDefault(r => r.Id == _model.RoleId)?.Name;
 
     protected override async Task OnParametersSetAsync()
     {
+        _loading = true;
         _roles = await Api.GetRolesAsync();
+        _catalog = await Api.GetModuleCatalogAsync();
+
         if (!IsNew)
         {
             var user = await Api.GetUserAsync(Id);
@@ -88,20 +261,72 @@ else
                 RoleId = user.RoleId,
                 IsActive = user.IsActive
             };
+            _selectedModules = user.Modules.ToHashSet();
         }
         else if (_roles.Count > 0 && _model.RoleId == Guid.Empty)
         {
-            _model.RoleId = _roles[0].Id;
+            _model.RoleId = _roles.FirstOrDefault(r => !r.IsSystem)?.Id ?? _roles[0].Id;
+            await ApplyRoleModulesAsync();
         }
 
+        UpdateAdministratorState();
         _loading = false;
+    }
+
+    private void UpdateAdministratorState()
+    {
+        var role = _roles.FirstOrDefault(r => r.Id == _model.RoleId);
+        _isAdministratorRole = role?.IsSystem == true;
+
+        if (_isAdministratorRole)
+        {
+            _selectedModules = _catalog.Select(m => m.Module).ToHashSet();
+        }
+    }
+
+    private async Task OnRoleChangedAsync()
+    {
+        UpdateAdministratorState();
+
+        if (!_isAdministratorRole)
+        {
+            await ApplyRoleModulesAsync();
+        }
+    }
+
+    private Task ApplyRoleModulesAsync()
+    {
+        var role = _roles.FirstOrDefault(r => r.Id == _model.RoleId);
+        if (role is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        _selectedModules = role.Modules.ToHashSet();
+        return Task.CompletedTask;
+    }
+
+    private Task OnModulesChanged(HashSet<AppModule> modules)
+    {
+        _selectedModules = modules;
+        return Task.CompletedTask;
     }
 
     private async Task SaveAsync()
     {
         _error = null;
+
+        if (!_isAdministratorRole && _selectedModules.Count == 0)
+        {
+            _error = "Select at least one module for this user.";
+            return;
+        }
+
+        _saving = true;
         try
         {
+            var modules = _selectedModules.ToList();
+
             if (IsNew)
             {
                 await Api.CreateUserAsync(new CreateUserRequest
@@ -110,7 +335,8 @@ else
                     FullName = _model.FullName,
                     Password = _model.Password ?? string.Empty,
                     RoleId = _model.RoleId,
-                    IsActive = _model.IsActive
+                    IsActive = _model.IsActive,
+                    Modules = modules
                 });
                 Notifications.ShowSuccess("User created.");
             }
@@ -121,9 +347,10 @@ else
                     FullName = _model.FullName,
                     Password = string.IsNullOrWhiteSpace(_model.Password) ? null : _model.Password,
                     RoleId = _model.RoleId,
-                    IsActive = _model.IsActive
+                    IsActive = _model.IsActive,
+                    Modules = modules
                 });
-                Notifications.ShowSuccess("User updated.");
+                Notifications.ShowSuccess("User updated. They must sign in again to pick up module changes.");
             }
 
             Nav.NavigateTo("/admin/users");
@@ -132,10 +359,16 @@ else
         {
             _error = ex.Message;
         }
+        finally
+        {
+            _saving = false;
+        }
     }
 
     private async Task DeleteAsync()
     {
+        _saving = true;
+        _error = null;
         try
         {
             await Api.DeleteUserAsync(Id);
@@ -145,6 +378,10 @@ else
         catch (Exception ex)
         {
             _error = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
         }
     }
 

@@ -7,7 +7,7 @@
 <PageTitle>Dispense Drugs - Renaissance</PageTitle>
 
 @if (_loading) { <LoadingState /> }
-else if (_vm is null) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Client not found.</div> }
+else if (_vm is null) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Patient not found.</div> }
 else
 {
     <PageHeader Title="@($"Dispense — {_vm.ClientNumber}")" Subtitle="Update dispensation status for prescriptions" Icon="bi-capsule" IconBgClass="feature-icon-violet" />
@@ -47,11 +47,11 @@ else
                     </div>
                 </div>
             }
-            <FormActions SaveLabel="Save Dispensation" SaveIcon="bi-check2-all" CancelHref="@($"/client-dashboard/{PatientId}")" />
+            <FormActions SaveLabel="Save Dispensation" SaveIcon="bi-check2-all" CancelHref="@($"/patient-dashboard/{PatientId}")" />
         }
         @if (_vm.Items.Count == 0)
         {
-            <a class="btn btn-outline-secondary mt-2" href="/client-dashboard/@PatientId"><i class="bi bi-arrow-left me-1"></i> Back</a>
+            <a class="btn btn-outline-secondary mt-2" href="/patient-dashboard/@PatientId"><i class="bi bi-arrow-left me-1"></i> Back</a>
         }
     </EditForm>
 }
@@ -95,6 +95,6 @@ else
         });
         await Api.DispensePharmacyAsync(updates);
         Notifications.ShowSuccess("Dispensation updated.");
-        Nav.NavigateTo($"/client-dashboard/{PatientId}");
+        Nav.NavigateTo($"/patient-dashboard/{PatientId}");
     }
 }

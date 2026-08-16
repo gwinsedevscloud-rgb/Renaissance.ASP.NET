@@ -1,4 +1,5 @@
 using Renaissance.Web.Components;
+using Renaissance.Web.Middleware;
 using Renaissance.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,6 +27,7 @@ builder.Services.AddScoped(sp =>
 
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ReferralRealtimeService>();
+builder.Services.AddScoped<HospitalModuleStateService>();
 
 var app = builder.Build();
 
@@ -36,6 +38,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseHttpsRedirection();
 app.UseAntiforgery();
 app.MapStaticAssets();

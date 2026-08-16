@@ -3,6 +3,7 @@ using Renaissance.Application.Common;
 using Renaissance.Application.Common.Interfaces;
 using Renaissance.Application.DTOs;
 using Renaissance.Domain.Entities;
+using Renaissance.Domain.Enums;
 
 namespace Renaissance.Application.Services;
 
@@ -22,6 +23,7 @@ public class UserService : IUserService
         var users = await _db.Users.AsNoTracking()
             .Where(u => !u.Archived)
             .Include(u => u.Role)
+            .Include(u => u.ModuleAccess)
             .OrderBy(u => u.FullName)
             .ToListAsync(cancellationToken);
         return users.Select(ToDto).ToList();
@@ -31,6 +33,8 @@ public class UserService : IUserService
     {
         var user = await _db.Users.AsNoTracking()
             .Include(u => u.Role)
+            .ThenInclude(r => r!.ModuleAccess)
+            .Include(u => u.ModuleAccess)
             .FirstOrDefaultAsync(u => u.Id == id && !u.Archived, cancellationToken);
         return user is null ? null : ToDto(user);
     }
@@ -46,7 +50,13 @@ public class UserService : IUserService
             throw new InvalidOperationException("That username is already in use.");
         }
 
-        await EnsureRoleExistsAsync(request.RoleId, cancellationToken);
+        var role = await _db.Roles
+            .Include(r => r.ModuleAccess)
+            .FirstOrDefaultAsync(r => r.Id == request.RoleId && !r.Archived, cancellationToken)
+            ?? throw new InvalidOperationException("Role not found.");
+
+        var modules = ResolveRequestedModules(request.Modules, role);
+        UserModuleResolver.ValidateModules(modules, role.IsSystem);
 
         var user = new AppUser
         {
@@ -57,6 +67,7 @@ public class UserService : IUserService
             RoleId = request.RoleId,
             IsActive = request.IsActive
         };
+        UserModuleResolver.ApplyModules(user, modules, role.IsSystem);
         AuditHelper.SetCreated(user);
         _db.Users.Add(user);
         await _db.SaveChangesAsync(cancellationToken);
@@ -66,14 +77,20 @@ public class UserService : IUserService
 
     public async Task<UserDto?> UpdateAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await _db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id && !u.Archived, cancellationToken);
+        var user = await _db.Users
+            .Include(u => u.Role)
+            .Include(u => u.ModuleAccess)
+            .FirstOrDefaultAsync(u => u.Id == id && !u.Archived, cancellationToken);
         if (user is null)
         {
             return null;
         }
 
         ValidateFullName(request.FullName);
-        await EnsureRoleExistsAsync(request.RoleId, cancellationToken);
+        var role = await _db.Roles
+            .Include(r => r.ModuleAccess)
+            .FirstOrDefaultAsync(r => r.Id == request.RoleId && !r.Archived, cancellationToken)
+            ?? throw new InvalidOperationException("Role not found.");
 
         if (user.Role?.IsSystem == true && !request.IsActive)
         {
@@ -86,6 +103,9 @@ public class UserService : IUserService
             }
         }
 
+        var modules = ResolveRequestedModules(request.Modules, role);
+        UserModuleResolver.ValidateModules(modules, role.IsSystem);
+
         user.FullName = request.FullName.Trim();
         user.RoleId = request.RoleId;
         user.IsActive = request.IsActive;
@@ -95,6 +115,7 @@ public class UserService : IUserService
             user.PasswordHash = _passwordHasher.Hash(request.Password);
         }
 
+        UserModuleResolver.ApplyModules(user, modules, role.IsSystem);
         AuditHelper.SetUpdated(user);
         await _db.SaveChangesAsync(cancellationToken);
         return await GetByIdAsync(id, cancellationToken);
@@ -125,12 +146,20 @@ public class UserService : IUserService
         return true;
     }
 
-    private async Task EnsureRoleExistsAsync(Guid roleId, CancellationToken cancellationToken)
+    private static List<AppModule> ResolveRequestedModules(IEnumerable<AppModule> requested, AppRole role)
     {
-        if (!await _db.Roles.AnyAsync(r => r.Id == roleId && !r.Archived, cancellationToken))
+        var modules = requested.Distinct().ToList();
+        if (modules.Count == 0)
         {
-            throw new InvalidOperationException("Role not found.");
+            modules = role.ModuleAccess.Select(m => m.Module).Distinct().ToList();
         }
+
+        if (role.IsSystem)
+        {
+            return AppModuleCatalog.All.ToList();
+        }
+
+        return modules;
     }
 
     private static string ValidateUserName(string? userName)
@@ -168,6 +197,8 @@ public class UserService : IUserService
         RoleId = user.RoleId,
         RoleName = user.Role?.Name ?? string.Empty,
         IsActive = user.IsActive,
-        CreatedDate = user.CreatedDate
+        CreatedDate = user.CreatedDate,
+        Modules = UserModuleResolver.Resolve(user),
+        HasDirectModuleAccess = user.ModuleAccess.Count > 0
     };
 }

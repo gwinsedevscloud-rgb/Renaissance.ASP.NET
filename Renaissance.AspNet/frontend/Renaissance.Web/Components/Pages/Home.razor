@@ -1,44 +1,203 @@
 @page "/"
 @rendermode InteractiveServer
 @inject AuthStateService Auth
+@inject ReferralRealtimeService Referrals
+@inject RenaissanceApiClient Api
+@implements IDisposable
 
 <PageTitle>Home - Renaissance</PageTitle>
 
-<div class="hero-panel mb-4">
-    <div class="position-relative">
-        <h1 class="display-5 mb-3">
-            <i class="bi bi-heart-pulse me-2"></i>Renaissance
-        </h1>
-        <p class="lead mb-2">
-            Welcome back, @(Auth.User?.FullName ?? "colleague").
-        </p>
-        <p class="mb-4 opacity-75">
-            Signed in as <strong>@Auth.User?.RoleName</strong>. Open only the modules assigned to your role.
-        </p>
-        @if (Auth.HasModule(AppModule.Clients))
-        {
-            <a class="btn btn-light-hero btn-lg me-2" href="/patients">
-                <i class="bi bi-people-fill me-2"></i>Open Clients
-            </a>
-        }
-        @if (Auth.HasModule(AppModule.Stakeholders))
-        {
-            <a class="btn btn-outline-light btn-lg" href="/stakeholders">
-                <i class="bi bi-graph-up-arrow me-2"></i>Stakeholders Dashboard
-            </a>
-        }
-    </div>
-</div>
+<div class="home-dashboard">
+    <div class="hero-panel home-hero mb-3">
+        <div class="home-hero-glow home-hero-glow-light" aria-hidden="true"></div>
+        <div class="home-hero-grid" aria-hidden="true"></div>
 
-<div class="row g-3">
-    @foreach (var item in ModuleNav.All.Where(m => Auth.HasModule(m.Module) && m.Module != AppModule.ClientDashboard))
+        <div class="position-relative home-hero-layout">
+            <div class="home-hero-content">
+                <div class="home-hero-intro-block">
+                    <span class="home-hero-accent" aria-hidden="true"></span>
+                    <h1 class="home-hero-title mb-2">
+                        <i class="bi bi-heart-pulse me-2"></i>Renaissance
+                    </h1>
+                    <p class="lead mb-2">
+                        Welcome back, @(Auth.User?.FullName ?? "colleague").
+                    </p>
+                    <p class="home-hero-subtext mb-0">
+                        Signed in as <strong>@Auth.User?.RoleName</strong>. You have access to
+                        <strong>@ModuleCount module@(ModuleCount == 1 ? "" : "s")</strong>
+                        tailored to your role at @(string.IsNullOrWhiteSpace(_facilityName) ? "this facility" : _facilityName).
+                    </p>
+                </div>
+
+                <div class="home-hero-actions">
+                    @if (Auth.HasModule(AppModule.Clients))
+                    {
+                        <a class="btn btn-light-hero" href="/patients">
+                            <i class="bi bi-people-fill me-2"></i>Open Patients
+                        </a>
+                    }
+                    @if (Auth.HasModule(AppModule.Stakeholders))
+                    {
+                        <a class="btn btn-outline-light home-hero-btn-outline" href="/stakeholders">
+                            <i class="bi bi-graph-up-arrow me-2"></i>Stakeholders Dashboard
+                        </a>
+                    }
+                </div>
+
+                <div class="home-hero-writeup">
+                    <p class="home-hero-description">
+                        Renaissance brings patient registration, triage, consultations, pharmacy, laboratory,
+                        dental, eye care, and ancillary services into one connected workspace. Search for a patient,
+                        open their dashboard, and move them through each module with live referral notifications
+                        keeping your team aligned.
+                    </p>
+                </div>
+            </div>
+
+            <aside class="home-hero-aside">
+                <div class="home-hero-profile">
+                    <span class="home-hero-avatar">@ProfileInitials</span>
+                    <div class="home-hero-profile-text">
+                        <strong>@Auth.User?.FullName</strong>
+                        <span>@Auth.User?.UserName</span>
+                    </div>
+                </div>
+
+                <dl class="home-hero-stats">
+                    <div class="home-hero-stat">
+                        <dt>Modules</dt>
+                        <dd>@ModuleCount</dd>
+                    </div>
+                    <div class="home-hero-stat @(TotalPending > 0 ? "has-pending" : "")">
+                        <dt>Queue</dt>
+                        <dd>@TotalPending</dd>
+                    </div>
+                </dl>
+
+                @if (PendingModules.Count > 0)
+                {
+                    <div class="home-hero-queue">
+                        <span class="home-hero-queue-label">Waiting for you</span>
+                        <div class="home-hero-queue-list">
+                            @foreach (var item in PendingModules.Take(4))
+                            {
+                                var count = Referrals.GetPendingCount(item.Module);
+                                <a class="home-hero-queue-chip" href="@item.Href">
+                                    <i class="bi @item.Icon"></i>
+                                    @item.Label
+                                    <span class="home-hero-queue-count">@count</span>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="home-hero-status">
+                        <i class="bi bi-check-circle-fill"></i>
+                        No referrals waiting in your queues.
+                    </div>
+                }
+
+                <div class="home-hero-meta">
+                    @if (!string.IsNullOrWhiteSpace(_facilityName))
+                    {
+                        <span><i class="bi bi-hospital me-1"></i>@_facilityName</span>
+                    }
+                    <span><i class="bi bi-calendar3 me-1"></i>@DateTime.Now.ToString("dddd, d MMM yyyy")</span>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    @{
+        var modules = ModuleNav.All
+            .Where(m => Auth.HasModule(m.Module) && m.Module != AppModule.ClientDashboard)
+            .ToList();
+    }
+
+    @if (modules.Count > 0)
     {
-        <div class="col-md-4 col-lg-3">
-            <a class="feature-card text-decoration-none d-block h-100" href="@item.Href">
-                <div class="feature-icon feature-icon-teal"><i class="bi @item.Icon"></i></div>
-                <h2 class="h5 fw-semibold">@item.Label</h2>
-                <p class="text-muted mb-0">@item.Description</p>
-            </a>
+        <div class="row g-3 home-module-grid">
+            @for (var i = 0; i < modules.Count; i++)
+            {
+                var item = modules[i];
+                var accent = ModuleAccentClass(item.Module);
+                var pending = Referrals.GetPendingCount(item.Module);
+
+                <div class="col-md-4 col-lg-3 home-module-col" style="--home-stagger: @i">
+                    <a class="feature-card home-module-card @accent text-decoration-none d-block h-100" href="@item.Href">
+                        @if (pending > 0)
+                        {
+                            <span class="home-module-badge" title="@pending pending">@pending</span>
+                        }
+                        else
+                        {
+                            <span class="home-module-arrow" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
+                        }
+
+                        <div class="feature-icon home-module-icon @accent">
+                            <i class="bi @item.Icon"></i>
+                        </div>
+                        <h2 class="h5 fw-semibold">@item.Label</h2>
+                        <p class="text-muted mb-0">@item.Description</p>
+                    </a>
+                </div>
+            }
         </div>
     }
 </div>
+
+@code {
+    private string? _facilityName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Referrals.ModuleCountsChanged += OnCountsChanged;
+        await Referrals.EnsureConnectedAsync();
+
+        try
+        {
+            var settings = await Api.GetPublicSettingsAsync();
+            _facilityName = settings?.FacilityName;
+        }
+        catch
+        {
+            _facilityName = null;
+        }
+    }
+
+    private void OnCountsChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Referrals.ModuleCountsChanged -= OnCountsChanged;
+
+    private string ProfileInitials => ClientDisplayHelper.InitialsFromName(Auth.User?.FullName);
+
+    private int ModuleCount =>
+        ModuleNav.All.Count(m => Auth.HasModule(m.Module) && m.Module != AppModule.ClientDashboard);
+
+    private int TotalPending =>
+        ModuleNav.All.Where(m => Auth.HasModule(m.Module)).Sum(m => Referrals.GetPendingCount(m.Module));
+
+    private List<ModuleNavItem> PendingModules =>
+        ModuleNav.All
+            .Where(m => Auth.HasModule(m.Module) && Referrals.GetPendingCount(m.Module) > 0)
+            .OrderByDescending(m => Referrals.GetPendingCount(m.Module))
+            .ToList();
+
+    private static string ModuleAccentClass(AppModule module) => module switch
+    {
+        AppModule.Clients => "home-accent-teal",
+        AppModule.Triage => "home-accent-coral",
+        AppModule.Consultations => "home-accent-slate",
+        AppModule.Pharmacy => "home-accent-indigo",
+        AppModule.Laboratory => "home-accent-sky",
+        AppModule.Dental => "home-accent-amber",
+        AppModule.Ancillary => "home-accent-rose",
+        AppModule.Optometrists => "home-accent-violet",
+        AppModule.Ophthalmologists => "home-accent-emerald",
+        AppModule.Stakeholders => "home-accent-gold",
+        AppModule.Administration => "home-accent-charcoal",
+        _ => "home-accent-teal"
+    };
+}

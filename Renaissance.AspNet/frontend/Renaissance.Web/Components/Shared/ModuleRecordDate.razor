@@ -1,0 +1,18 @@
+<td class="@CssClass">
+    @if (Value is null)
+    {
+        <span class="record-empty-value">—</span>
+    }
+    else
+    {
+        <span class="record-date">
+            <i class="bi bi-calendar3"></i>
+            <small>@Value.Value.ToLocalTime().ToString("g")</small>
+        </span>
+    }
+</td>
+
+@code {
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+}

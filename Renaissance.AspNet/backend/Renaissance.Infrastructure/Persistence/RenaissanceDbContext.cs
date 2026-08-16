@@ -28,6 +28,10 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<AppRole> Roles => Set<AppRole>();
     public DbSet<RoleModuleAccess> RoleModuleAccess => Set<RoleModuleAccess>();
+    public DbSet<UserModuleAccess> UserModuleAccess => Set<UserModuleAccess>();
+    public DbSet<HospitalSettings> HospitalSettings => Set<HospitalSettings>();
+    public DbSet<HospitalModuleConfig> HospitalModuleConfigs => Set<HospitalModuleConfig>();
+    public DbSet<ModuleReferralLink> ModuleReferralLinks => Set<ModuleReferralLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -219,6 +223,17 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
                 .WithMany(r => r.Users)
                 .HasForeignKey(x => x.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.ModuleAccess)
+                .WithOne(m => m.User)
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserModuleAccess>(e =>
+        {
+            e.ToTable("user_module_access");
+            e.HasKey(x => new { x.UserId, x.Module });
+            e.Property(x => x.Module).HasConversion<string>().HasMaxLength(50);
         });
 
         modelBuilder.Entity<RoleModuleAccess>(e =>
@@ -230,6 +245,40 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
                 .WithMany(r => r.ModuleAccess)
                 .HasForeignKey(x => x.RoleId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<HospitalSettings>(e =>
+        {
+            e.ToTable("hospital_settings");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FacilityName).HasMaxLength(150).IsRequired();
+            e.Property(x => x.ClientNumberPrefix).HasMaxLength(10).IsRequired();
+            e.Property(x => x.WebAccessUrl).HasMaxLength(500);
+            e.Property(x => x.ApiAccessUrl).HasMaxLength(500);
+            e.Property(x => x.TimeZoneId).HasMaxLength(100).IsRequired();
+            e.Property(x => x.UpdatedBy).HasMaxLength(150);
+            e.HasData(new Domain.Entities.HospitalSettings
+            {
+                Id = 1,
+                FacilityName = "Renaissance Hospital",
+                ClientNumberPrefix = "ACH",
+                TimeZoneId = "UTC"
+            });
+        });
+
+        modelBuilder.Entity<HospitalModuleConfig>(e =>
+        {
+            e.ToTable("hospital_module_config");
+            e.HasKey(x => x.Module);
+            e.Property(x => x.Module).HasConversion<string>().HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<ModuleReferralLink>(e =>
+        {
+            e.ToTable("module_referral_link");
+            e.HasKey(x => new { x.SourceModule, x.TargetModule });
+            e.Property(x => x.SourceModule).HasConversion<string>().HasMaxLength(50);
+            e.Property(x => x.TargetModule).HasConversion<string>().HasMaxLength(50);
         });
     }
 }

@@ -483,6 +483,97 @@ public class RenaissanceApiClient
         response.EnsureSuccessStatusCode();
     }
 
+    // ----- Backups -----
+
+    public Task<List<BackupInfoDto>> GetBackupsAsync(CancellationToken ct = default)
+        => GetRequiredAsync<List<BackupInfoDto>>("api/backups", ct);
+
+    public async Task<BackupCreateResultDto> CreateBackupAsync(CancellationToken ct = default)
+    {
+        var response = await _http.PostAsync("api/backups", null, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<BackupCreateResultDto>(JsonOptions, ct))!;
+    }
+
+    public async Task<byte[]> DownloadBackupAsync(string fileName, CancellationToken ct = default)
+    {
+        var encoded = Uri.EscapeDataString(fileName);
+        var response = await _http.GetAsync($"api/backups/{encoded}/download", ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsByteArrayAsync(ct);
+    }
+
+    public async Task DeleteBackupAsync(string fileName, CancellationToken ct = default)
+    {
+        var encoded = Uri.EscapeDataString(fileName);
+        var response = await _http.DeleteAsync($"api/backups/{encoded}", ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+    }
+
+    public async Task<BackupRestoreResultDto> RestoreBackupAsync(Stream stream, string fileName, CancellationToken ct = default)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
+        content.Add(fileContent, "file", fileName);
+
+        var response = await _http.PostAsync("api/backups/restore", content, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<BackupRestoreResultDto>(JsonOptions, ct))!;
+    }
+
+    // ----- Settings -----
+
+    public Task<PublicHospitalSettingsDto?> GetPublicSettingsAsync(CancellationToken ct = default)
+        => GetOrDefaultAsync<PublicHospitalSettingsDto>("api/settings/public", ct);
+
+    public Task<HospitalSettingsDto> GetHospitalSettingsAsync(CancellationToken ct = default)
+        => GetRequiredAsync<HospitalSettingsDto>("api/settings", ct);
+
+    public Task<DeploymentInfoDto> GetDeploymentInfoAsync(CancellationToken ct = default)
+        => GetRequiredAsync<DeploymentInfoDto>("api/settings/deployment", ct);
+
+    public async Task<HospitalSettingsDto> UpdateHospitalSettingsAsync(UpdateHospitalSettingsRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PutAsJsonAsync("api/settings", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<HospitalSettingsDto>(JsonOptions, ct))!;
+    }
+
+    public Task<HospitalModulesConfigDto> GetHospitalModulesConfigAsync(CancellationToken ct = default)
+        => GetRequiredAsync<HospitalModulesConfigDto>("api/settings/modules", ct);
+
+    public async Task<HospitalModulesConfigDto> UpdateHospitalModulesConfigAsync(UpdateHospitalModulesRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PutAsJsonAsync("api/settings/modules", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<HospitalModulesConfigDto>(JsonOptions, ct))!;
+    }
+
+    public Task<HospitalModulesStateDto> GetActiveHospitalModulesAsync(CancellationToken ct = default)
+        => GetRequiredAsync<HospitalModulesStateDto>("api/settings/modules/active", ct);
+
+    // ----- Exports -----
+
+    public Task<List<ExportModuleInfoDto>> GetExportModulesAsync(CancellationToken ct = default)
+        => GetRequiredAsync<List<ExportModuleInfoDto>>("api/exports/modules", ct);
+
+    public async Task<ExportPreviewDto> PreviewExportAsync(ExportRecordsRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/exports/preview", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<ExportPreviewDto>(JsonOptions, ct))!;
+    }
+
+    public async Task<(byte[] Content, string FileName)> DownloadExportAsync(ExportRecordsRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/exports/download", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? $"renaissance-export-{DateTime.UtcNow:yyyyMMdd-HHmm}.xlsx";
+        return (await response.Content.ReadAsByteArrayAsync(ct), fileName);
+    }
+
     // ----- Helpers -----
 
     private static async Task EnsureSuccessWithMessageAsync(HttpResponseMessage response, CancellationToken ct)

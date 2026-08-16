@@ -2,7 +2,7 @@
 @rendermode InteractiveServer
 @inject RenaissanceApiClient Api
 
-<PageTitle>Client Details - Renaissance</PageTitle>
+<PageTitle>Patient Details - Renaissance</PageTitle>
 
 @if (_loading)
 {
@@ -10,8 +10,8 @@
 }
 else if (_patient is null)
 {
-    <EmptyPanel Icon="bi-exclamation-circle" Title="Client not found" Message="This client may have been archived or the link is invalid.">
-        <a class="btn btn-primary" href="/patients">All Clients</a>
+    <EmptyPanel Icon="bi-exclamation-circle" Title="Patient not found" Message="This patient may have been archived or the link is invalid.">
+        <a class="btn btn-primary" href="/patients">All Patients</a>
     </EmptyPanel>
 }
 else
@@ -33,7 +33,7 @@ else
             </div>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <a class="btn btn-primary" href="/client-dashboard/@_patient.Id">
+            <a class="btn btn-primary" href="/patient-dashboard/@_patient.Id">
                 <i class="bi bi-grid-1x2 me-1"></i> Dashboard
             </a>
             <a class="btn btn-outline-primary" href="/patients/edit/@_patient.Id">

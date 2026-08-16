@@ -1,0 +1,327 @@
+@page "/admin/export"
+
+@rendermode InteractiveServer
+
+@inject RenaissanceApiClient Api
+@inject IJSRuntime Js
+
+<PageTitle>Export records - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Export records"
+                Subtitle="Download filtered clinical data as a formatted Excel workbook"
+                Icon="bi-file-earmark-spreadsheet"
+                IconBgClass="feature-icon-blue">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="/admin/users">
+                <i class="bi bi-shield-lock me-1"></i> Admin
+            </a>
+        </Actions>
+    </PageHeader>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @_error
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading export options..." />
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="form-card">
+                    <FormSection Title="Filters"
+                                 Subtitle="Narrow the records included in the workbook"
+                                 Icon="bi-funnel"
+                                 IconBgClass="feature-icon-blue">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="fromDate">From date</label>
+                                <InputDate id="fromDate" class="form-control" @bind-Value="_fromDate" @bind-Value:after="SchedulePreviewAsync" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="toDate">To date</label>
+                                <InputDate id="toDate" class="form-control" @bind-Value="_toDate" @bind-Value:after="SchedulePreviewAsync" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="clientSearch">Patient filter</label>
+                                <InputText id="clientSearch"
+                                           class="form-control"
+                                           @bind-Value="_clientSearch"
+                                           @bind-Value:after="SchedulePreviewAsync"
+                                           placeholder="Optional — patient number or name" />
+                            </div>
+                            <div class="col-12">
+                                <label class="checkbox-card admin-user-status-card">
+                                    <div class="form-check m-0">
+                                        <InputCheckbox class="form-check-input" @bind-Value="_includeArchived" @bind-Value:after="SchedulePreviewAsync" id="includeArchived" />
+                                        <span class="form-check-label">
+                                            <strong>Include archived records</strong>
+                                            <span class="d-block small text-muted">Off by default — only active records are exported.</span>
+                                        </span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </FormSection>
+
+                    <FormSection Title="Modules"
+                                 Subtitle="Choose which sheets to include in the workbook"
+                                 Icon="bi-grid-3x3-gap"
+                                 IconBgClass="feature-icon-teal">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <div class="record-meta mb-0">
+                                <strong>@_selectedModules.Count</strong> of @_catalog.Count modules selected
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="SelectAllModules">Select all</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearModules">Clear</button>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 export-module-grid">
+                            @foreach (var module in _catalog)
+                            {
+                                var selected = _selectedModules.Contains(module.Module);
+                                <div class="col-md-6 col-xl-4">
+                                    <label class="module-access-card @(selected ? "selected" : "")">
+                                        <input class="module-access-input"
+                                               type="checkbox"
+                                               checked="@selected"
+                                               @onchange="e => ToggleModule(module.Module, e.Value)" />
+                                        <span class="module-access-icon feature-icon-teal">
+                                            <i class="bi @ModuleIcon(module.Module)"></i>
+                                        </span>
+                                        <span class="module-access-text">
+                                            <strong>@module.Name</strong>
+                                            <small>@module.Description</small>
+                                        </span>
+                                        <span class="module-access-check">
+                                            <i class="bi @(selected ? "bi-check-circle-fill" : "bi-circle")"></i>
+                                        </span>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </FormSection>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="section-card export-preview-card">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-violet"><i class="bi bi-table"></i></span>
+                        <div>
+                            <h2>Export preview</h2>
+                            <p class="text-muted small mb-0">Row counts for the current filters</p>
+                        </div>
+                    </div>
+
+                    @if (_previewing)
+                    {
+                        <LoadingState Message="Calculating row counts..." />
+                    }
+                    else if (_preview is null)
+                    {
+                        <p class="text-muted mb-0">Adjust filters to see how many records will be exported.</p>
+                    }
+                    else if (_preview.TotalRecords == 0)
+                    {
+                        <div class="export-preview-empty">
+                            <i class="bi bi-inbox"></i>
+                            <p class="mb-0">No records match the current filters.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="export-preview-total">
+                            <span>Total rows</span>
+                            <strong>@_preview.TotalRecords.ToString("N0")</strong>
+                        </div>
+                        <ul class="export-preview-list">
+                            @foreach (var item in _preview.Modules)
+                            {
+                                <li>
+                                    <span>@item.Name</span>
+                                    <span class="badge-count">@item.Count.ToString("N0")</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    <div class="export-preview-actions">
+                        <button type="button"
+                                class="btn btn-primary w-100"
+                                disabled="@(_exporting || _preview is null || _preview.TotalRecords == 0 || _selectedModules.Count == 0)"
+                                @onclick="ExportAsync">
+                            @if (_exporting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                <span>Building workbook...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-download me-1"></i>
+                                <span>Download Excel workbook</span>
+                            }
+                        </button>
+                        <p class="text-muted small mb-0 mt-2">
+                            Creates one worksheet per module plus a summary sheet with teal headers, filters, and alternating rows.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ExportModuleInfoDto> _catalog = [];
+    private HashSet<ExportRecordModule> _selectedModules = [];
+    private ExportPreviewDto? _preview;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private string? _clientSearch;
+    private bool _includeArchived;
+    private bool _loading = true;
+    private bool _previewing;
+    private bool _exporting;
+    private string? _error;
+    private CancellationTokenSource? _previewCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _catalog = await Api.GetExportModulesAsync();
+            _selectedModules = _catalog.Select(m => m.Module).ToHashSet();
+            await RefreshPreviewAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private ExportRecordsRequest BuildRequest() => new()
+    {
+        Modules = _selectedModules.OrderBy(m => (int)m).ToList(),
+        FromDate = _fromDate,
+        ToDate = _toDate,
+        IncludeArchived = _includeArchived,
+        ClientSearch = string.IsNullOrWhiteSpace(_clientSearch) ? null : _clientSearch.Trim()
+    };
+
+    private async Task SchedulePreviewAsync()
+    {
+        _previewCts?.Cancel();
+        _previewCts?.Dispose();
+        _previewCts = new CancellationTokenSource();
+        var token = _previewCts.Token;
+
+        try
+        {
+            await Task.Delay(350, token);
+            await RefreshPreviewAsync();
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private async Task RefreshPreviewAsync()
+    {
+        if (_selectedModules.Count == 0)
+        {
+            _preview = new ExportPreviewDto();
+            return;
+        }
+
+        _previewing = true;
+        _error = null;
+        try
+        {
+            _preview = await Api.PreviewExportAsync(BuildRequest());
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _previewing = false;
+        }
+    }
+
+    private async Task ExportAsync()
+    {
+        _exporting = true;
+        _error = null;
+        try
+        {
+            var (bytes, fileName) = await Api.DownloadExportAsync(BuildRequest());
+            const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            await Js.InvokeVoidAsync("renaissanceDownloadBytes", fileName, contentType, bytes);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _exporting = false;
+        }
+    }
+
+    private void SelectAllModules()
+    {
+        _selectedModules = _catalog.Select(m => m.Module).ToHashSet();
+        _ = SchedulePreviewAsync();
+    }
+
+    private void ClearModules()
+    {
+        _selectedModules = [];
+        _preview = new ExportPreviewDto();
+    }
+
+    private async Task ToggleModule(ExportRecordModule module, object? value)
+    {
+        var on = value is true || value?.ToString() == "True";
+        if (on)
+        {
+            _selectedModules.Add(module);
+        }
+        else
+        {
+            _selectedModules.Remove(module);
+        }
+
+        await SchedulePreviewAsync();
+    }
+
+    private static string ModuleIcon(ExportRecordModule module) => module switch
+    {
+        ExportRecordModule.Clients => "bi-people",
+        ExportRecordModule.Triage => "bi-activity",
+        ExportRecordModule.Consultations => "bi-clipboard2-pulse",
+        ExportRecordModule.Pharmacy => "bi-capsule",
+        ExportRecordModule.Laboratory => "bi-droplet-half",
+        ExportRecordModule.Dental => "bi-emoji-smile",
+        ExportRecordModule.Ancillary => "bi-bandaid",
+        ExportRecordModule.Optometrists => "bi-eye",
+        ExportRecordModule.Ophthalmologists => "bi-eye-fill",
+        ExportRecordModule.Referrals => "bi-arrow-left-right",
+        _ => "bi-grid"
+    };
+}

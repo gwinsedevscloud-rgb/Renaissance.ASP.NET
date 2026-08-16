@@ -336,7 +336,7 @@ public class StakeholdersDashboardService : IStakeholdersDashboardService
         var pharmacyNote = pendingPharmacy > 0
             ? $" {pendingPharmacy} pharmacy order(s) pending dispensation."
             : " Pharmacy queue is clear.";
-        return $"The platform serves {clients} registered client(s) with {encountersThisMonth} encounter(s) this month ({growthText} vs last month). " +
+        return $"The platform serves {clients} registered patient(s) with {encountersThisMonth} encounter(s) this month ({growthText} vs last month). " +
                $"Based on recent activity, projected monthly volume is ~{projectedEncounters:0} encounters.{pharmacyNote}";
     }
 }

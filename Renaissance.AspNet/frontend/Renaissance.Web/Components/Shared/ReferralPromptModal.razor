@@ -1,5 +1,6 @@
 @inject RenaissanceApiClient Api
 @inject NotificationService Notifications
+@inject HospitalModuleStateService ModuleState
 
 @if (Visible)
 {
@@ -12,8 +13,8 @@
                 <div class="referral-modal-header-text">
                     <h2 id="referral-modal-title" class="referral-modal-title">Refer to another module</h2>
                     <p class="referral-modal-subtitle">
-                        From <strong>@ModuleNav.DisplayName(SourceModule)</strong>
-                        · client <strong>@PatientName</strong>
+                        From <span class="referral-meta-chip">@ModuleNav.DisplayName(SourceModule)</span>
+                        for <span class="referral-meta-chip referral-meta-chip-client">@PatientName</span>
                     </p>
                 </div>
                 <button type="button" class="referral-modal-close" aria-label="Close" @onclick="SkipAsync">
@@ -27,7 +28,7 @@
                         <span class="referral-step">1</span>
                         <div>
                             <h3>Priority</h3>
-                            <p>How urgently should staff see this client?</p>
+                            <p>How urgently should staff see this patient?</p>
                         </div>
                     </div>
                     <div class="referral-priority-group" role="radiogroup" aria-label="Referral priority">
@@ -57,7 +58,7 @@
                         <span class="referral-step">2</span>
                         <div>
                             <h3>Destination modules</h3>
-                            <p>Select one or more departments for this client.</p>
+                            <p>Select one or more departments for this patient.</p>
                         </div>
                     </div>
                     <div class="referral-target-grid">
@@ -84,7 +85,7 @@
                         </div>
                     </div>
                     <textarea class="form-control referral-notes-input"
-                              rows="2"
+                              rows="3"
                               @bind="_notes"
                               placeholder="e.g. elevated BP, needs dental review…"></textarea>
                 </section>
@@ -115,7 +116,7 @@
                             <span class="spinner-border spinner-border-sm me-1"></span>
                         }
                         <i class="bi bi-send-check me-1"></i>
-                        Refer client
+                        Refer patient
                     </button>
                 </div>
             </footer>
@@ -126,7 +127,7 @@
 @code {
     [Parameter] public bool Visible { get; set; }
     [Parameter] public Guid PatientId { get; set; }
-    [Parameter] public string PatientName { get; set; } = "the client";
+    [Parameter] public string PatientName { get; set; } = "the patient";
     [Parameter] public AppModule SourceModule { get; set; } = AppModule.Triage;
     [Parameter] public Guid? SourceRecordId { get; set; }
     [Parameter] public EventCallback OnSkipped { get; set; }
@@ -145,7 +146,8 @@
     ];
 
     private IEnumerable<ModuleNavItem> AvailableTargets =>
-        ModuleNav.ReferralTargets.Where(t => t.Module != SourceModule);
+        ModuleState.FilterNavItems(ModuleState.GetReferralTargets(SourceModule))
+            .Where(t => t.Module != SourceModule);
 
     private void SelectPriority(ReferralPriority priority) => _priority = priority;
 
@@ -186,7 +188,7 @@
             });
 
             var msg = result.Created.Count > 0
-                ? $"Client referred to {result.Created.Count} module(s)."
+                ? $"Patient referred to {result.Created.Count} module(s)."
                 : "No new referrals created.";
             if (result.SkippedDuplicates.Count > 0)
             {

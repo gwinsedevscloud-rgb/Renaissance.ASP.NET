@@ -13,7 +13,7 @@ else
     <PageHeader Title="Edit Ophthalmologist Visit" Icon="bi-eye-fill" />
     <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
         <OphthalmologistForm Model="_vm" />
-        <FormActions SaveLabel="Update" CancelHref="@($"/client-dashboard/{_vm.PatientId}")" />
+        <FormActions SaveLabel="Update" CancelHref="@($"/patient-dashboard/{_vm.PatientId}")" />
     </EditForm>
     <button class="btn btn-outline-danger mt-2" @onclick="ArchiveAsync"><i class="bi bi-archive me-1"></i> Archive</button>
 }
@@ -37,7 +37,7 @@ else
         entity.Id = Id;
         await Api.UpdateOphthalmologistAsync(Id, entity);
         Notifications.ShowSuccess("Ophthalmologist visit updated.");
-        Nav.NavigateTo($"/client-dashboard/{_vm.PatientId}");
+        Nav.NavigateTo($"/patient-dashboard/{_vm.PatientId}");
     }
 
     private async Task ArchiveAsync()
@@ -45,7 +45,7 @@ else
         var e = await Api.GetOphthalmologistAsync(Id);
         if (e is null) return;
         await Api.DeleteOphthalmologistAsync(Id);
-        Nav.NavigateTo($"/client-dashboard/{e.PatientId}");
+        Nav.NavigateTo($"/patient-dashboard/{e.PatientId}");
     }
 
     private static OphthalmologistFormViewModel ToVm(Ophthalmologist e) => new()

@@ -4,116 +4,131 @@
 @inject ReferralRealtimeService Realtime
 @implements IDisposable
 
-<div class="referral-queue-panel @( _items.Count > 0 ? "has-items" : "")">
-    <div class="referral-queue-header">
+<div class="referral-queue-panel @(_items.Count > 0 ? "has-items" : "") @(_expanded ? "is-expanded" : "is-collapsed")">
+    <button type="button" class="referral-queue-header referral-queue-toggle" @onclick="ToggleExpanded" aria-expanded="@_expanded">
         <div class="referral-queue-title">
             <span class="referral-queue-icon"><i class="bi bi-inboxes"></i></span>
             <div>
                 <h2>Referral queue</h2>
-                <p>Priority first, then first come first served</p>
+                @if (_expanded || _pendingCount > 0)
+                {
+                    <p>Priority first, then first come first served</p>
+                }
+                else
+                {
+                    <p class="referral-queue-collapsed-hint">Queue empty — expand to view details</p>
+                }
             </div>
         </div>
-        @if (_pendingCount > 0)
-        {
-            <span class="referral-queue-badge">@_pendingCount waiting</span>
-        }
-    </div>
-
-    @if (_loading)
-    {
-        <LoadingState Message="Loading referral queue..." />
-    }
-    else if (_items.Count == 0)
-    {
-        <div class="referral-queue-empty">
-            <i class="bi bi-inbox"></i>
-            <p>No clients waiting. Referrals appear here automatically with live updates.</p>
-        </div>
-    }
-    else
-    {
-        <div class="referral-queue-list">
-            @foreach (var item in _items)
+        <div class="referral-queue-header-badges">
+            @if (_pendingCount > 0)
             {
-                <article class="referral-queue-item @StatusClass(item) @(item.IsSlaBreached ? "sla-breached" : "")">
-                    <div class="referral-queue-position">@item.QueuePosition</div>
-                    <div class="referral-queue-body">
-                        <div class="referral-queue-top">
-                            <strong>@item.PatientFullName</strong>
-                            <span class="client-number">@item.ClientNumber</span>
-                            <span class="referral-priority-chip @ReferralDisplayHelper.PriorityClass(item.Priority)">
-                                @ReferralDisplayHelper.PriorityLabel(item.Priority)
-                            </span>
-                        </div>
-                        <div class="referral-queue-meta">
-                            <span class="@(item.IsSlaBreached ? "text-danger fw-semibold" : "")">
-                                <i class="bi bi-hourglass-split"></i> @ReferralDisplayHelper.WaitLabel(item.WaitMinutes)
-                            </span>
-                            @if (item.PatientAge is not null)
-                            {
-                                <span><i class="bi bi-calendar3"></i> @item.PatientAge @item.PatientAgeUnit</span>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(item.PatientSex))
-                            {
-                                <span><i class="bi bi-gender-ambiguous"></i> @item.PatientSex</span>
-                            }
-                            <span><i class="bi bi-arrow-left-right"></i> from @ModuleNav.DisplayName(item.SourceModule)</span>
-                            @if (!string.IsNullOrWhiteSpace(item.ReferredBy))
-                            {
-                                <span><i class="bi bi-person"></i> by @item.ReferredBy</span>
-                            }
-                        </div>
-                        @if (!string.IsNullOrWhiteSpace(item.Notes))
-                        {
-                            <p class="referral-queue-notes"><i class="bi bi-chat-left-text me-1"></i>@item.Notes</p>
-                        }
-                        @if (item.Status == ReferralStatus.InProgress && !string.IsNullOrWhiteSpace(item.AttendedBy))
-                        {
-                            <p class="referral-queue-attending"><i class="bi bi-person-check me-1"></i>Attending: @item.AttendedBy</p>
-                        }
-                    </div>
-                    <div class="referral-queue-actions">
-                        @if (item.Status == ReferralStatus.Pending)
-                        {
-                            <button type="button" class="btn btn-primary btn-sm" disabled="@_busyId.HasValue" @onclick="() => AttendAsync(item)">
-                                <i class="bi bi-person-lines-fill me-1"></i> Attend
-                            </button>
-                        }
-                        else
-                        {
-                            <a class="btn btn-primary btn-sm" href="@ModuleNav.CreateHref(Module, item.PatientId)">
-                                <i class="bi bi-arrow-right-circle me-1"></i> Continue
-                            </a>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(_busyId == item.Id)" @onclick="() => ReturnAsync(item)">
-                                Return
-                            </button>
-                            <button type="button" class="btn btn-outline-success btn-sm" disabled="@(_busyId == item.Id)" @onclick="() => CompleteAsync(item)">
-                                Done
-                            </button>
-                        }
-                        @if (_reassignId == item.Id)
-                        {
-                            <div class="referral-reassign-box">
-                                <select class="form-select form-select-sm" @bind="_reassignTarget">
-                                    @foreach (var target in ModuleNav.ReferralTargets.Where(t => t.Module != Module))
-                                    {
-                                        <option value="@target.Module">@target.Label</option>
-                                    }
-                                </select>
-                                <button type="button" class="btn btn-sm btn-warning" @onclick="() => ReassignAsync(item)">Reassign</button>
-                                <button type="button" class="btn btn-sm btn-link" @onclick="() => _reassignId = null">Cancel</button>
-                            </div>
-                        }
-                        else
-                        {
-                            <button type="button" class="btn btn-outline-warning btn-sm" @onclick="() => ShowReassign(item)">
-                                <i class="bi bi-shuffle me-1"></i> Reassign
-                            </button>
-                        }
-                    </div>
-                </article>
+                <span class="referral-queue-badge">@_pendingCount waiting</span>
             }
+            <span class="referral-queue-chevron" aria-hidden="true">
+                <i class="bi @(_expanded ? "bi-chevron-up" : "bi-chevron-down")"></i>
+            </span>
         </div>
+    </button>
+
+    @if (_expanded)
+    {
+        @if (_loading)
+        {
+            <LoadingState Message="Loading referral queue..." />
+        }
+        else if (_items.Count == 0)
+        {
+            <div class="referral-queue-empty">
+                <i class="bi bi-inbox"></i>
+                <p>No patients waiting. Referrals appear here automatically with live updates.</p>
+            </div>
+        }
+        else
+        {
+            <div class="referral-queue-list">
+                @foreach (var item in _items)
+                {
+                    <article class="referral-queue-item @StatusClass(item) @(item.IsSlaBreached ? "sla-breached" : "")">
+                        <div class="referral-queue-position">@item.QueuePosition</div>
+                        <div class="referral-queue-body">
+                            <div class="referral-queue-top">
+                                <strong>@item.PatientFullName</strong>
+                                <span class="client-number">@item.ClientNumber</span>
+                                <span class="referral-priority-chip @ReferralDisplayHelper.PriorityClass(item.Priority)">
+                                    @ReferralDisplayHelper.PriorityLabel(item.Priority)
+                                </span>
+                            </div>
+                            <div class="referral-queue-meta">
+                                <span class="@(item.IsSlaBreached ? "text-danger fw-semibold" : "")">
+                                    <i class="bi bi-hourglass-split"></i> @ReferralDisplayHelper.WaitLabel(item.WaitMinutes)
+                                </span>
+                                @if (item.PatientAge is not null)
+                                {
+                                    <span><i class="bi bi-calendar3"></i> @item.PatientAge @item.PatientAgeUnit</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(item.PatientSex))
+                                {
+                                    <span><i class="bi bi-gender-ambiguous"></i> @item.PatientSex</span>
+                                }
+                                <span><i class="bi bi-arrow-left-right"></i> from @ModuleNav.DisplayName(item.SourceModule)</span>
+                                @if (!string.IsNullOrWhiteSpace(item.ReferredBy))
+                                {
+                                    <span><i class="bi bi-person"></i> by @item.ReferredBy</span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(item.Notes))
+                            {
+                                <p class="referral-queue-notes"><i class="bi bi-chat-left-text me-1"></i>@item.Notes</p>
+                            }
+                            @if (item.Status == ReferralStatus.InProgress && !string.IsNullOrWhiteSpace(item.AttendedBy))
+                            {
+                                <p class="referral-queue-attending"><i class="bi bi-person-check me-1"></i>Attending: @item.AttendedBy</p>
+                            }
+                        </div>
+                        <div class="referral-queue-actions">
+                            @if (item.Status == ReferralStatus.Pending)
+                            {
+                                <button type="button" class="btn btn-primary btn-sm" disabled="@_busyId.HasValue" @onclick="() => AttendAsync(item)">
+                                    <i class="bi bi-person-lines-fill me-1"></i> Attend
+                                </button>
+                            }
+                            else
+                            {
+                                <a class="btn btn-primary btn-sm" href="@ModuleNav.QueueActionHref(Module, item.PatientId)">
+                                    <i class="bi bi-arrow-right-circle me-1"></i> Continue
+                                </a>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(_busyId == item.Id)" @onclick="() => ReturnAsync(item)">
+                                    Return
+                                </button>
+                                <button type="button" class="btn btn-outline-success btn-sm" disabled="@(_busyId == item.Id)" @onclick="() => CompleteAsync(item)">
+                                    Done
+                                </button>
+                            }
+                            @if (_reassignId == item.Id)
+                            {
+                                <div class="referral-reassign-box">
+                                    <select class="form-select form-select-sm" @bind="_reassignTarget">
+                                        @foreach (var target in ModuleNav.ReferralTargets.Where(t => t.Module != Module))
+                                        {
+                                            <option value="@target.Module">@target.Label</option>
+                                        }
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-warning" @onclick="() => ReassignAsync(item)">Reassign</button>
+                                    <button type="button" class="btn btn-sm btn-link" @onclick="() => _reassignId = null">Cancel</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-outline-warning btn-sm" @onclick="() => ShowReassign(item)">
+                                    <i class="bi bi-shuffle me-1"></i> Reassign
+                                </button>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        }
     }
 </div>
 
@@ -122,6 +137,8 @@
     public AppModule Module { get; set; }
 
     private bool _loading = true;
+    private bool _expanded;
+    private bool _userExpandedWhileEmpty;
     private int _pendingCount;
     private List<ReferralQueueItem> _items = [];
     private Guid? _busyId;
@@ -157,13 +174,40 @@
             _items = [];
             _pendingCount = 0;
             _loading = false;
+            UpdateExpandedState();
             return;
         }
 
-        _loading = _items.Count == 0;
+        _loading = _expanded && _items.Count == 0;
         _items = await Api.GetReferralQueueAsync(Module);
         _pendingCount = _items.Count(i => i.Status == ReferralStatus.Pending);
         _loading = false;
+        UpdateExpandedState();
+    }
+
+    private void UpdateExpandedState()
+    {
+        if (_items.Count > 0)
+        {
+            _expanded = true;
+            _userExpandedWhileEmpty = false;
+            return;
+        }
+
+        if (!_userExpandedWhileEmpty)
+        {
+            _expanded = false;
+        }
+    }
+
+    private void ToggleExpanded()
+    {
+        _expanded = !_expanded;
+
+        if (_items.Count == 0)
+        {
+            _userExpandedWhileEmpty = _expanded;
+        }
     }
 
     private async Task AttendAsync(ReferralQueueItem item)
@@ -172,7 +216,7 @@
         try
         {
             await Api.ClaimReferralAsync(item.Id);
-            Nav.NavigateTo(ModuleNav.CreateHref(Module, item.PatientId));
+            Nav.NavigateTo(ModuleNav.QueueActionHref(Module, item.PatientId));
         }
         finally { _busyId = null; }
     }

@@ -6,10 +6,10 @@
 
 <PageTitle>New Prescription - Renaissance</PageTitle>
 
-@if (!_exists) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Client not found.</div> }
+@if (!_exists) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Patient not found.</div> }
 else
 {
-    <PageHeader Title="New Prescription" Subtitle="Prescribe medication for this client" Icon="bi-prescription2" IconBgClass="feature-icon-violet" />
+    <PageHeader Title="New Prescription" Subtitle="Prescribe medication for this patient" Icon="bi-prescription2" IconBgClass="feature-icon-violet" />
     <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
         <div class="row g-3">
             <div class="col-md-4"><label class="form-label"><i class="bi bi-tag me-1"></i>Drug Category</label><InputText class="form-control" @bind-Value="_model.DrugCategory" /></div>
@@ -18,10 +18,10 @@ else
             <div class="col-md-4"><label class="form-label">Frequency</label><InputText class="form-control" @bind-Value="_model.Frequency" /></div>
             <div class="col-md-4"><label class="form-label">Duration</label><InputText class="form-control" @bind-Value="_model.Duration" /></div>
         </div>
-        <FormActions SaveLabel="Save Prescription" SaveIcon="bi-prescription2" CancelHref="@($"/client-dashboard/{PatientId}")" Saving="_saving" />
+        <FormActions SaveLabel="Save Prescription" SaveIcon="bi-prescription2" CancelHref="@($"/patient-dashboard/{PatientId}")" Saving="_saving" />
     </EditForm>
 
-    <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the client")"
+    <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the patient")"
                          SourceModule="AppModule.Pharmacy" SourceRecordId="_savedId" OnSkipped="FinishAsync" OnCompleted="FinishAsync" />
 }
 
@@ -57,5 +57,5 @@ else
         finally { _saving = false; }
     }
 
-    private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/client-dashboard/{PatientId}"); return Task.CompletedTask; }
+    private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/patient-dashboard/{PatientId}"); return Task.CompletedTask; }
 }

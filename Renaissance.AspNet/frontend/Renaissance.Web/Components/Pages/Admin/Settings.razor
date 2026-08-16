@@ -1,0 +1,215 @@
+@page "/admin/settings"
+
+@rendermode InteractiveServer
+
+@inject RenaissanceApiClient Api
+@inject IJSRuntime Js
+
+<PageTitle>Settings - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Hospital settings"
+                Subtitle="Configure facility details, LAN access, and which clinical services are active"
+                Icon="bi-gear">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="/admin/users">
+                <i class="bi bi-people me-1"></i> Users
+            </a>
+        </Actions>
+    </PageHeader>
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @_message
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _message = null"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @_error
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading settings..." />
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="section-card p-4">
+                    <h2 class="h5 mb-3"><i class="bi bi-hospital me-2"></i>Facility</h2>
+                    <EditForm Model="_form" OnValidSubmit="SaveAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label" for="facilityName">Hospital / facility name</label>
+                            <InputText id="facilityName" class="form-control" @bind-Value="_form.FacilityName" />
+                            <div class="form-text">Shown on the login screen and in the app header.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="clientPrefix">Patient number prefix</label>
+                            <InputText id="clientPrefix" class="form-control" maxlength="10" @bind-Value="_form.ClientNumberPrefix" />
+                            <div class="form-text">Used when generating new patient numbers (e.g. ACH0001).</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="timeZone">Time zone</label>
+                            <InputText id="timeZone" class="form-control" @bind-Value="_form.TimeZoneId" />
+                            <div class="form-text">Windows time zone ID, e.g. UTC or W. Central Africa Standard Time.</div>
+                        </div>
+
+                        <button class="btn btn-primary" type="submit" disabled="@_saving">
+                            @if (_saving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            }
+                            Save facility settings
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="section-card p-4">
+                    <h2 class="h5 mb-3"><i class="bi bi-wifi me-2"></i>LAN access</h2>
+                    <p class="text-muted small">
+                        Other computers on the hospital network open this address in a web browser.
+                        Run <code>start-lan.ps1</code> on the server so the app listens on all network interfaces.
+                    </p>
+
+                    @if (_deployment is not null)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Staff access URL</label>
+                            <div class="input-group">
+                                <InputText class="form-control" @bind-Value="_form.WebAccessUrl" placeholder="@_deployment.SuggestedStaffUrl" />
+                                <button class="btn btn-outline-secondary" type="button" @onclick="() => CopyUrlAsync(_form.WebAccessUrl, _deployment.SuggestedStaffUrl)">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Suggested: <code>@_deployment.SuggestedStaffUrl</code></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">API URL (reference)</label>
+                            <InputText class="form-control" @bind-Value="_form.ApiAccessUrl" placeholder="@_deployment.SuggestedApiUrl" />
+                            <div class="form-text">The web app on the server calls the API locally; this is mainly for documentation.</div>
+                        </div>
+
+                        <div class="record-meta mb-3">
+                            @if (_deployment.LanReady)
+                            {
+                                <span class="sex-pill sex-male"><i class="bi bi-check-circle me-1"></i> LAN mode ready</span>
+                            }
+                            else
+                            {
+                                <span class="sex-pill sex-other"><i class="bi bi-exclamation-circle me-1"></i> Use start-lan.ps1 on the server</span>
+                            }
+                        </div>
+
+                        @if (_deployment.LocalIpAddresses.Count > 0)
+                        {
+                            <div class="mb-3">
+                                <div class="form-label">Server IP addresses on this network</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var ip in _deployment.LocalIpAddresses)
+                                    {
+                                        <span class="module-chip">@ip</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="mb-0">
+                            <div class="form-label">Deployment checklist</div>
+                            <ol class="small text-muted ps-3 mb-0">
+                                @foreach (var step in _deployment.SetupSteps)
+                                {
+                                    <li class="mb-1">@step</li>
+                                }
+                            </ol>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <ModuleServicesSettings OnMessage="msg => _message = msg" OnError="err => _error = err" />
+    }
+</div>
+
+@code {
+    private UpdateHospitalSettingsRequest _form = new();
+    private DeploymentInfoDto? _deployment;
+    private bool _loading = true;
+    private bool _saving;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var settings = await Api.GetHospitalSettingsAsync();
+            _form = new UpdateHospitalSettingsRequest
+            {
+                FacilityName = settings.FacilityName,
+                ClientNumberPrefix = settings.ClientNumberPrefix,
+                WebAccessUrl = settings.WebAccessUrl,
+                ApiAccessUrl = settings.ApiAccessUrl,
+                TimeZoneId = settings.TimeZoneId
+            };
+            _deployment = await Api.GetDeploymentInfoAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            await Api.UpdateHospitalSettingsAsync(_form);
+            _message = "Settings saved.";
+            _deployment = await Api.GetDeploymentInfoAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task CopyUrlAsync(string configured, string suggested)
+    {
+        var url = string.IsNullOrWhiteSpace(configured) ? suggested : configured;
+        await Js.InvokeVoidAsync("renaissanceCopyText", url);
+        _message = "URL copied to clipboard.";
+    }
+}

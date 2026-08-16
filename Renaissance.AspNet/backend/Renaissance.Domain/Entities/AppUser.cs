@@ -10,4 +10,5 @@ public class AppUser : AuditEntity
     public bool IsActive { get; set; } = true;
 
     public AppRole? Role { get; set; }
+    public ICollection<UserModuleAccess> ModuleAccess { get; set; } = new List<UserModuleAccess>();
 }

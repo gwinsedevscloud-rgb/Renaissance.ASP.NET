@@ -20,6 +20,10 @@ public interface IApplicationDbContext
     DbSet<AppUser> Users { get; }
     DbSet<AppRole> Roles { get; }
     DbSet<RoleModuleAccess> RoleModuleAccess { get; }
+    DbSet<UserModuleAccess> UserModuleAccess { get; }
+    DbSet<HospitalSettings> HospitalSettings { get; }
+    DbSet<HospitalModuleConfig> HospitalModuleConfigs { get; }
+    DbSet<ModuleReferralLink> ModuleReferralLinks { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

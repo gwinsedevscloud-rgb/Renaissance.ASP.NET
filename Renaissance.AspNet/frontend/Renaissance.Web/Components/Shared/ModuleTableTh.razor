@@ -1,0 +1,12 @@
+<th class="@CssClass">
+    <span class="module-th-label">
+        <i class="bi @Icon"></i>
+        <span>@Label</span>
+    </span>
+</th>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Icon { get; set; } = "bi-dot";
+    [Parameter] public string? CssClass { get; set; }
+}

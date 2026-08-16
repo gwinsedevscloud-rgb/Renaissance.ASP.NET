@@ -2,6 +2,7 @@
 @inject NotificationService Notifications
 @inject NavigationManager Nav
 @inject AuthStateService Auth
+@inject RenaissanceApiClient Api
 @implements IDisposable
 
 <div class="ren-app-shell">
@@ -21,7 +22,7 @@
             <div class="container">
                 <a class="navbar-brand" href="/">
                     <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
-                    <span class="brand-text">Renaissance</span>
+                    <span class="brand-text">@(_facilityName ?? "Renaissance")</span>
                 </a>
                 <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -37,7 +38,7 @@
                         {
                             <li class="nav-item">
                                 <a class="nav-link @(_clientsActive ? "active" : "")" href="/patients">
-                                    <i class="bi bi-people me-1"></i> Clients
+                                    <i class="bi bi-people me-1"></i> Patients
                                 </a>
                             </li>
                         }
@@ -77,6 +78,9 @@
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="/admin/users"><i class="bi bi-people me-2"></i>Users</a></li>
                                     <li><a class="dropdown-item" href="/admin/roles"><i class="bi bi-key me-2"></i>Roles &amp; modules</a></li>
+                                    <li><a class="dropdown-item" href="/admin/settings"><i class="bi bi-gear me-2"></i>Settings</a></li>
+                                    <li><a class="dropdown-item" href="/admin/backup"><i class="bi bi-cloud-arrow-down me-2"></i>Backup</a></li>
+                                    <li><a class="dropdown-item" href="/admin/export"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export records</a></li>
                                 </ul>
                             </li>
                         }
@@ -149,12 +153,27 @@
     private bool _adminActive;
     private bool _denied;
     private List<ModuleNavItem> _clinical = [];
+    private string? _facilityName;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         Auth.Changed += OnAuthChanged;
         _successMessage = Notifications.TakeMessage();
         ApplyRouteState();
+        await LoadFacilityNameAsync();
+    }
+
+    private async Task LoadFacilityNameAsync()
+    {
+        try
+        {
+            var settings = await Api.GetPublicSettingsAsync();
+            _facilityName = settings?.FacilityName;
+        }
+        catch
+        {
+            _facilityName = null;
+        }
     }
 
     private void OnAuthChanged() => InvokeAsync(StateHasChanged);
@@ -174,6 +193,7 @@
         _clinical = ModuleNav.Clinical.Where(m => Auth.HasModule(m.Module)).ToList();
         _homeActive = string.IsNullOrEmpty(path);
         _clientsActive = path.StartsWith("patients", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("patient-dashboard", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("client-dashboard", StringComparison.OrdinalIgnoreCase);
         _clinicalActive = _clinical.Any(m => path.StartsWith(m.Href.TrimStart('/'), StringComparison.OrdinalIgnoreCase));
         _stakeholdersActive = path.StartsWith("stakeholders", StringComparison.OrdinalIgnoreCase);

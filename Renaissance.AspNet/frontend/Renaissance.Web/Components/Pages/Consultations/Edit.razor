@@ -13,11 +13,11 @@ else
     <PageHeader Title="Edit Consultation" Icon="bi-clipboard2-pulse" IconBgClass="feature-icon-blue" />
     <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
         <ConsultationForm Model="_vm" />
-        <FormActions SaveLabel="Update" CancelHref="@($"/client-dashboard/{_vm.PatientId}")" Saving="_saving" />
+        <FormActions SaveLabel="Update" CancelHref="@($"/patient-dashboard/{_vm.PatientId}")" Saving="_saving" />
     </EditForm>
     <button class="btn btn-outline-danger mt-2" @onclick="ArchiveAsync"><i class="bi bi-archive me-1"></i> Archive</button>
 
-    <ReferralPromptModal Visible="_showReferral" PatientId="_vm.PatientId" PatientName="@(_patientName ?? "the client")"
+    <ReferralPromptModal Visible="_showReferral" PatientId="_vm.PatientId" PatientName="@(_patientName ?? "the patient")"
                          SourceModule="AppModule.Consultations" SourceRecordId="Id" OnSkipped="FinishReferralAsync" OnCompleted="FinishReferralAsync" />
 }
 
@@ -57,7 +57,7 @@ else
             }
             else
             {
-                Nav.NavigateTo($"/client-dashboard/{_vm.PatientId}");
+                Nav.NavigateTo($"/patient-dashboard/{_vm.PatientId}");
             }
         }
         finally { _saving = false; }
@@ -78,7 +78,7 @@ else
         _showReferral = false;
         if (_vm is not null)
         {
-            Nav.NavigateTo($"/client-dashboard/{_vm.PatientId}");
+            Nav.NavigateTo($"/patient-dashboard/{_vm.PatientId}");
         }
         return Task.CompletedTask;
     }
@@ -88,7 +88,7 @@ else
         var e = await Api.GetConsultationAsync(Id);
         if (e is null) return;
         await Api.DeleteConsultationAsync(Id);
-        Nav.NavigateTo($"/client-dashboard/{e.PatientId}");
+        Nav.NavigateTo($"/patient-dashboard/{e.PatientId}");
     }
 
     private static ConsultationFormViewModel ToVm(Consultation e) => new()

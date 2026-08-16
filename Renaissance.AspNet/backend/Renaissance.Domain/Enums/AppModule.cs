@@ -22,7 +22,7 @@ public static class AppModuleCatalog
 
     public static string DisplayName(AppModule module) => module switch
     {
-        AppModule.Clients => "Clients",
+        AppModule.Clients => "Patients",
         AppModule.Triage => "Triage",
         AppModule.Consultations => "Consultations",
         AppModule.Pharmacy => "Pharmacy",
@@ -31,7 +31,7 @@ public static class AppModuleCatalog
         AppModule.Ancillary => "Ancillary",
         AppModule.Optometrists => "Optometrists",
         AppModule.Ophthalmologists => "Ophthalmologists",
-        AppModule.ClientDashboard => "Client Dashboard",
+        AppModule.ClientDashboard => "Patient Dashboard",
         AppModule.Stakeholders => "Stakeholders",
         AppModule.Administration => "Administration",
         _ => module.ToString()
@@ -39,7 +39,7 @@ public static class AppModuleCatalog
 
     public static string Description(AppModule module) => module switch
     {
-        AppModule.Clients => "Register and manage outpatient clients.",
+        AppModule.Clients => "Register and manage outpatient patients.",
         AppModule.Triage => "Record vitals and medical history.",
         AppModule.Consultations => "General consultations, diagnosis, and referrals.",
         AppModule.Pharmacy => "Prescribe medications and dispense drugs.",
@@ -48,7 +48,7 @@ public static class AppModuleCatalog
         AppModule.Ancillary => "Ancillary services such as family planning.",
         AppModule.Optometrists => "Optometry exams and glasses dispensation.",
         AppModule.Ophthalmologists => "Ophthalmology diagnosis, treatment, and surgery.",
-        AppModule.ClientDashboard => "Full clinical history for a single client.",
+        AppModule.ClientDashboard => "Full clinical history for a single patient.",
         AppModule.Stakeholders => "Operational KPIs and analytics.",
         AppModule.Administration => "Manage users, roles, and module access.",
         _ => string.Empty

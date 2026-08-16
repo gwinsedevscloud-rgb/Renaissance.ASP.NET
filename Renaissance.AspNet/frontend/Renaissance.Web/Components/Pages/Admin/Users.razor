@@ -1,91 +1,106 @@
-@page "/admin/users"
-@rendermode InteractiveServer
-@inject RenaissanceApiClient Api
-
-<PageTitle>Users - Renaissance</PageTitle>
-
-<div class="module-page">
-    <PageHeader Title="Users" Subtitle="Create accounts and assign a role" Icon="bi-people">
-        <Actions>
-            <a class="btn btn-outline-secondary" href="/admin/roles">
-                <i class="bi bi-key me-1"></i> Roles
-            </a>
-            <a class="btn btn-primary" href="/admin/users/create">
-                <i class="bi bi-plus-lg me-1"></i> New user
-            </a>
-        </Actions>
-    </PageHeader>
-
-    @if (_loading)
-    {
-        <LoadingState Message="Loading users..." />
-    }
-    else if (_users.Count == 0)
-    {
-        <EmptyPanel Icon="bi-people" Title="No users yet" Message="Create the first account and assign a role.">
-            <a class="btn btn-primary" href="/admin/users/create">
-                <i class="bi bi-plus-lg me-1"></i> New user
-            </a>
-        </EmptyPanel>
-    }
-    else
-    {
-        <div class="record-meta"><strong>@_users.Count</strong> users</div>
-        <div class="section-card table-card p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Username</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var user in _users)
-                    {
-                        <tr>
-                            <td>
-                                <div class="client-cell">
-                                    <span class="client-avatar">@ClientDisplayHelper.InitialsFromName(user.FullName)</span>
-                                    <strong>@user.FullName</strong>
-                                </div>
-                            </td>
-                            <td><code>@user.UserName</code></td>
-                            <td><span class="module-chip">@user.RoleName</span></td>
-                            <td>
-                                @if (user.IsActive)
-                                {
-                                    <span class="sex-pill sex-male">Active</span>
-                                }
-                                else
-                                {
-                                    <span class="sex-pill sex-other">Disabled</span>
-                                }
-                            </td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="/admin/users/edit/@user.Id">
-                                    <i class="bi bi-pencil"></i> Edit
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    }
-</div>
-
-@code {
-    private List<UserDto> _users = [];
-    private bool _loading = true;
-
-    protected override async Task OnInitializedAsync()
-    {
-        _users = await Api.GetUsersAsync();
-        _loading = false;
-    }
-}
+@page "/admin/users"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+
+<PageTitle>Users - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Users &amp; staff access"
+                Subtitle="Create accounts and assign the modules each staff member can use"
+                Icon="bi-people">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="/admin/roles">
+                <i class="bi bi-key me-1"></i> Role templates
+            </a>
+            <a class="btn btn-primary" href="/admin/users/create">
+                <i class="bi bi-plus-lg me-1"></i> New user
+            </a>
+        </Actions>
+    </PageHeader>
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading users..." />
+    }
+    else if (_users.Count == 0)
+    {
+        <EmptyPanel Icon="bi-people" Title="No users yet" Message="Create the first staff account and assign their module access.">
+            <a class="btn btn-primary" href="/admin/users/create">
+                <i class="bi bi-plus-lg me-1"></i> New user
+            </a>
+        </EmptyPanel>
+    }
+    else
+    {
+        <div class="record-meta"><strong>@_users.Count</strong> users</div>
+        <div class="section-card table-card p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th class="d-none d-lg-table-cell">Modules</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var user in _users)
+                    {
+                        <tr>
+                            <td>
+                                <div class="client-cell">
+                                    <span class="client-avatar">@ClientDisplayHelper.InitialsFromName(user.FullName)</span>
+                                    <strong>@user.FullName</strong>
+                                </div>
+                            </td>
+                            <td><code>@user.UserName</code></td>
+                            <td><span class="module-chip">@user.RoleName</span></td>
+                            <td class="d-none d-lg-table-cell">
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var module in user.Modules.Take(4))
+                                    {
+                                        <span class="module-chip">@ModuleNav.DisplayName(module)</span>
+                                    }
+                                    @if (user.Modules.Count > 4)
+                                    {
+                                        <span class="module-chip">+@(user.Modules.Count - 4)</span>
+                                    }
+                                </div>
+                            </td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="sex-pill sex-male">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="sex-pill sex-other">Disabled</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" href="/admin/users/edit/@user.Id">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<UserDto> _users = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _users = await Api.GetUsersAsync();
+        _loading = false;
+    }
+}

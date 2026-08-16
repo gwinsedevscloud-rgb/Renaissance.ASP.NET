@@ -17,20 +17,20 @@
     }
     else if (_items.Count == 0)
     {
-        <EmptyPanel Icon="bi-eye" Title="No optometry records yet" Message="Search for a client above to start an exam." />
+        <EmptyPanel Icon="bi-eye" Title="No optometry records yet" Message="Search for a patient above to start an exam." />
     }
     else
     {
         <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
         <div class="section-card table-card p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0 module-record-table module-table-optometrists">
                     <thead>
                         <tr>
-                            <th>Client</th>
-                            <th>VA (R/L)</th>
-                            <th>Glasses</th>
-                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <ModuleTableTh Label="Patient" Icon="bi-person" />
+                            <ModuleTableTh Label="VA (R/L)" Icon="bi-eye" />
+                            <ModuleTableTh Label="Glasses" Icon="bi-eyeglasses" />
+                            <ModuleTableTh Label="Recorded" Icon="bi-calendar3" CssClass="d-none d-sm-table-cell" />
                             <th></th>
                         </tr>
                     </thead>
@@ -39,12 +39,19 @@
                     {
                         <tr>
                             <td><ClientIdentity Patient="Patient(o.PatientId)" /></td>
-                            <td>@o.VisualAcuityRight / @o.VisualAcuityLeft</td>
-                            <td>@(o.GlassesDispensed == true ? "Yes" : "No")</td>
-                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(o.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="/optometrists/edit/@o.Id">Edit</a>
+                            <td><span class="record-field"><i class="bi bi-eye"></i>@o.VisualAcuityRight / @o.VisualAcuityLeft</span></td>
+                            <td>
+                                @if (o.GlassesDispensed == true)
+                                {
+                                    <span class="record-chip is-positive"><i class="bi bi-check2"></i>Yes</span>
+                                }
+                                else
+                                {
+                                    <span class="record-chip is-neutral"><i class="bi bi-x"></i>No</span>
+                                }
                             </td>
+                            <ModuleRecordDate Value="o.CreatedDate" CssClass="d-none d-sm-table-cell" />
+                            <ModuleTableAction Href="@($"/optometrists/edit/{o.Id}")" Title="Edit optometry record" Icon="bi-pencil" />
                         </tr>
                     }
                     </tbody>

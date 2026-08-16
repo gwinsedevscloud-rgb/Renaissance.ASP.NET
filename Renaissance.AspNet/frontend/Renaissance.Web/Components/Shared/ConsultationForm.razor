@@ -9,7 +9,12 @@
     </div>
 </FormSection>
 
-<FormSection Title="Referrals & ITN" Icon="bi-arrow-right-circle" IconBgClass="feature-icon-blue">
+<FormSection Title="Referrals & ITN"
+             Icon="bi-arrow-right-circle"
+             IconBgClass="feature-icon-blue"
+             Collapsible
+             InitiallyExpanded="@HasReferralContent"
+             CollapsedHint="Expand to add referrals or ITN tasks">
     <div class="row g-3">
         <div class="col-md-6">
             <FormLabel Text="Services Referred" Icon="bi-send" />
@@ -22,14 +27,14 @@
                     <InputCheckbox class="form-check-input" @bind-Value="Model.Referred" />
                     <label class="form-check-label"><i class="bi bi-box-arrow-up-right me-1"></i> Referred</label>
                 </div>
-                <small class="consultation-flag-hint">Opens referral prompt after save to send client to other modules.</small>
+                <small class="consultation-flag-hint">Opens referral prompt after save to send patient to other modules.</small>
             </div>
             <div class="checkbox-card flex-fill consultation-flag-card">
                 <div class="form-check">
                     <InputCheckbox class="form-check-input" @bind-Value="Model.ItnOrder" />
                     <label class="form-check-label"><i class="bi bi-bag-plus me-1"></i> ITN Ordered</label>
                 </div>
-                <small class="consultation-flag-hint">Creates a pending ITN task in pharmacy and adds client to pharmacy queue.</small>
+                <small class="consultation-flag-hint">Creates a pending ITN task in pharmacy and adds patient to pharmacy queue.</small>
             </div>
             <div class="checkbox-card flex-fill consultation-flag-card">
                 <div class="form-check">
@@ -45,4 +50,10 @@
 @code {
     [Parameter, EditorRequired]
     public ConsultationFormViewModel Model { get; set; } = null!;
+
+    private bool HasReferralContent =>
+        Model.Referred
+        || Model.ItnOrder
+        || Model.ItnDispense
+        || !string.IsNullOrWhiteSpace(Model.ServicesReferredText);
 }

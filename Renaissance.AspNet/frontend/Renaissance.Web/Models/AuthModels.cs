@@ -48,6 +48,8 @@ public class UserDto
     public string RoleName { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public DateTime? CreatedDate { get; set; }
+    public List<AppModule> Modules { get; set; } = [];
+    public bool HasDirectModuleAccess { get; set; }
 }
 
 public class CreateUserRequest
@@ -57,6 +59,7 @@ public class CreateUserRequest
     public string Password { get; set; } = string.Empty;
     public Guid RoleId { get; set; }
     public bool IsActive { get; set; } = true;
+    public List<AppModule> Modules { get; set; } = [];
 }
 
 public class UpdateUserRequest
@@ -65,6 +68,7 @@ public class UpdateUserRequest
     public string? Password { get; set; }
     public Guid RoleId { get; set; }
     public bool IsActive { get; set; } = true;
+    public List<AppModule> Modules { get; set; } = [];
 }
 
 public class RoleDto
@@ -97,7 +101,7 @@ public static class ModuleNav
 {
     public static IReadOnlyList<ModuleNavItem> All { get; } =
     [
-        new(AppModule.Clients, "Clients", "/patients", "bi-people", "Register and manage clients"),
+        new(AppModule.Clients, "Patients", "/patients", "bi-people", "Register and manage patients"),
         new(AppModule.Triage, "Triage", "/triage", "bi-activity", "Vitals and medical history"),
         new(AppModule.Consultations, "Consultations", "/consultations", "bi-clipboard2-pulse", "Diagnosis and treatment"),
         new(AppModule.Pharmacy, "Pharmacy", "/pharmacy", "bi-capsule", "Prescribe and dispense"),
@@ -106,9 +110,9 @@ public static class ModuleNav
         new(AppModule.Ancillary, "Ancillary", "/ancillary", "bi-bandaid", "Ancillary services"),
         new(AppModule.Optometrists, "Optometrists", "/optometrists", "bi-eye", "Optometry exams"),
         new(AppModule.Ophthalmologists, "Ophthalmologists", "/ophthalmologists", "bi-eye-fill", "Ophthalmology care"),
-        new(AppModule.ClientDashboard, "Client Dashboard", "/patients", "bi-grid-1x2", "Per-client clinical hub"),
+        new(AppModule.ClientDashboard, "Patient Dashboard", "/patients", "bi-grid-1x2", "Per-patient clinical hub"),
         new(AppModule.Stakeholders, "Stakeholders", "/stakeholders", "bi-graph-up-arrow", "KPIs and analytics"),
-        new(AppModule.Administration, "Administration", "/admin/users", "bi-shield-lock", "Users, roles, and access")
+        new(AppModule.Administration, "Administration", "/admin/users", "bi-shield-lock", "Users, roles, settings, backups, and module access")
     ];
 
     public static IReadOnlyList<ModuleNavItem> Clinical { get; } =
@@ -131,7 +135,8 @@ public static class ModuleNav
         }
 
         if (path.StartsWith("patients", StringComparison.OrdinalIgnoreCase)) return AppModule.Clients;
-        if (path.StartsWith("client-dashboard", StringComparison.OrdinalIgnoreCase)) return AppModule.ClientDashboard;
+        if (path.StartsWith("patient-dashboard", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("client-dashboard", StringComparison.OrdinalIgnoreCase)) return AppModule.ClientDashboard;
         if (path.StartsWith("triage", StringComparison.OrdinalIgnoreCase)) return AppModule.Triage;
         if (path.StartsWith("consultations", StringComparison.OrdinalIgnoreCase)) return AppModule.Consultations;
         if (path.StartsWith("pharmacy", StringComparison.OrdinalIgnoreCase)) return AppModule.Pharmacy;
@@ -156,6 +161,11 @@ public static class ModuleNav
         var item = Clinical.FirstOrDefault(m => m.Module == module);
         return item is null ? "/" : $"{item.Href}/create/{patientId}";
     }
+
+    public static string QueueActionHref(AppModule module, Guid patientId)
+        => module == AppModule.Pharmacy
+            ? $"/pharmacy/dispense/{patientId}"
+            : CreateHref(module, patientId);
 
     public static IReadOnlyList<ModuleNavItem> ReferralTargets { get; } = Clinical
         .Where(m => m.Module != AppModule.Triage)

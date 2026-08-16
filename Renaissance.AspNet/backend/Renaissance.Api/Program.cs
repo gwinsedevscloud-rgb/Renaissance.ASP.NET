@@ -1,14 +1,18 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Renaissance.Api.Authorization;
 using Renaissance.Api.Hubs;
+using Renaissance.Api.Middleware;
 using Renaissance.Api.Services;
 using Renaissance.Application;
+using Renaissance.Application.Common;
 using Renaissance.Application.Common.Interfaces;
 using Renaissance.Infrastructure;
 using Renaissance.Infrastructure.Persistence;
@@ -40,6 +44,12 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+var envJwtKey = Environment.GetEnvironmentVariable("RENAISSANCE_JWT_KEY");
+if (!string.IsNullOrWhiteSpace(envJwtKey))
+{
+    builder.Configuration["Jwt:Key"] = envJwtKey;
+}
+
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
           ?? throw new InvalidOperationException("Jwt configuration is missing.");
 if (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Length < 32)
@@ -47,9 +57,41 @@ if (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Length < 32)
     throw new InvalidOperationException("Jwt:Key must be at least 32 characters.");
 }
 
+if (builder.Environment.IsProduction()
+    && jwt.Key.Contains("dev-signing-key", StringComparison.OrdinalIgnoreCase))
+{
+    throw new InvalidOperationException(
+        "Set a strong Jwt:Key or RENAISSANCE_JWT_KEY environment variable before running in production.");
+}
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter = ((int)retryAfter.TotalSeconds).ToString();
+        }
+
+        await context.HttpContext.Response.WriteAsync("Too many requests. Try again later.", token);
+    };
+
+    options.AddPolicy("auth-login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 10,
+                QueueLimit = 0
+            }));
+});
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -88,6 +130,9 @@ builder.Services.AddScoped<IAuthorizationHandler, ModuleAuthorizationHandler>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IReferralNotifier, SignalRReferralNotifier>();
 
+var deployment = builder.Configuration.GetSection(DeploymentOptions.SectionName).Get<DeploymentOptions>()
+                 ?? new DeploymentOptions();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -99,13 +144,47 @@ builder.Services.AddCors(options =>
                     return false;
                 }
 
-                return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-                       || uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase);
+                if (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                    || uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (deployment.CorsAllowedOrigins.Any(o =>
+                        string.Equals(o.TrimEnd('/'), origin.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+
+                return deployment.AllowLanAccess && IsPrivateLanHost(uri.Host);
             })
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
+
+static bool IsPrivateLanHost(string host)
+{
+    if (!System.Net.IPAddress.TryParse(host, out var address))
+    {
+        return false;
+    }
+
+    if (System.Net.IPAddress.IsLoopback(address))
+    {
+        return false;
+    }
+
+    var bytes = address.GetAddressBytes();
+    return bytes[0] switch
+    {
+        10 => true,
+        172 when bytes[1] is >= 16 and <= 31 => true,
+        192 when bytes[1] == 168 => true,
+        _ => false
+    };
+}
 
 var app = builder.Build();
 
@@ -137,7 +216,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseExceptionHandler();
+    app.UseHsts();
+}
 
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseRateLimiter();
 app.UseCors();
 app.UseHttpsRedirection();
 app.UseAuthentication();

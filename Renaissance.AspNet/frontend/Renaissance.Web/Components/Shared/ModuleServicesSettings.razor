@@ -1,0 +1,280 @@
+@inject RenaissanceApiClient Api
+@inject HospitalModuleStateService ModuleState
+
+<div class="section-card p-4 module-services-settings">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+            <h2 class="h5 mb-1"><i class="bi bi-grid-3x3-gap me-2"></i>Clinical services</h2>
+            <p class="text-muted small mb-0">
+                Enable or remove modules for this hospital. Disabled services are hidden from staff, blocked in the API,
+                and removed from referral routing.
+            </p>
+        </div>
+        @if (_config?.UpdatedAtUtc is not null)
+        {
+            <span class="record-meta mb-0">
+                Updated @_config.UpdatedAtUtc.Value.ToLocalTime().ToString("g")
+                @if (!string.IsNullOrWhiteSpace(_config.UpdatedBy))
+                {
+                    <span>by @_config.UpdatedBy</span>
+                }
+            </span>
+        }
+    </div>
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading module configuration..." />
+    }
+    else if (_config is null)
+    {
+        <p class="text-muted mb-0">Unable to load module settings.</p>
+    }
+    else
+    {
+        <div class="row g-2 mb-4">
+            @foreach (var service in _config.Services.Where(s => !s.IsCore))
+            {
+                var enabled = _enabled.Contains(service.Module);
+                var nav = ModuleNav.All.FirstOrDefault(m => m.Module == service.Module);
+                <div class="col-md-6 col-xl-4">
+                    <label class="module-service-card @(enabled ? "enabled" : "disabled")">
+                        <div class="module-service-card-head">
+                            <span class="module-service-icon feature-icon-teal">
+                                <i class="bi @(nav?.Icon ?? "bi-grid")"></i>
+                            </span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       checked="@enabled"
+                                       @onchange="e => ToggleService(service.Module, e.Value)" />
+                            </div>
+                        </div>
+                        <strong>@service.Name</strong>
+                        <small class="text-muted d-block">@service.Description</small>
+                        <span class="module-service-tag">@service.Category</span>
+                    </label>
+                </div>
+            }
+        </div>
+
+        <div class="module-referral-panel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <div>
+                    <h3 class="h6 mb-1"><i class="bi bi-arrow-left-right me-1"></i>Referral interconnections</h3>
+                    <p class="text-muted small mb-0">
+                        Choose which enabled services can send patients to one another. Triage and clinical modules interconnect here.
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ConnectAllReferrals">Connect all</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearReferralLinks">Clear links</button>
+                </div>
+            </div>
+
+            @if (_referralModules.Count == 0)
+            {
+                <p class="text-muted small mb-0">Enable at least two referral-capable services to configure connections.</p>
+            }
+            else
+            {
+                <div class="table-responsive module-referral-matrix-wrap">
+                    <table class="table table-sm module-referral-matrix mb-0">
+                        <thead>
+                            <tr>
+                                <th>From \ To</th>
+                                @foreach (var target in _referralTargets)
+                                {
+                                    <th>@ModuleNav.DisplayName(target)</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var source in _referralSources)
+                            {
+                                <tr>
+                                    <th>@ModuleNav.DisplayName(source)</th>
+                                    @foreach (var target in _referralTargets)
+                                    {
+                                        var on = source != target && HasLink(source, target);
+                                        var disabled = source == target || !_enabled.Contains(source) || !_enabled.Contains(target);
+                                        <td class="@(disabled ? "is-disabled" : "")">
+                                            @if (!disabled)
+                                            {
+                                                <input type="checkbox"
+                                                       checked="@on"
+                                                       @onchange="e => ToggleLink(source, target, e.Value)" />
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="mt-3">
+            <button type="button" class="btn btn-primary" disabled="@_saving" @onclick="SaveAsync">
+                @if (_saving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                Save module configuration
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<string?> OnMessage { get; set; }
+    [Parameter] public EventCallback<string?> OnError { get; set; }
+
+    private HospitalModulesConfigDto? _config;
+    private HashSet<AppModule> _enabled = [];
+    private HashSet<(AppModule Source, AppModule Target)> _links = [];
+    private List<AppModule> _referralSources = [];
+    private List<AppModule> _referralTargets = [];
+    private List<AppModule> _referralModules = [];
+    private bool _loading = true;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _config = await Api.GetHospitalModulesConfigAsync();
+            _enabled = _config.Services.Where(s => !s.IsCore && s.IsEnabled).Select(s => s.Module).ToHashSet();
+            _links = _config.ReferralLinks.Select(l => (l.SourceModule, l.TargetModule)).ToHashSet();
+            RebuildReferralLists();
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync(ex.Message);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void RebuildReferralLists()
+    {
+        _referralSources =
+        [
+            AppModule.Triage,
+            AppModule.Consultations,
+            AppModule.Pharmacy,
+            AppModule.Laboratory,
+            AppModule.Dental,
+            AppModule.Ancillary,
+            AppModule.Optometrists,
+            AppModule.Ophthalmologists
+        ];
+
+        _referralTargets =
+        [
+            AppModule.Consultations,
+            AppModule.Pharmacy,
+            AppModule.Laboratory,
+            AppModule.Dental,
+            AppModule.Ancillary,
+            AppModule.Optometrists,
+            AppModule.Ophthalmologists
+        ];
+
+        _referralModules = _referralSources
+            .Concat(_referralTargets)
+            .Where(_enabled.Contains)
+            .Distinct()
+            .OrderBy(m => (int)m)
+            .ToList();
+    }
+
+    private void ToggleService(AppModule module, object? value)
+    {
+        var on = value is true || value?.ToString() == "True";
+        if (on)
+        {
+            _enabled.Add(module);
+        }
+        else
+        {
+            _enabled.Remove(module);
+            _links.RemoveWhere(l => l.Source == module || l.Target == module);
+        }
+
+        RebuildReferralLists();
+    }
+
+    private bool HasLink(AppModule source, AppModule target) => _links.Contains((source, target));
+
+    private void ToggleLink(AppModule source, AppModule target, object? value)
+    {
+        var on = value is true || value?.ToString() == "True";
+        if (on)
+        {
+            _links.Add((source, target));
+        }
+        else
+        {
+            _links.Remove((source, target));
+        }
+    }
+
+    private void ConnectAllReferrals()
+    {
+        foreach (var source in _referralSources.Where(_enabled.Contains))
+        {
+            foreach (var target in _referralTargets.Where(_enabled.Contains))
+            {
+                if (source != target)
+                {
+                    _links.Add((source, target));
+                }
+            }
+        }
+    }
+
+    private void ClearReferralLinks() => _links.Clear();
+
+    private async Task SaveAsync()
+    {
+        if (_enabled.Count == 0)
+        {
+            await OnError.InvokeAsync("At least one clinical service must remain enabled.");
+            return;
+        }
+
+        _saving = true;
+        await OnError.InvokeAsync(null);
+        try
+        {
+            _config = await Api.UpdateHospitalModulesConfigAsync(new UpdateHospitalModulesRequest
+            {
+                EnabledModules = _enabled.OrderBy(m => (int)m).ToList(),
+                ReferralLinks = _links
+                    .Select(l => new ModuleReferralLinkDto { SourceModule = l.Source, TargetModule = l.Target })
+                    .OrderBy(l => (int)l.SourceModule)
+                    .ThenBy(l => (int)l.TargetModule)
+                    .ToList()
+            });
+
+            var active = await Api.GetActiveHospitalModulesAsync();
+            ModuleState.Apply(active);
+            await OnMessage.InvokeAsync("Module configuration saved. Staff may need to sign in again to refresh their menus.");
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync(ex.Message);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

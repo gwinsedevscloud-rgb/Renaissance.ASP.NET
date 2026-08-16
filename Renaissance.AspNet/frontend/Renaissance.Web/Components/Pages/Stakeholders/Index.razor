@@ -42,7 +42,7 @@ else
             <div class="kpi-card">
                 <div class="kpi-icon feature-icon-teal"><i class="bi bi-people-fill"></i></div>
                 <div class="kpi-value">@_data.Kpis.TotalClients</div>
-                <div class="kpi-label">Total clients</div>
+                <div class="kpi-label">Total patients</div>
                 <div class="kpi-sub">+@_data.Kpis.NewClientsThisMonth this month</div>
             </div>
             <div class="kpi-card">
@@ -66,14 +66,14 @@ else
             <div class="kpi-card">
                 <div class="kpi-icon feature-icon-blue"><i class="bi bi-bar-chart-line"></i></div>
                 <div class="kpi-value">@_data.Kpis.AvgEncountersPerClient</div>
-                <div class="kpi-label">Avg encounters / client</div>
+                <div class="kpi-label">Avg encounters / patient</div>
                 <div class="kpi-sub">@_data.Kpis.ActiveModulesUsed modules active</div>
             </div>
             <div class="kpi-card kpi-card-forecast">
                 <div class="kpi-icon feature-icon-violet"><i class="bi bi-binoculars-fill"></i></div>
                 <div class="kpi-value">~@_data.Insights.ProjectedMonthlyEncounters.ToString("0")</div>
                 <div class="kpi-label">Projected monthly encounters</div>
-                <div class="kpi-sub">~@_data.Insights.ProjectedMonthlyClients.ToString("0") new clients</div>
+                <div class="kpi-sub">~@_data.Insights.ProjectedMonthlyClients.ToString("0") new patients</div>
             </div>
         </div>
 
@@ -128,8 +128,8 @@ else
                     <div class="section-card-header">
                         <span class="section-icon feature-icon-teal"><i class="bi bi-person-plus-fill"></i></span>
                         <div>
-                            <strong>Client registrations &amp; forecast</strong>
-                            <div class="chart-subtitle">New client acquisition trend</div>
+                            <strong>Patient registrations &amp; forecast</strong>
+                            <div class="chart-subtitle">New patient acquisition trend</div>
                         </div>
                     </div>
                     <div class="chart-container">
@@ -144,7 +144,7 @@ else
                 <div class="section-card chart-card h-100">
                     <div class="section-card-header">
                         <span class="section-icon feature-icon-blue"><i class="bi bi-gender-ambiguous"></i></span>
-                        <strong>Client sex distribution</strong>
+                        <strong>Patient sex distribution</strong>
                     </div>
                     <ul class="distribution-list">
                         @foreach (var item in _data.SexDistribution)

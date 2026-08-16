@@ -32,9 +32,9 @@ public static class IdentitySeeder
         var roles = new List<AppRole>
         {
             Role(AdministratorRoleId, "Administrator", "Full access. Assigns roles and module permissions.", true, now, AppModuleCatalog.All),
-            Role(NurseRoleId, "Nurse", "Client registration and triage.", false, now,
+            Role(NurseRoleId, "Nurse", "Patient registration and triage.", false, now,
                 [AppModule.Clients, AppModule.Triage, AppModule.ClientDashboard]),
-            Role(ClinicianRoleId, "Clinician", "Consultations and client care.", false, now,
+            Role(ClinicianRoleId, "Clinician", "Consultations and patient care.", false, now,
                 [AppModule.Clients, AppModule.Triage, AppModule.Consultations, AppModule.ClientDashboard, AppModule.Pharmacy, AppModule.Laboratory]),
             Role(PharmacistRoleId, "Pharmacist", "Prescriptions and dispensation.", false, now,
                 [AppModule.Clients, AppModule.Pharmacy, AppModule.ClientDashboard]),

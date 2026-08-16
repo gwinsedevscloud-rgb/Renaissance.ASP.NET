@@ -1,0 +1,301 @@
+@page "/admin/backup"
+
+@rendermode InteractiveServer
+
+@inject RenaissanceApiClient Api
+@inject IJSRuntime Js
+
+<PageTitle>Backup - Renaissance</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Database backup"
+                Subtitle="Export, download, and restore Renaissance clinical data"
+                Icon="bi-cloud-arrow-down">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="/admin/users">
+                <i class="bi bi-people me-1"></i> Users
+            </a>
+            <button class="btn btn-primary" type="button" disabled="@_busy" @onclick="CreateBackupAsync">
+                @if (_creating)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-plus-lg me-1"></i>
+                }
+                Create backup
+            </button>
+        </Actions>
+    </PageHeader>
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @_message
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _message = null"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @_error
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            @if (_loading)
+            {
+                <LoadingState Message="Loading backups..." />
+            }
+            else if (_backups.Count == 0)
+            {
+                <EmptyPanel Icon="bi-cloud-arrow-down"
+                            Title="No backups yet"
+                            Message="Create your first backup to download a portable copy of all patients, clinical records, users, and referrals.">
+                    <button class="btn btn-primary" type="button" disabled="@_busy" @onclick="CreateBackupAsync">
+                        <i class="bi bi-plus-lg me-1"></i> Create backup
+                    </button>
+                </EmptyPanel>
+            }
+            else
+            {
+                <div class="record-meta"><strong>@_backups.Count</strong> saved backups</div>
+                <div class="section-card table-card p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>File</th>
+                                    <th>Size</th>
+                                    <th>Created (UTC)</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var backup in _backups)
+                            {
+                                <tr>
+                                    <td><code>@backup.FileName</code></td>
+                                    <td>@backup.SizeLabel</td>
+                                    <td>@backup.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                                type="button"
+                                                disabled="@_busy"
+                                                @onclick="() => DownloadAsync(backup.FileName)">
+                                            <i class="bi bi-download"></i> Download
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                type="button"
+                                                disabled="@_busy"
+                                                @onclick="() => DeleteAsync(backup.FileName)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-lg-5">
+            <div class="section-card p-4">
+                <h2 class="h5 mb-2"><i class="bi bi-arrow-counterclockwise me-2"></i>Restore from file</h2>
+                <p class="text-muted small mb-3">
+                    Upload a Renaissance backup (.zip). This replaces all current data with the contents of the backup.
+                </p>
+
+                <div class="alert alert-warning py-2 small mb-3">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Restore cannot be undone. Create a fresh backup first if you may need to roll back.
+                </div>
+
+                <InputFile OnChange="OnRestoreFileSelected"
+                           accept=".zip,application/zip"
+                           class="form-control mb-3"
+                           disabled="@_busy" />
+
+                @if (_restoreFile is not null)
+                {
+                    <div class="record-meta mb-3">Selected: <strong>@_restoreFile.Name</strong></div>
+                }
+
+                @if (_showRestoreConfirm)
+                {
+                    <div class="border rounded p-3 mb-3 bg-light">
+                        <p class="small mb-0">
+                            Replace all data with <strong>@_restoreFile?.Name</strong>?
+                        </p>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-danger btn-sm" type="button" disabled="@_restoring" @onclick="RestoreAsync">
+                                @if (_restoring)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                }
+                                Yes, restore now
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" type="button" disabled="@_restoring" @onclick="CancelRestore">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <button class="btn btn-outline-danger"
+                            type="button"
+                            disabled="@(_busy || _restoreFile is null)"
+                            @onclick="() => _showRestoreConfirm = true">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Restore backup
+                    </button>
+                }
+            </div>
+
+            <div class="section-card p-4 mt-4">
+                <h2 class="h6 mb-2"><i class="bi bi-info-circle me-2"></i>What is included</h2>
+                <ul class="small text-muted mb-0 ps-3">
+                    <li>Patients and patient number sequence</li>
+                    <li>All clinical modules (triage, consultations, pharmacy, etc.)</li>
+                    <li>Referrals and notifications</li>
+                    <li>Users, roles, and module access</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<BackupInfoDto> _backups = [];
+    private bool _loading = true;
+    private bool _creating;
+    private bool _restoring;
+    private bool _showRestoreConfirm;
+    private IBrowserFile? _restoreFile;
+    private string? _message;
+    private string? _error;
+
+    private bool _busy => _creating || _restoring;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBackupsAsync();
+    }
+
+    private async Task LoadBackupsAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _backups = await Api.GetBackupsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CreateBackupAsync()
+    {
+        _creating = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            var result = await Api.CreateBackupAsync();
+            _message = result.Message;
+            await LoadBackupsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _creating = false;
+        }
+    }
+
+    private async Task DownloadAsync(string fileName)
+    {
+        _error = null;
+        try
+        {
+            var bytes = await Api.DownloadBackupAsync(fileName);
+            await Js.InvokeVoidAsync("renaissanceDownloadBytes", fileName, "application/zip", bytes);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task DeleteAsync(string fileName)
+    {
+        _error = null;
+        _message = null;
+        try
+        {
+            await Api.DeleteBackupAsync(fileName);
+            _message = $"Deleted {fileName}.";
+            await LoadBackupsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void OnRestoreFileSelected(InputFileChangeEventArgs args)
+    {
+        _restoreFile = args.File;
+        _showRestoreConfirm = false;
+        _error = null;
+        _message = null;
+    }
+
+    private void CancelRestore()
+    {
+        _showRestoreConfirm = false;
+    }
+
+    private async Task RestoreAsync()
+    {
+        if (_restoreFile is null)
+        {
+            return;
+        }
+
+        _restoring = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            await using var stream = _restoreFile.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024);
+            var result = await Api.RestoreBackupAsync(stream, _restoreFile.Name);
+            _message = $"{result.Message} Restored {result.PatientsRestored} patients and {result.UsersRestored} users.";
+            _restoreFile = null;
+            _showRestoreConfirm = false;
+            await LoadBackupsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _restoring = false;
+        }
+    }
+}

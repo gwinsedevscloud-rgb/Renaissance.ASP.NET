@@ -1,0 +1,46 @@
+@foreach (var module in Catalog)
+{
+    var selected = Selected.Contains(module.Module);
+    var disabled = IsReadOnly || (RestrictAdminModule && module.Module == AppModule.Administration);
+    var icon = ModuleNav.All.FirstOrDefault(m => m.Module == module.Module)?.Icon ?? "bi-grid";
+    <div class="col-md-6 col-xl-4">
+        <label class="module-access-card @(selected ? "selected" : "") @(disabled ? "is-disabled" : "")">
+            <input class="module-access-input"
+                   type="checkbox"
+                   checked="@selected"
+                   disabled="@disabled"
+                   @onchange="e => Toggle(module.Module, e.Value)" />
+            <span class="module-access-icon feature-icon-teal"><i class="bi @icon"></i></span>
+            <span class="module-access-text">
+                <strong>@module.Name</strong>
+                <small>@module.Description</small>
+            </span>
+            <span class="module-access-check">
+                <i class="bi @(selected ? "bi-check-circle-fill" : "bi-circle")"></i>
+            </span>
+        </label>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ModuleDescriptorDto> Catalog { get; set; } = [];
+    [Parameter, EditorRequired] public HashSet<AppModule> Selected { get; set; } = [];
+    [Parameter] public EventCallback<HashSet<AppModule>> SelectedChanged { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool RestrictAdminModule { get; set; } = true;
+
+    private async Task Toggle(AppModule module, object? value)
+    {
+        var on = value is true || value?.ToString() == "True";
+        if (on)
+        {
+            Selected.Add(module);
+        }
+        else
+        {
+            Selected.Remove(module);
+        }
+
+        await SelectedChanged.InvokeAsync(Selected);
+    }
+}

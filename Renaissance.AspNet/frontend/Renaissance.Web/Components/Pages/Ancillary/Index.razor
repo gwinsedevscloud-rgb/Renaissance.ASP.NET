@@ -17,19 +17,19 @@
     }
     else if (_items.Count == 0)
     {
-        <EmptyPanel Icon="bi-bandaid" Title="No ancillary records yet" Message="Search for a client above to record a visit." />
+        <EmptyPanel Icon="bi-bandaid" Title="No ancillary records yet" Message="Search for a patient above to record a visit." />
     }
     else
     {
         <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
         <div class="section-card table-card p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0 module-record-table module-table-ancillary">
                     <thead>
                         <tr>
-                            <th>Client</th>
-                            <th>Services</th>
-                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <ModuleTableTh Label="Patient" Icon="bi-person" />
+                            <ModuleTableTh Label="Services" Icon="bi-bandaid" />
+                            <ModuleTableTh Label="Recorded" Icon="bi-calendar3" CssClass="d-none d-sm-table-cell" />
                             <th></th>
                         </tr>
                     </thead>
@@ -38,11 +38,18 @@
                     {
                         <tr>
                             <td><ClientIdentity Patient="Patient(a.PatientId)" /></td>
-                            <td>@(a.Services.Count == 0 ? "—" : string.Join(", ", a.Services.Take(3)))</td>
-                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(a.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="/ancillary/edit/@a.Id">Edit</a>
+                            <td>
+                                @if (a.Services.Count == 0)
+                                {
+                                    <span class="record-empty-value">—</span>
+                                }
+                                else
+                                {
+                                    <span class="record-field"><i class="bi bi-bandaid"></i>@string.Join(", ", a.Services.Take(3))</span>
+                                }
                             </td>
+                            <ModuleRecordDate Value="a.CreatedDate" CssClass="d-none d-sm-table-cell" />
+                            <ModuleTableAction Href="@($"/ancillary/edit/{a.Id}")" Title="Edit ancillary record" Icon="bi-pencil" />
                         </tr>
                     }
                     </tbody>

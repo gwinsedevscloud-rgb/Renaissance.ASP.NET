@@ -10,10 +10,12 @@ namespace Renaissance.Application.Services;
 public class RoleService : IRoleService
 {
     private readonly IApplicationDbContext _db;
+    private readonly IHospitalModuleService _hospitalModules;
 
-    public RoleService(IApplicationDbContext db)
+    public RoleService(IApplicationDbContext db, IHospitalModuleService hospitalModules)
     {
         _db = db;
+        _hospitalModules = hospitalModules;
     }
 
     public async Task<List<RoleDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -37,15 +39,19 @@ public class RoleService : IRoleService
         return role is null ? null : ToDto(role);
     }
 
-    public Task<List<ModuleDescriptorDto>> GetModulesAsync()
+    public async Task<List<ModuleDescriptorDto>> GetModulesAsync(CancellationToken cancellationToken = default)
     {
-        var list = AppModuleCatalog.All.Select(m => new ModuleDescriptorDto
-        {
-            Module = m,
-            Name = AppModuleCatalog.DisplayName(m),
-            Description = AppModuleCatalog.Description(m)
-        }).ToList();
-        return Task.FromResult(list);
+        var enabled = (await _hospitalModules.GetEnabledModulesAsync(cancellationToken)).ToHashSet();
+        var list = AppModuleCatalog.All
+            .Where(enabled.Contains)
+            .Select(m => new ModuleDescriptorDto
+            {
+                Module = m,
+                Name = AppModuleCatalog.DisplayName(m),
+                Description = AppModuleCatalog.Description(m)
+            })
+            .ToList();
+        return list;
     }
 
     public async Task<RoleDto> CreateAsync(SaveRoleRequest request, CancellationToken cancellationToken = default)

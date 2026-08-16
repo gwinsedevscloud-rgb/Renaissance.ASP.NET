@@ -1,20 +1,31 @@
 @inject RenaissanceApiClient Api
+@implements IDisposable
 
-<div class="section-card mb-4 quick-search-card">
-    <div class="section-card-header">
-        <span class="section-icon feature-icon-teal"><i class="bi bi-person-plus"></i></span>
-        <h2>Start for a client</h2>
+<div class="quick-search-card">
+    <div class="quick-search-inline">
+        <label class="quick-search-leading" for="@_inputId">
+            <span class="quick-search-leading-icon"><i class="bi bi-person-search"></i></span>
+            <span class="quick-search-leading-text">Search for a Patient</span>
+        </label>
+        <div class="quick-search-field">
+            <input id="@_inputId"
+                   class="quick-search-input"
+                   @bind="_search"
+                   @bind:event="oninput"
+                   @bind:after="OnSearchInputAsync"
+                   placeholder="Number, phone, or name..." />
+            @if (_searching)
+            {
+                <span class="quick-search-spinner" role="status" aria-label="Searching">
+                    <span class="spinner-border spinner-border-sm text-muted"></span>
+                </span>
+            }
+        </div>
     </div>
-    <form class="search-bar mb-0" @onsubmit="SearchAsync" @onsubmit:preventDefault="true">
-        <span class="input-group-text bg-transparent border-0 ps-2">
-            <i class="bi bi-search text-muted"></i>
-        </span>
-        <input class="form-control" @bind="_search" placeholder="Search client number, phone, or name..." />
-        <button class="btn btn-primary px-3" type="submit">Find</button>
-    </form>
+
     @if (_searched && _matches.Count == 0)
     {
-        <p class="quick-search-empty mb-0">No matching clients. Register a client first if you have access.</p>
+        <p class="quick-search-empty mb-0">No matching patients. Register a patient first if you have access.</p>
     }
     else if (_matches.Count > 0)
     {
@@ -31,6 +42,8 @@
 </div>
 
 @code {
+    private readonly string _inputId = $"patient-search-{Guid.NewGuid():N}";
+
     [Parameter, EditorRequired]
     public string CreateHrefPrefix { get; set; } = string.Empty;
 
@@ -39,12 +52,64 @@
 
     private string? _search;
     private bool _searched;
+    private bool _searching;
     private List<Patient> _matches = [];
+    private CancellationTokenSource? _debounceCts;
+    private int _searchGeneration;
+
+    private async Task OnSearchInputAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            _debounceCts?.Cancel();
+            _searched = false;
+            _searching = false;
+            _matches = [];
+            return;
+        }
+
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        var generation = ++_searchGeneration;
+
+        _searching = true;
+        try
+        {
+            await Task.Delay(300, token);
+            await SearchAsync();
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+        finally
+        {
+            if (generation == _searchGeneration)
+            {
+                _searching = false;
+            }
+        }
+    }
 
     private async Task SearchAsync()
     {
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            _searched = false;
+            _matches = [];
+            return;
+        }
+
         _searched = true;
         var all = await Api.GetPatientsAsync(_search);
         _matches = all.Take(8).ToList();
+    }
+
+    public void Dispose()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
     }
 }

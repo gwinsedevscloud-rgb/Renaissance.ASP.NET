@@ -6,14 +6,14 @@
             <FormLabel Text="Full Name" Icon="bi-person" Required="true" />
             <div class="form-input-group">
                 <span class="form-input-icon"><i class="bi bi-person"></i></span>
-                <InputText class="form-control" @bind-Value="Model.FullName" placeholder="Client's full name" />
+                <InputText class="form-control" @bind-Value="Model.FullName" placeholder="Patient's full name" />
             </div>
             <ValidationMessage For="@(() => Model.FullName)" />
         </div>
         @if (ShowClientNumber)
         {
             <div class="col-md-4">
-                <FormLabel Text="Client Number" Icon="bi-hash" />
+                <FormLabel Text="Patient Number" Icon="bi-hash" />
                 <div class="form-input-group">
                     <span class="form-input-icon"><i class="bi bi-hash"></i></span>
                     <InputText class="form-control" @bind-Value="Model.ClientNumber" readonly="@ClientNumberReadOnly" />
@@ -72,7 +72,7 @@
     </div>
 </FormSection>
 
-<FormSection Title="Contact" Subtitle="How to reach this client" Icon="bi-telephone" IconBgClass="feature-icon-violet">
+<FormSection Title="Contact" Subtitle="How to reach this patient" Icon="bi-telephone" IconBgClass="feature-icon-violet">
     <div class="row g-3">
         <div class="col-md-4">
             <FormLabel Text="Phone Number" Icon="bi-phone" />

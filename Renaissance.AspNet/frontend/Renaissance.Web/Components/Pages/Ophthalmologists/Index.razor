@@ -17,19 +17,19 @@
     }
     else if (_items.Count == 0)
     {
-        <EmptyPanel Icon="bi-eye-fill" Title="No ophthalmology records yet" Message="Search for a client above to start an exam." />
+        <EmptyPanel Icon="bi-eye-fill" Title="No ophthalmology records yet" Message="Search for a patient above to start an exam." />
     }
     else
     {
         <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
         <div class="section-card table-card p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0 module-record-table module-table-ophthalmologists">
                     <thead>
                         <tr>
-                            <th>Client</th>
-                            <th>Diagnoses</th>
-                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <ModuleTableTh Label="Patient" Icon="bi-person" />
+                            <ModuleTableTh Label="Diagnoses" Icon="bi-eye-fill" />
+                            <ModuleTableTh Label="Recorded" Icon="bi-calendar3" CssClass="d-none d-sm-table-cell" />
                             <th></th>
                         </tr>
                     </thead>
@@ -38,11 +38,18 @@
                     {
                         <tr>
                             <td><ClientIdentity Patient="Patient(o.PatientId)" /></td>
-                            <td>@(o.Diagnoses.Count == 0 ? "—" : string.Join(", ", o.Diagnoses.Take(3)))</td>
-                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(o.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="/ophthalmologists/edit/@o.Id">Edit</a>
+                            <td>
+                                @if (o.Diagnoses.Count == 0)
+                                {
+                                    <span class="record-empty-value">—</span>
+                                }
+                                else
+                                {
+                                    <span class="record-field"><i class="bi bi-eye-fill"></i>@string.Join(", ", o.Diagnoses.Take(3))</span>
+                                }
                             </td>
+                            <ModuleRecordDate Value="o.CreatedDate" CssClass="d-none d-sm-table-cell" />
+                            <ModuleTableAction Href="@($"/ophthalmologists/edit/{o.Id}")" Title="Edit ophthalmology record" Icon="bi-pencil" />
                         </tr>
                     }
                     </tbody>

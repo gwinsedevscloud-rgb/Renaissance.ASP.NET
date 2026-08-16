@@ -17,20 +17,20 @@
     }
     else if (_items.Count == 0)
     {
-        <EmptyPanel Icon="bi-clipboard2-pulse" Title="No consultations yet" Message="Search for a client above to record a consultation." />
+        <EmptyPanel Icon="bi-clipboard2-pulse" Title="No consultations yet" Message="Search for a patient above to record a consultation." />
     }
     else
     {
         <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
         <div class="section-card table-card p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0 module-record-table module-table-consultations">
                     <thead>
                         <tr>
-                            <th>Client</th>
-                            <th>Diagnoses</th>
-                            <th class="d-none d-md-table-cell">ITN</th>
-                            <th class="d-none d-sm-table-cell">Recorded</th>
+                            <ModuleTableTh Label="Patient" Icon="bi-person" />
+                            <ModuleTableTh Label="Diagnoses" Icon="bi-clipboard2-pulse" />
+                            <ModuleTableTh Label="ITN" Icon="bi-bag-plus" CssClass="d-none d-md-table-cell" />
+                            <ModuleTableTh Label="Recorded" Icon="bi-calendar3" CssClass="d-none d-sm-table-cell" />
                             <th></th>
                         </tr>
                     </thead>
@@ -39,12 +39,28 @@
                     {
                         <tr>
                             <td><ClientIdentity Patient="Patient(c.PatientId)" /></td>
-                            <td>@(c.Diagnoses.Count == 0 ? "—" : string.Join(", ", c.Diagnoses.Take(3)))</td>
-                            <td class="d-none d-md-table-cell">@(c.ItnOrder == true ? "Ordered" : "—")</td>
-                            <td class="d-none d-sm-table-cell"><small class="text-muted">@(c.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="/consultations/edit/@c.Id">Edit</a>
+                            <td>
+                                @if (c.Diagnoses.Count == 0)
+                                {
+                                    <span class="record-empty-value">—</span>
+                                }
+                                else
+                                {
+                                    <span class="record-field"><i class="bi bi-clipboard2-pulse"></i>@string.Join(", ", c.Diagnoses.Take(3))</span>
+                                }
                             </td>
+                            <td class="d-none d-md-table-cell">
+                                @if (c.ItnOrder == true)
+                                {
+                                    <span class="record-chip is-positive"><i class="bi bi-check2"></i>Ordered</span>
+                                }
+                                else
+                                {
+                                    <span class="record-chip is-neutral"><i class="bi bi-dash"></i>None</span>
+                                }
+                            </td>
+                            <ModuleRecordDate Value="c.CreatedDate" CssClass="d-none d-sm-table-cell" />
+                            <ModuleTableAction Href="@($"/consultations/edit/{c.Id}")" Title="Edit consultation" Icon="bi-pencil" />
                         </tr>
                     }
                     </tbody>

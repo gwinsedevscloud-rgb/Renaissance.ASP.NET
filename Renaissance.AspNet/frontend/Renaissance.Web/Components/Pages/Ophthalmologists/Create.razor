@@ -6,16 +6,16 @@
 
 <PageTitle>New Ophthalmologist Visit - Renaissance</PageTitle>
 
-@if (!_exists) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Client not found.</div> }
+@if (!_exists) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Patient not found.</div> }
 else
 {
     <PageHeader Title="New Ophthalmologist Visit" Icon="bi-eye-fill" />
     <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
         <OphthalmologistForm Model="_vm" />
-        <FormActions SaveLabel="Save" SaveIcon="bi-eye-fill" CancelHref="@($"/client-dashboard/{PatientId}")" Saving="_saving" />
+        <FormActions SaveLabel="Save" SaveIcon="bi-eye-fill" CancelHref="@($"/patient-dashboard/{PatientId}")" Saving="_saving" />
     </EditForm>
 
-    <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the client")"
+    <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the patient")"
                          SourceModule="AppModule.Ophthalmologists" SourceRecordId="_savedId" OnSkipped="FinishAsync" OnCompleted="FinishAsync" />
 }
 
@@ -50,7 +50,7 @@ else
         finally { _saving = false; }
     }
 
-    private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/client-dashboard/{PatientId}"); return Task.CompletedTask; }
+    private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/patient-dashboard/{PatientId}"); return Task.CompletedTask; }
     private static Ophthalmologist Map(OphthalmologistFormViewModel vm) => new()
     {
         PatientId = vm.PatientId, Referred = vm.Referred,

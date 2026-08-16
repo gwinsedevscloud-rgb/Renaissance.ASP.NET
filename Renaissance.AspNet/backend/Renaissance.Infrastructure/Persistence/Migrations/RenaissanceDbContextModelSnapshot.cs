@@ -299,6 +299,82 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.ToTable("dental_consultation", (string)null);
                 });
 
+            modelBuilder.Entity("Renaissance.Domain.Entities.HospitalModuleConfig", b =>
+                {
+                    b.Property<string>("Module")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Module");
+
+                    b.ToTable("hospital_module_config", (string)null);
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.HospitalSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApiAccessUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ClientNumberPrefix")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("FacilityName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("WebAccessUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("hospital_settings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            ApiAccessUrl = "",
+                            ClientNumberPrefix = "ACH",
+                            FacilityName = "Renaissance Hospital",
+                            TimeZoneId = "UTC",
+                            WebAccessUrl = ""
+                        });
+                });
+
             modelBuilder.Entity("Renaissance.Domain.Entities.Laboratory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -337,6 +413,21 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.HasIndex("PatientId");
 
                     b.ToTable("ren_laboratory", (string)null);
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.ModuleReferralLink", b =>
+                {
+                    b.Property<string>("SourceModule")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("TargetModule")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("SourceModule", "TargetModule");
+
+                    b.ToTable("module_referral_link", (string)null);
                 });
 
             modelBuilder.Entity("Renaissance.Domain.Entities.Ophthalmologist", b =>
@@ -757,6 +848,20 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.ToTable("ren_triage", (string)null);
                 });
 
+            modelBuilder.Entity("Renaissance.Domain.Entities.UserModuleAccess", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Module")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("UserId", "Module");
+
+                    b.ToTable("user_module_access", (string)null);
+                });
+
             modelBuilder.Entity("Renaissance.Domain.Entities.Ancillary", b =>
                 {
                     b.HasOne("Renaissance.Domain.Entities.Patient", "Patient")
@@ -878,11 +983,27 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.Navigation("Patient");
                 });
 
+            modelBuilder.Entity("Renaissance.Domain.Entities.UserModuleAccess", b =>
+                {
+                    b.HasOne("Renaissance.Domain.Entities.AppUser", "User")
+                        .WithMany("ModuleAccess")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Renaissance.Domain.Entities.AppRole", b =>
                 {
                     b.Navigation("ModuleAccess");
 
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.AppUser", b =>
+                {
+                    b.Navigation("ModuleAccess");
                 });
 #pragma warning restore 612, 618
         }

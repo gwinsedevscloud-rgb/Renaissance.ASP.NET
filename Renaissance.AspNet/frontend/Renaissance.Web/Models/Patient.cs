@@ -6,7 +6,7 @@ public class Patient : AuditEntity
 {
     public Guid Id { get; set; }
 
-    [Display(Name = "Client Number")]
+    [Display(Name = "Patient Number")]
     [MaxLength(50)]
     public string ClientNumber { get; set; } = string.Empty;
 

@@ -4,7 +4,7 @@
 @inject NavigationManager Nav
 @inject NotificationService Notifications
 
-<PageTitle>Edit Client - Renaissance</PageTitle>
+<PageTitle>Edit Patient - Renaissance</PageTitle>
 
 @if (_loading)
 {
@@ -14,22 +14,22 @@ else if (_patient is null)
 {
     <div class="empty-state">
         <i class="bi bi-exclamation-circle d-block"></i>
-        Client not found.
+        Patient not found.
     </div>
 }
 else
 {
-    <PageHeader Title="@($"Edit — {_patient.ClientNumber}")" Subtitle="Update client demographics" Icon="bi-pencil-square" />
+    <PageHeader Title="@($"Edit — {_patient.ClientNumber}")" Subtitle="Update patient demographics" Icon="bi-pencil-square" />
 
     <EditForm Model="_patient" OnValidSubmit="SaveAsync" class="form-card">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger mb-3" />
         <PatientForm Model="_patient" ClientNumberReadOnly="true" />
-        <FormActions SaveLabel="Update Client" CancelHref="/patients" Saving="_saving" />
+        <FormActions SaveLabel="Update Patient" CancelHref="/patients" Saving="_saving" />
     </EditForm>
 
     <button class="btn btn-outline-danger mt-2" @onclick="ArchiveAsync" disabled="@_saving">
-        <i class="bi bi-archive me-1"></i> Archive Client
+        <i class="bi bi-archive me-1"></i> Archive Patient
     </button>
 }
 
@@ -52,7 +52,7 @@ else
         if (_patient is null) return;
         _saving = true;
         await Api.UpdatePatientAsync(Id, _patient);
-        Notifications.ShowSuccess("Client updated.");
+        Notifications.ShowSuccess("Patient updated.");
         Nav.NavigateTo("/patients");
     }
 
@@ -60,7 +60,7 @@ else
     {
         _saving = true;
         await Api.DeletePatientAsync(Id);
-        Notifications.ShowSuccess("Client archived.");
+        Notifications.ShowSuccess("Patient archived.");
         Nav.NavigateTo("/patients");
     }
 }

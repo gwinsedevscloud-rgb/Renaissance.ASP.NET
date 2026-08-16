@@ -2,14 +2,15 @@
 @rendermode InteractiveServer
 @inject RenaissanceApiClient Api
 @inject NavigationManager Nav
+@implements IDisposable
 
-<PageTitle>Clients - Renaissance</PageTitle>
+<PageTitle>Patients - Renaissance</PageTitle>
 
 <div class="clients-page">
-    <PageHeader Title="Clients" Subtitle="Manage registered outpatient clients" Icon="bi-people-fill">
+    <PageHeader Title="Patients" Subtitle="Manage registered outpatient patients" Icon="bi-people-fill">
         <Actions>
             <a class="btn btn-primary" href="/patients/create">
-                <i class="bi bi-plus-lg me-1"></i> New Client
+                <i class="bi bi-plus-lg me-1"></i> New Patient
             </a>
         </Actions>
     </PageHeader>
@@ -19,34 +20,43 @@
             <span class="input-group-text bg-transparent border-0 ps-2">
                 <i class="bi bi-search text-muted"></i>
             </span>
-            <input class="form-control" @bind="_search" placeholder="Search by client number, phone, or name..." />
+            <input class="form-control"
+                   @bind="_search"
+                   @bind:event="oninput"
+                   @bind:after="OnSearchInputAsync"
+                   placeholder="Search by patient number, phone, or name..." />
+            @if (_loading && !string.IsNullOrWhiteSpace(_search))
+            {
+                <span class="input-group-text bg-transparent border-0 pe-2">
+                    <span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Searching"></span>
+                </span>
+            }
             @if (!string.IsNullOrWhiteSpace(_search))
             {
                 <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">Clear</button>
             }
-            <button class="btn btn-primary px-3" type="submit">Search</button>
         </form>
         @if (!_loading)
         {
             <div class="clients-count">
                 <strong>@_patients.Count</strong>
-                @(string.IsNullOrWhiteSpace(_search) ? "recent clients" : "matching clients")
+                @(string.IsNullOrWhiteSpace(_search) ? "recent patients" : "matching patients")
             </div>
         }
     </div>
 
     @if (_loading)
     {
-        <LoadingState Message="Loading clients..." />
+        <LoadingState Message="Loading patients..." />
     }
     else if (_patients.Count == 0)
     {
         <div class="section-card clients-empty">
             <i class="bi bi-people"></i>
-            <h2>No clients found</h2>
-            <p>@(string.IsNullOrWhiteSpace(_search) ? "Register the first outpatient client to get started." : "Try a different client number, phone, or name.")</p>
+            <h2>No patients found</h2>
+            <p>@(string.IsNullOrWhiteSpace(_search) ? "Register the first outpatient patient to get started." : "Try a different patient number, phone, or name.")</p>
             <a class="btn btn-primary" href="/patients/create">
-                <i class="bi bi-plus-lg me-1"></i> New Client
+                <i class="bi bi-plus-lg me-1"></i> New Patient
             </a>
         </div>
     }
@@ -70,7 +80,7 @@
                         </p>
                     </div>
                     <div class="client-card-actions">
-                        <a class="btn btn-sm btn-primary" href="/client-dashboard/@p.Id">Dashboard</a>
+                        <a class="btn btn-sm btn-primary" href="/patient-dashboard/@p.Id">Dashboard</a>
                         <a class="btn btn-sm btn-outline-primary" href="/patients/edit/@p.Id">Edit</a>
                         <a class="btn btn-sm btn-outline-secondary" href="/patients/details/@p.Id">View</a>
                     </div>
@@ -83,7 +93,7 @@
                 <table class="table table-hover mb-0 clients-table">
                     <thead>
                         <tr>
-                            <th>Client</th>
+                            <th>Patient</th>
                             <th>Age</th>
                             <th>Sex</th>
                             <th>Phone</th>
@@ -127,7 +137,7 @@
                             </td>
                             <td class="text-end">
                                 <div class="client-actions">
-                                    <a class="btn btn-sm btn-primary" href="/client-dashboard/@p.Id" title="Dashboard">
+                                    <a class="btn btn-sm btn-primary" href="/patient-dashboard/@p.Id" title="Dashboard">
                                         <i class="bi bi-grid-1x2"></i><span>Dashboard</span>
                                     </a>
                                     <a class="btn btn-sm btn-outline-primary" href="/patients/edit/@p.Id" title="Edit">
@@ -151,6 +161,7 @@
     private List<Patient> _patients = [];
     private string? _search;
     private bool _loading = true;
+    private CancellationTokenSource? _debounceCts;
 
     [SupplyParameterFromQuery]
     public string? Q { get; set; }
@@ -161,6 +172,23 @@
         await LoadAsync();
     }
 
+    private async Task OnSearchInputAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+            await LoadAsync();
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
     private async Task LoadAsync()
     {
         _loading = true;
@@ -169,16 +197,18 @@
         _loading = false;
     }
 
-    private async Task Search()
-    {
-        Nav.NavigateTo(string.IsNullOrWhiteSpace(_search) ? "/patients" : $"/patients?q={Uri.EscapeDataString(_search)}");
-        await LoadAsync();
-    }
+    private Task Search() => LoadAsync();
 
     private async Task ClearSearch()
     {
         _search = null;
         Nav.NavigateTo("/patients");
         await LoadAsync();
+    }
+
+    public void Dispose()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
     }
 }

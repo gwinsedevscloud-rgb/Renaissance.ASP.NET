@@ -6,18 +6,18 @@
 
 <PageTitle>New Triage - Renaissance</PageTitle>
 
-@if (!_exists) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Client not found.</div> }
+@if (!_exists) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Patient not found.</div> }
 else
 {
     <PageHeader Title="New Triage" Subtitle="Record vitals and medical history" Icon="bi-activity" />
     <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
         <TriageForm Model="_model" />
-        <FormActions SaveLabel="Save Triage" SaveIcon="bi-activity" CancelHref="@($"/client-dashboard/{PatientId}")" Saving="_saving" />
+        <FormActions SaveLabel="Save Triage" SaveIcon="bi-activity" CancelHref="@($"/patient-dashboard/{PatientId}")" Saving="_saving" />
     </EditForm>
 
     <ReferralPromptModal Visible="_showReferralPrompt"
                          PatientId="PatientId"
-                         PatientName="@(_patient?.FullName ?? "the client")"
+                         PatientName="@(_patient?.FullName ?? "the patient")"
                          SourceModule="AppModule.Triage"
                          SourceRecordId="_savedTriageId"
                          OnSkipped="FinishAsync"
@@ -60,7 +60,7 @@ else
     private Task FinishAsync()
     {
         _showReferralPrompt = false;
-        Nav.NavigateTo($"/client-dashboard/{PatientId}");
+        Nav.NavigateTo($"/patient-dashboard/{PatientId}");
         return Task.CompletedTask;
     }
 }

@@ -7,7 +7,6 @@ namespace Renaissance.Infrastructure.Services;
 
 public class ClientNumberGenerator : IClientNumberGenerator
 {
-    private const string Prefix = "ACH";
     private readonly RenaissanceDbContext _db;
 
     public ClientNumberGenerator(RenaissanceDbContext db)
@@ -22,12 +21,14 @@ public class ClientNumberGenerator : IClientNumberGenerator
             .FirstOrDefaultAsync(x => x.Id == 1, cancellationToken);
 
         var next = (sequence?.LastSequence ?? 0) + 1;
-        return Format(next);
+        var prefix = await GetPrefixAsync(cancellationToken);
+        return Format(prefix, next);
     }
 
     public async Task<string> GenerateAsync(CancellationToken cancellationToken = default)
     {
         const int maxAttempts = 8;
+        var prefix = await GetPrefixAsync(cancellationToken);
 
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
@@ -50,7 +51,7 @@ public class ClientNumberGenerator : IClientNumberGenerator
                 sequence.LastSequence += 1;
                 sequence.Version += 1;
                 await _db.SaveChangesAsync(cancellationToken);
-                return Format(sequence.LastSequence);
+                return Format(prefix, sequence.LastSequence);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -69,5 +70,15 @@ public class ClientNumberGenerator : IClientNumberGenerator
         throw new InvalidOperationException("Unable to generate client number after concurrency retries.");
     }
 
-    private static string Format(long sequence) => $"{Prefix}{sequence:D4}";
+    private async Task<string> GetPrefixAsync(CancellationToken cancellationToken)
+    {
+        var settings = await _db.HospitalSettings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == HospitalSettings.SingletonId, cancellationToken);
+
+        var prefix = settings?.ClientNumberPrefix?.Trim().ToUpperInvariant();
+        return string.IsNullOrWhiteSpace(prefix) ? "ACH" : prefix;
+    }
+
+    private static string Format(string prefix, long sequence) => $"{prefix}{sequence:D4}";
 }

@@ -1,22 +1,60 @@
-<div class="form-section">
-    <div class="form-section-header">
-        @if (!string.IsNullOrEmpty(Icon))
-        {
-            <span class="section-icon @IconBgClass">
-                <i class="bi @Icon"></i>
-            </span>
-        }
-        <div>
-            <h3>@Title</h3>
-            @if (!string.IsNullOrEmpty(Subtitle))
+<div class="form-section @(Collapsible ? "form-section-collapsible" : "") @(_expanded ? "is-expanded" : "is-collapsed")">
+    @if (Collapsible)
+    {
+        <button type="button"
+                class="form-section-header form-section-toggle"
+                @onclick="Toggle"
+                aria-expanded="@_expanded">
+            @if (!string.IsNullOrEmpty(Icon))
             {
-                <p class="form-section-subtitle">@Subtitle</p>
+                <span class="section-icon @IconBgClass">
+                    <i class="bi @Icon"></i>
+                </span>
             }
+            <div class="form-section-toggle-text">
+                <h3>@Title</h3>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <p class="form-section-subtitle">@Subtitle</p>
+                }
+                @if (!_expanded && !string.IsNullOrEmpty(CollapsedHint))
+                {
+                    <p class="form-section-collapsed-hint">@CollapsedHint</p>
+                }
+            </div>
+            <span class="form-section-chevron" aria-hidden="true">
+                <i class="bi @(_expanded ? "bi-chevron-up" : "bi-chevron-down")"></i>
+            </span>
+        </button>
+
+        @if (_expanded)
+        {
+            <div class="form-section-body">
+                @ChildContent
+            </div>
+        }
+    }
+    else
+    {
+        <div class="form-section-header">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <span class="section-icon @IconBgClass">
+                    <i class="bi @Icon"></i>
+                </span>
+            }
+            <div>
+                <h3>@Title</h3>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <p class="form-section-subtitle">@Subtitle</p>
+                }
+            </div>
         </div>
-    </div>
-    <div class="form-section-body">
-        @ChildContent
-    </div>
+        <div class="form-section-body">
+            @ChildContent
+        </div>
+    }
 </div>
 
 @code {
@@ -34,4 +72,39 @@
 
     [Parameter, EditorRequired]
     public RenderFragment ChildContent { get; set; } = null!;
+
+    [Parameter]
+    public bool Collapsible { get; set; }
+
+    [Parameter]
+    public bool InitiallyExpanded { get; set; } = true;
+
+    [Parameter]
+    public string? CollapsedHint { get; set; }
+
+    private bool _expanded = true;
+    private bool _userToggled;
+    private bool _initialized;
+    private bool _lastInitiallyExpanded = true;
+
+    protected override void OnParametersSet()
+    {
+        if (!Collapsible)
+        {
+            return;
+        }
+
+        if (!_userToggled && (!_initialized || InitiallyExpanded != _lastInitiallyExpanded))
+        {
+            _expanded = InitiallyExpanded;
+            _lastInitiallyExpanded = InitiallyExpanded;
+            _initialized = true;
+        }
+    }
+
+    private void Toggle()
+    {
+        _userToggled = true;
+        _expanded = !_expanded;
+    }
 }

@@ -2,6 +2,7 @@
 @layout LoginLayout
 @inject AuthStateService Auth
 @inject RenaissanceApiClient Api
+@inject HospitalModuleStateService ModuleState
 @inject NavigationManager Nav
 
 <PageTitle>Sign in - Renaissance</PageTitle>
@@ -10,7 +11,7 @@
     <div class="login-card">
         <div class="login-brand">
             <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
-            <h1>Renaissance</h1>
+            <h1>@(_facilityName ?? "Renaissance")</h1>
             <p>Sign in to access clinical modules assigned to your role.</p>
         </div>
 
@@ -40,8 +41,6 @@
                 <i class="bi bi-box-arrow-in-right me-1"></i> Sign in
             </button>
         </EditForm>
-
-        <p class="login-hint">Default admin: <code>admin</code> / <code>Admin@123</code></p>
     </div>
 </div>
 
@@ -49,12 +48,24 @@
     private readonly LoginForm _model = new();
     private string? _error;
     private bool _busy;
+    private string? _facilityName;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (Auth.IsAuthenticated)
         {
             Nav.NavigateTo("/");
+            return;
+        }
+
+        try
+        {
+            var settings = await Api.GetPublicSettingsAsync();
+            _facilityName = settings?.FacilityName;
+        }
+        catch
+        {
+            _facilityName = null;
         }
     }
 
@@ -66,6 +77,7 @@
         {
             var result = await Api.LoginAsync(_model.UserName, _model.Password);
             await Auth.SignInAsync(result.Token, result.User);
+            await ModuleState.LoadAsync(Api);
             Nav.NavigateTo("/");
         }
         catch (Exception ex)
@@ -81,9 +93,9 @@
     private sealed class LoginForm
     {
         [System.ComponentModel.DataAnnotations.Required]
-        public string UserName { get; set; } = string.Empty;
+        public string UserName { get; set; } = "admin";
 
         [System.ComponentModel.DataAnnotations.Required]
-        public string Password { get; set; } = string.Empty;
+        public string Password { get; set; } = "Admin@123";
     }
 }

@@ -13,7 +13,7 @@ else
     <PageHeader Title="Edit Ancillary Service" Icon="bi-bandaid" />
     <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
         <AncillaryForm Model="_vm" />
-        <FormActions SaveLabel="Update" CancelHref="@($"/client-dashboard/{_vm.PatientId}")" />
+        <FormActions SaveLabel="Update" CancelHref="@($"/patient-dashboard/{_vm.PatientId}")" />
     </EditForm>
     <button class="btn btn-outline-danger mt-2" @onclick="DeleteAsync"><i class="bi bi-trash me-1"></i> Delete</button>
 }
@@ -46,7 +46,7 @@ else
         };
         await Api.UpdateAncillaryAsync(Id, entity);
         Notifications.ShowSuccess("Ancillary service updated.");
-        Nav.NavigateTo($"/client-dashboard/{_vm.PatientId}");
+        Nav.NavigateTo($"/patient-dashboard/{_vm.PatientId}");
     }
 
     private async Task DeleteAsync()
@@ -54,6 +54,6 @@ else
         var e = await Api.GetAncillaryAsync(Id);
         if (e is null) return;
         await Api.DeleteAncillaryAsync(Id);
-        Nav.NavigateTo($"/client-dashboard/{e.PatientId}");
+        Nav.NavigateTo($"/patient-dashboard/{e.PatientId}");
     }
 }

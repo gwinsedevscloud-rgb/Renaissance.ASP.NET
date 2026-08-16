@@ -9,34 +9,27 @@ namespace Renaissance.Application.Services;
 
 public class ReferralService : IReferralService
 {
-    private static readonly HashSet<AppModule> ReferralTargets =
-    [
-        AppModule.Consultations,
-        AppModule.Pharmacy,
-        AppModule.Laboratory,
-        AppModule.Dental,
-        AppModule.Ancillary,
-        AppModule.Optometrists,
-        AppModule.Ophthalmologists
-    ];
-
-    private static readonly HashSet<AppModule> ReferralSources =
-    [
-        AppModule.Triage,
-        ..ReferralTargets
-    ];
-
     private readonly IApplicationDbContext _db;
     private readonly IReferralNotifier _notifier;
+    private readonly IHospitalModuleService _modules;
 
-    public ReferralService(IApplicationDbContext db, IReferralNotifier notifier)
+    public ReferralService(
+        IApplicationDbContext db,
+        IReferralNotifier notifier,
+        IHospitalModuleService modules)
     {
         _db = db;
         _notifier = notifier;
+        _modules = modules;
     }
 
     public async Task<List<ReferralQueueItemDto>> GetQueueAsync(AppModule targetModule, CancellationToken cancellationToken = default)
     {
+        if (targetModule == AppModule.Pharmacy)
+        {
+            await SyncPharmacyItnReferralsAsync(cancellationToken);
+        }
+
         var items = await _db.Referrals.AsNoTracking()
             .Include(r => r.Patient)
             .Where(r => !r.Archived
@@ -96,18 +89,28 @@ public class ReferralService : IReferralService
     {
         if (request.TargetModules.Count == 0)
         {
-            throw new InvalidOperationException("Select at least one module to refer the client to.");
+            throw new InvalidOperationException("Select at least one module to refer the patient to.");
         }
 
-        if (!ReferralSources.Contains(request.SourceModule))
+        var sources = await _modules.GetReferralSourcesAsync(cancellationToken);
+        if (!sources.Contains(request.SourceModule))
         {
             throw new InvalidOperationException("Invalid source module for referral.");
         }
 
-        var targets = request.TargetModules
-            .Where(m => ReferralTargets.Contains(m) && m != request.SourceModule)
-            .Distinct()
-            .ToList();
+        var targets = new List<AppModule>();
+        foreach (var module in request.TargetModules.Distinct())
+        {
+            if (module == request.SourceModule)
+            {
+                continue;
+            }
+
+            if (await _modules.CanReferAsync(request.SourceModule, module, cancellationToken))
+            {
+                targets.Add(module);
+            }
+        }
 
         if (targets.Count == 0)
         {
@@ -266,20 +269,20 @@ public class ReferralService : IReferralService
         string actor,
         CancellationToken cancellationToken = default)
     {
-        if (!ReferralTargets.Contains(request.TargetModule))
-        {
-            throw new InvalidOperationException("Invalid target module.");
-        }
-
         var referral = await LoadReferralAsync(id, cancellationToken);
         if (referral is null || referral.Status is ReferralStatus.Completed or ReferralStatus.Cancelled)
         {
             return null;
         }
 
+        if (!await _modules.CanReferAsync(referral.SourceModule, request.TargetModule, cancellationToken))
+        {
+            throw new InvalidOperationException("Invalid target module.");
+        }
+
         if (referral.TargetModule == request.TargetModule)
         {
-            throw new InvalidOperationException("Client is already referred to that module.");
+            throw new InvalidOperationException("Patient is already referred to that module.");
         }
 
         var duplicate = await _db.Referrals.AsNoTracking()
@@ -540,5 +543,91 @@ public class ReferralService : IReferralService
             ReferralPriority.Urgent => waitMinutes > 15,
             _ => waitMinutes > 30
         };
+    }
+
+    private async Task SyncPharmacyItnReferralsAsync(CancellationToken cancellationToken)
+    {
+        var pendingItnPatientIds = await _db.PharmacyPrescriptions.AsNoTracking()
+            .Where(p => !p.Archived
+                        && p.DrugCategory == ConsultationService.ItnDrugCategory
+                        && p.Status == DispensationStatus.PENDING)
+            .Select(p => p.PatientId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (pendingItnPatientIds.Count == 0)
+        {
+            return;
+        }
+
+        var created = new List<Referral>();
+        foreach (var patientId in pendingItnPatientIds)
+        {
+            var hasActiveReferral = await _db.Referrals.AnyAsync(
+                r => !r.Archived
+                     && r.PatientId == patientId
+                     && r.TargetModule == AppModule.Pharmacy
+                     && (r.Status == ReferralStatus.Pending || r.Status == ReferralStatus.InProgress),
+                cancellationToken);
+
+            if (hasActiveReferral)
+            {
+                continue;
+            }
+
+            var consultation = await _db.Consultations.AsNoTracking()
+                .Where(c => c.PatientId == patientId && !c.Archived && c.ItnOrder == true)
+                .OrderByDescending(c => c.CreatedDate)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var referral = new Referral
+            {
+                Id = Guid.NewGuid(),
+                PatientId = patientId,
+                SourceModule = AppModule.Consultations,
+                TargetModule = AppModule.Pharmacy,
+                SourceRecordId = consultation?.Id,
+                Status = ReferralStatus.Pending,
+                Priority = ReferralPriority.Routine,
+                Notes = "ITN ordered during consultation"
+            };
+            AuditHelper.SetCreated(referral, consultation?.UpdatedBy ?? consultation?.CreatedBy ?? "system");
+            _db.Referrals.Add(referral);
+            created.Add(referral);
+        }
+
+        if (created.Count == 0)
+        {
+            return;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var patientIds = created.Select(r => r.PatientId).Distinct().ToList();
+        var patients = await _db.Patients.AsNoTracking()
+            .Where(p => patientIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, cancellationToken);
+
+        foreach (var referral in created)
+        {
+            patients.TryGetValue(referral.PatientId, out var patient);
+            referral.Patient = patient;
+            await _notifier.NotifyReferralCreatedAsync(new ReferralNotificationDto
+            {
+                ReferralId = referral.Id,
+                PatientId = referral.PatientId,
+                PatientFullName = patient?.FullName ?? string.Empty,
+                ClientNumber = patient?.ClientNumber ?? string.Empty,
+                SourceModule = referral.SourceModule,
+                TargetModule = referral.TargetModule,
+                Priority = referral.Priority,
+                Notes = referral.Notes,
+                CreatedDate = referral.CreatedDate
+            }, cancellationToken);
+        }
+
+        await _notifier.NotifyReferralUpdatedAsync(AppModule.Pharmacy, cancellationToken);
+        var counts = await GetModuleCountsAsync([AppModule.Pharmacy], cancellationToken);
+        await _notifier.NotifyModuleCountsChangedAsync(counts, cancellationToken);
     }
 }

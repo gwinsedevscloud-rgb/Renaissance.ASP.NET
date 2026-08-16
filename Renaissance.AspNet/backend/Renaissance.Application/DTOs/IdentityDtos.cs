@@ -34,6 +34,8 @@ public class UserDto
     public string RoleName { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public DateTime? CreatedDate { get; set; }
+    public List<AppModule> Modules { get; set; } = [];
+    public bool HasDirectModuleAccess { get; set; }
 }
 
 public class CreateUserRequest
@@ -43,6 +45,7 @@ public class CreateUserRequest
     public string Password { get; set; } = string.Empty;
     public Guid RoleId { get; set; }
     public bool IsActive { get; set; } = true;
+    public List<AppModule> Modules { get; set; } = [];
 }
 
 public class UpdateUserRequest
@@ -51,6 +54,7 @@ public class UpdateUserRequest
     public string? Password { get; set; }
     public Guid RoleId { get; set; }
     public bool IsActive { get; set; } = true;
+    public List<AppModule> Modules { get; set; } = [];
 }
 
 public class RoleDto

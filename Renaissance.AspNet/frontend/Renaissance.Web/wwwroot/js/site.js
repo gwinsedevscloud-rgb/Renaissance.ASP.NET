@@ -1,4 +1,15 @@
-﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-// for details on configuring this project to bundle and minify static web assets.
+﻿window.renaissanceDownloadBytes = (fileName, contentType, byteArray) => {
+    const blob = new Blob([new Uint8Array(byteArray)], { type: contentType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+};
 
-// Write your JavaScript code.
+window.renaissanceCopyText = async (text) => {
+    await navigator.clipboard.writeText(text);
+};
