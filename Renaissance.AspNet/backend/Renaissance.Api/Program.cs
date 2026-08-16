@@ -124,9 +124,13 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
+    options.AddPolicy(RequireLanAccessAttribute.PolicyName, policy =>
+        policy.RequireAuthenticatedUser()
+            .AddRequirements(new LanAccessRequirement()));
 });
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, ModulePolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, ModuleAuthorizationHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, LanAccessAuthorizationHandler>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IReferralNotifier, SignalRReferralNotifier>();
 

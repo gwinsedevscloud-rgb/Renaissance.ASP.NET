@@ -43,26 +43,9 @@
                         </a>
                     }
                 </div>
-
-                <div class="home-hero-writeup">
-                    <p class="home-hero-description">
-                        Renaissance brings patient registration, triage, consultations, pharmacy, laboratory,
-                        dental, eye care, and ancillary services into one connected workspace. Search for a patient,
-                        open their dashboard, and move them through each module with live referral notifications
-                        keeping your team aligned.
-                    </p>
-                </div>
             </div>
 
             <aside class="home-hero-aside">
-                <div class="home-hero-profile">
-                    <span class="home-hero-avatar">@ProfileInitials</span>
-                    <div class="home-hero-profile-text">
-                        <strong>@Auth.User?.FullName</strong>
-                        <span>@Auth.User?.UserName</span>
-                    </div>
-                </div>
-
                 <dl class="home-hero-stats">
                     <div class="home-hero-stat">
                         <dt>Modules</dt>
@@ -170,8 +153,6 @@
     private void OnCountsChanged() => InvokeAsync(StateHasChanged);
 
     public void Dispose() => Referrals.ModuleCountsChanged -= OnCountsChanged;
-
-    private string ProfileInitials => ClientDisplayHelper.InitialsFromName(Auth.User?.FullName);
 
     private int ModuleCount =>
         ModuleNav.All.Count(m => Auth.HasModule(m.Module) && m.Module != AppModule.ClientDashboard);

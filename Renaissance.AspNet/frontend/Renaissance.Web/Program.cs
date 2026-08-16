@@ -11,12 +11,17 @@ var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"]
     ?? throw new InvalidOperationException("ApiSettings:BaseUrl is not configured.");
 
 builder.Services.AddScoped<AuthStateService>();
+builder.Services.AddScoped<LanAccessStateService>();
 builder.Services.AddScoped(sp =>
 {
     var auth = sp.GetRequiredService<AuthStateService>();
+    var lan = sp.GetRequiredService<LanAccessStateService>();
     var handler = new AuthDelegatingHandler(auth)
     {
-        InnerHandler = new HttpClientHandler()
+        InnerHandler = new LanAccessDelegatingHandler(lan)
+        {
+            InnerHandler = new HttpClientHandler()
+        }
     };
     var http = new HttpClient(handler)
     {

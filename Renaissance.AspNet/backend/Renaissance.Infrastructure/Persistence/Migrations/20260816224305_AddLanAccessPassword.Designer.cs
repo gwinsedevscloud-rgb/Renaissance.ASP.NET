@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Renaissance.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using Renaissance.Infrastructure.Persistence;
 namespace Renaissance.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(RenaissanceDbContext))]
-    partial class RenaissanceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260816224305_AddLanAccessPassword")]
+    partial class AddLanAccessPassword
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -13,13 +13,23 @@ namespace Renaissance.Application.Services;
 
 public class SettingsService : ISettingsService
 {
+    internal const string DefaultLanAccessPassword = "Network@2026";
+
     private readonly IApplicationDbContext _db;
     private readonly DeploymentOptions _deployment;
+    private readonly IPasswordHasher _passwordHasher;
+    private readonly IJwtTokenGenerator _jwt;
 
-    public SettingsService(IApplicationDbContext db, IOptions<DeploymentOptions> deployment)
+    public SettingsService(
+        IApplicationDbContext db,
+        IOptions<DeploymentOptions> deployment,
+        IPasswordHasher passwordHasher,
+        IJwtTokenGenerator jwt)
     {
         _db = db;
         _deployment = deployment.Value;
+        _passwordHasher = passwordHasher;
+        _jwt = jwt;
     }
 
     public async Task<HospitalSettingsDto> GetHospitalSettingsAsync(CancellationToken cancellationToken = default)
@@ -45,20 +55,104 @@ public class SettingsService : ISettingsService
         var settings = await EnsureSettingsAsync(cancellationToken);
         var facilityName = ValidateRequired(request.FacilityName, "Facility name", 150);
         var prefix = ValidateClientPrefix(request.ClientNumberPrefix);
-        var webUrl = NormalizeUrl(request.WebAccessUrl);
-        var apiUrl = NormalizeUrl(request.ApiAccessUrl);
         var timeZone = ValidateTimeZone(request.TimeZoneId);
 
         settings.FacilityName = facilityName;
         settings.ClientNumberPrefix = prefix;
-        settings.WebAccessUrl = webUrl;
-        settings.ApiAccessUrl = apiUrl;
         settings.TimeZoneId = timeZone;
         settings.UpdatedAtUtc = DateTime.UtcNow;
         settings.UpdatedBy = updatedBy;
 
         await _db.SaveChangesAsync(cancellationToken);
         return ToDto(settings);
+    }
+
+    public async Task<LanAccessStatusDto> GetLanAccessStatusAsync(CancellationToken cancellationToken = default)
+    {
+        var settings = await EnsureSettingsAsync(cancellationToken);
+        return new LanAccessStatusDto
+        {
+            IsPasswordConfigured = !string.IsNullOrWhiteSpace(settings.LanAccessPasswordHash)
+        };
+    }
+
+    public async Task<LanAccessUnlockResponse> UnlockLanAccessAsync(
+        LanAccessUnlockRequest request,
+        Guid userId,
+        string userName,
+        CancellationToken cancellationToken = default)
+    {
+        var settings = await EnsureSettingsAsync(cancellationToken);
+        await EnsureLanPasswordConfiguredAsync(settings, cancellationToken);
+
+        var password = request.Password?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            throw new InvalidOperationException("LAN access password is required.");
+        }
+
+        if (!_passwordHasher.Verify(password, settings.LanAccessPasswordHash!))
+        {
+            throw new InvalidOperationException("Incorrect LAN access password.");
+        }
+
+        var token = _jwt.CreateLanAccessToken(userId, userName);
+        return new LanAccessUnlockResponse
+        {
+            Token = token,
+            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(30)
+        };
+    }
+
+    public async Task UpdateLanSettingsAsync(
+        UpdateLanSettingsRequest request,
+        string updatedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var settings = await EnsureSettingsAsync(cancellationToken);
+        settings.WebAccessUrl = NormalizeUrl(request.WebAccessUrl);
+        settings.ApiAccessUrl = NormalizeUrl(request.ApiAccessUrl);
+        settings.UpdatedAtUtc = DateTime.UtcNow;
+        settings.UpdatedBy = updatedBy;
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<LanSettingsDto> GetLanSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        var settings = await EnsureSettingsAsync(cancellationToken);
+        return new LanSettingsDto
+        {
+            WebAccessUrl = settings.WebAccessUrl,
+            ApiAccessUrl = settings.ApiAccessUrl
+        };
+    }
+
+    public async Task ChangeLanAccessPasswordAsync(
+        ChangeLanAccessPasswordRequest request,
+        string updatedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var settings = await EnsureSettingsAsync(cancellationToken);
+        await EnsureLanPasswordConfiguredAsync(settings, cancellationToken);
+
+        var current = request.CurrentPassword?.Trim() ?? string.Empty;
+        var next = request.NewPassword?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(current) || string.IsNullOrWhiteSpace(next))
+        {
+            throw new InvalidOperationException("Current and new passwords are required.");
+        }
+
+        if (!_passwordHasher.Verify(current, settings.LanAccessPasswordHash!))
+        {
+            throw new InvalidOperationException("Current LAN access password is incorrect.");
+        }
+
+        ValidateLanPassword(next);
+        settings.LanAccessPasswordHash = _passwordHasher.Hash(next);
+        settings.UpdatedAtUtc = DateTime.UtcNow;
+        settings.UpdatedBy = updatedBy;
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<DeploymentInfoDto> GetDeploymentInfoAsync(CancellationToken cancellationToken = default)
@@ -103,6 +197,7 @@ public class SettingsService : ISettingsService
 
         if (settings is not null)
         {
+            await EnsureLanPasswordConfiguredAsync(settings, cancellationToken);
             return settings;
         }
 
@@ -112,7 +207,27 @@ public class SettingsService : ISettingsService
         };
         _db.HospitalSettings.Add(settings);
         await _db.SaveChangesAsync(cancellationToken);
+        await EnsureLanPasswordConfiguredAsync(settings, cancellationToken);
         return settings;
+    }
+
+    private async Task EnsureLanPasswordConfiguredAsync(HospitalSettings settings, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(settings.LanAccessPasswordHash))
+        {
+            return;
+        }
+
+        settings.LanAccessPasswordHash = _passwordHasher.Hash(DefaultLanAccessPassword);
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void ValidateLanPassword(string password)
+    {
+        if (password.Length < 8)
+        {
+            throw new InvalidOperationException("LAN access password must be at least 8 characters.");
+        }
     }
 
     private static HospitalSettingsDto ToDto(HospitalSettings settings)
@@ -120,8 +235,6 @@ public class SettingsService : ISettingsService
         {
             FacilityName = settings.FacilityName,
             ClientNumberPrefix = settings.ClientNumberPrefix,
-            WebAccessUrl = settings.WebAccessUrl,
-            ApiAccessUrl = settings.ApiAccessUrl,
             TimeZoneId = settings.TimeZoneId,
             UpdatedAtUtc = settings.UpdatedAtUtc,
             UpdatedBy = settings.UpdatedBy

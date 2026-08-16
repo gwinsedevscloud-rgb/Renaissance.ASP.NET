@@ -256,6 +256,7 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
             e.Property(x => x.WebAccessUrl).HasMaxLength(500);
             e.Property(x => x.ApiAccessUrl).HasMaxLength(500);
             e.Property(x => x.TimeZoneId).HasMaxLength(100).IsRequired();
+            e.Property(x => x.LanAccessPasswordHash).HasMaxLength(500);
             e.Property(x => x.UpdatedBy).HasMaxLength(150);
             e.HasData(new Domain.Entities.HospitalSettings
             {

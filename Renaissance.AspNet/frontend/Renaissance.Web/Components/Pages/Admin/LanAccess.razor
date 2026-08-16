@@ -1,0 +1,347 @@
+@page "/admin/lan-access"
+
+@rendermode InteractiveServer
+
+@inject RenaissanceApiClient Api
+@inject LanAccessStateService LanAccessState
+@inject IJSRuntime Js
+
+<PageTitle>LAN access - Renaissance</PageTitle>
+
+<div class="module-page admin-settings-page admin-lan-page">
+    <PageHeader Title="LAN access"
+                Subtitle="Network deployment and staff workstation URLs"
+                Icon="bi-wifi"
+                IconBgClass="feature-icon-blue"
+                BackHref="/admin/settings"
+                BackLabel="Settings" />
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <div class="alert alert-success alert-dismissible fade show admin-settings-alert" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@_message
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _message = null"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger alert-dismissible fade show admin-settings-alert" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@_error
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    @if (!LanAccessState.IsUnlocked)
+    {
+        <div class="form-card admin-lan-gate">
+            <div class="admin-lan-gate-icon feature-icon-blue">
+                <i class="bi bi-shield-lock-fill"></i>
+            </div>
+            <h2 class="h5 mb-2">Protected network settings</h2>
+            <p class="text-muted mb-4">
+                Enter the LAN access password to view deployment details, staff URLs, and firewall guidance.
+                This is separate from your admin login.
+            </p>
+
+            <EditForm Model="_unlock" OnValidSubmit="UnlockAsync">
+                <div class="mb-3">
+                    <FormLabel Text="LAN access password" Icon="bi-key-fill" />
+                    <InputText type="password"
+                               class="form-control"
+                               autocomplete="current-password"
+                               @bind-Value="_unlock.Password" />
+                </div>
+                <button class="btn btn-primary" type="submit" disabled="@_unlocking">
+                    @if (_unlocking)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-unlock me-1"></i>
+                    Unlock LAN settings
+                </button>
+            </EditForm>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <span class="record-chip is-positive"><i class="bi bi-shield-check"></i> LAN settings unlocked</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="LockAsync">
+                <i class="bi bi-lock me-1"></i> Lock
+            </button>
+        </div>
+
+        @if (_loading)
+        {
+            <LoadingState Message="Loading network settings..." />
+        }
+        else if (_deployment is not null)
+        {
+            <div class="admin-settings-summary admin-lan-summary">
+                <div class="admin-settings-kpi @(_deployment.LanReady ? "is-positive" : "is-neutral")">
+                    <span class="admin-settings-kpi-icon @(_deployment.LanReady ? "feature-icon-emerald" : "feature-icon-gold")">
+                        <i class="bi @(_deployment.LanReady ? "bi-wifi" : "bi-wifi-off")"></i>
+                    </span>
+                    <div>
+                        <span class="admin-settings-kpi-label">Status</span>
+                        <strong>@(_deployment.LanReady ? "LAN ready" : "Local only")</strong>
+                    </div>
+                </div>
+                <div class="admin-settings-kpi">
+                    <span class="admin-settings-kpi-icon feature-icon-teal"><i class="bi bi-hdd-network"></i></span>
+                    <div>
+                        <span class="admin-settings-kpi-label">Web port</span>
+                        <strong>@_deployment.WebPort</strong>
+                    </div>
+                </div>
+                <div class="admin-settings-kpi">
+                    <span class="admin-settings-kpi-icon feature-icon-violet"><i class="bi bi-diagram-3"></i></span>
+                    <div>
+                        <span class="admin-settings-kpi-label">API port</span>
+                        <strong>@_deployment.ApiPort</strong>
+                    </div>
+                </div>
+                <div class="admin-settings-kpi">
+                    <span class="admin-settings-kpi-icon feature-icon-charcoal"><i class="bi bi-ethernet"></i></span>
+                    <div>
+                        <span class="admin-settings-kpi-label">Bind address</span>
+                        <strong>@_deployment.BindAddress</strong>
+                    </div>
+                </div>
+            </div>
+
+            <EditForm Model="_form" OnValidSubmit="SaveAsync" class="admin-settings-form">
+                <div class="form-card admin-settings-card">
+                    <FormSection Title="Staff access URLs"
+                                 Subtitle="How workstations on the hospital network reach Renaissance"
+                                 Icon="bi-link-45deg"
+                                 IconBgClass="feature-icon-blue">
+                        <div class="admin-settings-status mb-3">
+                            @if (_deployment.LanReady)
+                            {
+                                <span class="record-chip is-positive"><i class="bi bi-check-circle"></i> LAN mode ready</span>
+                            }
+                            else
+                            {
+                                <span class="record-chip"><i class="bi bi-info-circle"></i> Run start-lan.ps1 on the server</span>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <FormLabel Text="Staff access URL" Icon="bi-link-45deg" />
+                            <div class="input-group admin-settings-input-group">
+                                <InputText class="form-control" @bind-Value="_form.WebAccessUrl" placeholder="@_deployment.SuggestedStaffUrl" />
+                                <button class="btn btn-outline-secondary" type="button" title="Copy URL"
+                                        @onclick="() => CopyUrlAsync(_form.WebAccessUrl, _deployment.SuggestedStaffUrl)">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Suggested: <code>@_deployment.SuggestedStaffUrl</code></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <FormLabel Text="API URL (reference)" Icon="bi-hdd-network" />
+                            <InputText class="form-control" @bind-Value="_form.ApiAccessUrl" placeholder="@_deployment.SuggestedApiUrl" />
+                        </div>
+
+                        @if (_deployment.LocalIpAddresses.Count > 0)
+                        {
+                            <div class="mb-3">
+                                <FormLabel Text="Server IP addresses" Icon="bi-router" />
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var ip in _deployment.LocalIpAddresses)
+                                    {
+                                        <span class="module-chip"><i class="bi bi-ethernet me-1"></i>@ip</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="admin-settings-checklist">
+                            <FormLabel Text="Deployment checklist" Icon="bi-list-check" />
+                            <ul class="admin-settings-steps">
+                                @foreach (var step in _deployment.SetupSteps)
+                                {
+                                    <li><i class="bi bi-check2"></i><span>@step</span></li>
+                                }
+                            </ul>
+                        </div>
+                    </FormSection>
+                </div>
+
+                <div class="admin-settings-save-bar">
+                    <p class="text-muted small mb-0">Save staff and API URLs for this hospital deployment.</p>
+                    <button class="btn btn-primary" type="submit" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <i class="bi bi-check2-circle me-1"></i>
+                        Save network settings
+                    </button>
+                </div>
+            </EditForm>
+
+            <div class="form-card admin-settings-card mt-4">
+                <FormSection Title="Change LAN password"
+                             Subtitle="Update the separate password required to open this page"
+                             Icon="bi-key"
+                             IconBgClass="feature-icon-gold"
+                             Collapsible="true"
+                             InitiallyExpanded="false">
+                    <EditForm Model="_passwordForm" OnValidSubmit="ChangePasswordAsync">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <FormLabel Text="Current password" Icon="bi-key" />
+                                <InputText type="password" class="form-control" @bind-Value="_passwordForm.CurrentPassword" />
+                            </div>
+                            <div class="col-md-4">
+                                <FormLabel Text="New password" Icon="bi-key-fill" />
+                                <InputText type="password" class="form-control" @bind-Value="_passwordForm.NewPassword" />
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button class="btn btn-outline-primary w-100" type="submit" disabled="@_changingPassword">
+                                    @if (_changingPassword)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    Update password
+                                </button>
+                            </div>
+                        </div>
+                    </EditForm>
+                </FormSection>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private UpdateLanSettingsRequest _form = new();
+    private ChangeLanAccessPasswordRequest _passwordForm = new();
+    private LanAccessUnlockRequest _unlock = new();
+    private DeploymentInfoDto? _deployment;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _unlocking;
+    private bool _changingPassword;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (LanAccessState.IsUnlocked)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task UnlockAsync()
+    {
+        _unlocking = true;
+        _error = null;
+        try
+        {
+            var result = await Api.UnlockLanAccessAsync(_unlock.Password);
+            LanAccessState.ApplyUnlock(result.Token, result.ExpiresAtUtc);
+            _unlock = new LanAccessUnlockRequest();
+            _message = "LAN settings unlocked.";
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _unlocking = false;
+        }
+    }
+
+    private void LockAsync()
+    {
+        LanAccessState.Clear();
+        _deployment = null;
+        _form = new UpdateLanSettingsRequest();
+        _message = null;
+        _error = null;
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var settings = await Api.GetLanSettingsAsync();
+            _form = new UpdateLanSettingsRequest
+            {
+                WebAccessUrl = settings.WebAccessUrl,
+                ApiAccessUrl = settings.ApiAccessUrl
+            };
+            _deployment = await Api.GetDeploymentInfoAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            if (ex.Message.Contains("401") || ex.Message.Contains("403") || ex.Message.Contains("Forbidden"))
+            {
+                LanAccessState.Clear();
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            await Api.UpdateLanSettingsAsync(_form);
+            _message = "Network settings saved.";
+            _deployment = await Api.GetDeploymentInfoAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        _changingPassword = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            await Api.ChangeLanAccessPasswordAsync(_passwordForm);
+            _passwordForm = new ChangeLanAccessPasswordRequest();
+            _message = "LAN access password updated.";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _changingPassword = false;
+        }
+    }
+
+    private async Task CopyUrlAsync(string configured, string suggested)
+    {
+        var url = string.IsNullOrWhiteSpace(configured) ? suggested : configured;
+        await Js.InvokeVoidAsync("renaissanceCopyText", url);
+        _message = "URL copied to clipboard.";
+    }
+}

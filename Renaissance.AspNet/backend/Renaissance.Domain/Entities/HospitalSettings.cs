@@ -10,6 +10,7 @@ public class HospitalSettings
     public string WebAccessUrl { get; set; } = string.Empty;
     public string ApiAccessUrl { get; set; } = string.Empty;
     public string TimeZoneId { get; set; } = "UTC";
+    public string? LanAccessPasswordHash { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
     public string? UpdatedBy { get; set; }
 }

@@ -530,14 +530,43 @@ public class RenaissanceApiClient
     public Task<HospitalSettingsDto> GetHospitalSettingsAsync(CancellationToken ct = default)
         => GetRequiredAsync<HospitalSettingsDto>("api/settings", ct);
 
-    public Task<DeploymentInfoDto> GetDeploymentInfoAsync(CancellationToken ct = default)
-        => GetRequiredAsync<DeploymentInfoDto>("api/settings/deployment", ct);
-
     public async Task<HospitalSettingsDto> UpdateHospitalSettingsAsync(UpdateHospitalSettingsRequest request, CancellationToken ct = default)
     {
         var response = await _http.PutAsJsonAsync("api/settings", request, JsonOptions, ct);
         await EnsureSuccessWithMessageAsync(response, ct);
         return (await response.Content.ReadFromJsonAsync<HospitalSettingsDto>(JsonOptions, ct))!;
+    }
+
+    public Task<LanAccessStatusDto> GetLanAccessStatusAsync(CancellationToken ct = default)
+        => GetRequiredAsync<LanAccessStatusDto>("api/settings/lan/status", ct);
+
+    public async Task<LanAccessUnlockResponse> UnlockLanAccessAsync(string password, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/settings/lan/unlock", new LanAccessUnlockRequest
+        {
+            Password = password
+        }, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<LanAccessUnlockResponse>(JsonOptions, ct))!;
+    }
+
+    public Task<LanSettingsDto> GetLanSettingsAsync(CancellationToken ct = default)
+        => GetRequiredAsync<LanSettingsDto>("api/settings/lan", ct);
+
+    public Task<DeploymentInfoDto> GetDeploymentInfoAsync(CancellationToken ct = default)
+        => GetRequiredAsync<DeploymentInfoDto>("api/settings/deployment", ct);
+
+    public async Task<LanSettingsDto> UpdateLanSettingsAsync(UpdateLanSettingsRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PutAsJsonAsync("api/settings/lan", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<LanSettingsDto>(JsonOptions, ct))!;
+    }
+
+    public async Task ChangeLanAccessPasswordAsync(ChangeLanAccessPasswordRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PutAsJsonAsync("api/settings/lan/password", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
     }
 
     public Task<HospitalModulesConfigDto> GetHospitalModulesConfigAsync(CancellationToken ct = default)

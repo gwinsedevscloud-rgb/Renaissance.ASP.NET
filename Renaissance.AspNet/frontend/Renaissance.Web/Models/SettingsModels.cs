@@ -4,8 +4,6 @@ public class HospitalSettingsDto
 {
     public string FacilityName { get; set; } = string.Empty;
     public string ClientNumberPrefix { get; set; } = string.Empty;
-    public string WebAccessUrl { get; set; } = string.Empty;
-    public string ApiAccessUrl { get; set; } = string.Empty;
     public string TimeZoneId { get; set; } = "UTC";
     public DateTime? UpdatedAtUtc { get; set; }
     public string? UpdatedBy { get; set; }
@@ -15,9 +13,41 @@ public class UpdateHospitalSettingsRequest
 {
     public string FacilityName { get; set; } = string.Empty;
     public string ClientNumberPrefix { get; set; } = string.Empty;
+    public string TimeZoneId { get; set; } = "UTC";
+}
+
+public class LanSettingsDto
+{
     public string WebAccessUrl { get; set; } = string.Empty;
     public string ApiAccessUrl { get; set; } = string.Empty;
-    public string TimeZoneId { get; set; } = "UTC";
+}
+
+public class UpdateLanSettingsRequest
+{
+    public string WebAccessUrl { get; set; } = string.Empty;
+    public string ApiAccessUrl { get; set; } = string.Empty;
+}
+
+public class LanAccessStatusDto
+{
+    public bool IsPasswordConfigured { get; set; }
+}
+
+public class LanAccessUnlockRequest
+{
+    public string Password { get; set; } = string.Empty;
+}
+
+public class LanAccessUnlockResponse
+{
+    public string Token { get; set; } = string.Empty;
+    public DateTime ExpiresAtUtc { get; set; }
+}
+
+public class ChangeLanAccessPasswordRequest
+{
+    public string CurrentPassword { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
 }
 
 public class PublicHospitalSettingsDto

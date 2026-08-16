@@ -8,4 +8,9 @@ public interface ISettingsService
     Task<PublicHospitalSettingsDto> GetPublicSettingsAsync(CancellationToken cancellationToken = default);
     Task<HospitalSettingsDto> UpdateHospitalSettingsAsync(UpdateHospitalSettingsRequest request, string updatedBy, CancellationToken cancellationToken = default);
     Task<DeploymentInfoDto> GetDeploymentInfoAsync(CancellationToken cancellationToken = default);
+    Task<LanAccessStatusDto> GetLanAccessStatusAsync(CancellationToken cancellationToken = default);
+    Task<LanAccessUnlockResponse> UnlockLanAccessAsync(LanAccessUnlockRequest request, Guid userId, string userName, CancellationToken cancellationToken = default);
+    Task<LanSettingsDto> GetLanSettingsAsync(CancellationToken cancellationToken = default);
+    Task UpdateLanSettingsAsync(UpdateLanSettingsRequest request, string updatedBy, CancellationToken cancellationToken = default);
+    Task ChangeLanAccessPasswordAsync(ChangeLanAccessPasswordRequest request, string updatedBy, CancellationToken cancellationToken = default);
 }

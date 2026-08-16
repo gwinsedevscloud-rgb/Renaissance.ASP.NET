@@ -1,24 +1,24 @@
 @inject RenaissanceApiClient Api
 @inject HospitalModuleStateService ModuleState
 
-<div class="section-card p-4 module-services-settings">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-        <div>
-            <h2 class="h5 mb-1"><i class="bi bi-grid-3x3-gap me-2"></i>Clinical services</h2>
+<div class="form-card admin-settings-card module-services-settings mt-4">
+    <div class="admin-settings-section-head">
+        <span class="section-icon feature-icon-indigo"><i class="bi bi-grid-3x3-gap-fill"></i></span>
+        <div class="flex-grow-1">
+            <h2 class="h5 mb-1">Clinical services</h2>
             <p class="text-muted small mb-0">
-                Enable or remove modules for this hospital. Disabled services are hidden from staff, blocked in the API,
-                and removed from referral routing.
+                Add or remove modules for this hospital and define how they interconnect through referrals.
             </p>
         </div>
-        @if (_config?.UpdatedAtUtc is not null)
+        @if (_config is not null)
         {
-            <span class="record-meta mb-0">
-                Updated @_config.UpdatedAtUtc.Value.ToLocalTime().ToString("g")
-                @if (!string.IsNullOrWhiteSpace(_config.UpdatedBy))
+            <div class="admin-settings-module-stats">
+                <span class="record-chip is-positive"><i class="bi bi-check2-circle"></i>@_enabled.Count active</span>
+                @if (_config.UpdatedAtUtc is not null)
                 {
-                    <span>by @_config.UpdatedBy</span>
+                    <span class="record-meta mb-0">Updated @_config.UpdatedAtUtc.Value.ToLocalTime().ToString("g")</span>
                 }
-            </span>
+            </div>
         }
     </div>
 
@@ -32,49 +32,59 @@
     }
     else
     {
-        <div class="row g-2 mb-4">
-            @foreach (var service in _config.Services.Where(s => !s.IsCore))
-            {
-                var enabled = _enabled.Contains(service.Module);
-                var nav = ModuleNav.All.FirstOrDefault(m => m.Module == service.Module);
-                <div class="col-md-6 col-xl-4">
-                    <label class="module-service-card @(enabled ? "enabled" : "disabled")">
-                        <div class="module-service-card-head">
-                            <span class="module-service-icon feature-icon-teal">
-                                <i class="bi @(nav?.Icon ?? "bi-grid")"></i>
-                            </span>
-                            <div class="form-check form-switch m-0">
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       checked="@enabled"
-                                       @onchange="e => ToggleService(service.Module, e.Value)" />
+        <FormSection Title="Service modules"
+                     Subtitle="Toggle clinical departments available to staff"
+                     Icon="bi-toggle-on"
+                     IconBgClass="feature-icon-teal">
+            <div class="row g-3">
+                @foreach (var service in _config.Services.Where(s => !s.IsCore))
+                {
+                    var enabled = _enabled.Contains(service.Module);
+                    var nav = ModuleNav.All.FirstOrDefault(m => m.Module == service.Module);
+                    var accent = ModuleAccentClass(service.Module);
+                    <div class="col-md-6 col-xl-4">
+                        <label class="module-service-card @accent @(enabled ? "enabled" : "disabled")">
+                            <div class="module-service-card-head">
+                                <span class="module-service-icon @accent">
+                                    <i class="bi @(nav?.Icon ?? "bi-grid")"></i>
+                                </span>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           checked="@enabled"
+                                           @onchange="e => ToggleService(service.Module, e.Value)" />
+                                </div>
                             </div>
-                        </div>
-                        <strong>@service.Name</strong>
-                        <small class="text-muted d-block">@service.Description</small>
-                        <span class="module-service-tag">@service.Category</span>
-                    </label>
-                </div>
-            }
-        </div>
+                            <strong>@service.Name</strong>
+                            <small class="text-muted d-block">@service.Description</small>
+                            <span class="module-service-tag">@service.Category</span>
+                        </label>
+                    </div>
+                }
+            </div>
+        </FormSection>
 
-        <div class="module-referral-panel">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                <div>
-                    <h3 class="h6 mb-1"><i class="bi bi-arrow-left-right me-1"></i>Referral interconnections</h3>
-                    <p class="text-muted small mb-0">
-                        Choose which enabled services can send patients to one another. Triage and clinical modules interconnect here.
-                    </p>
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ConnectAllReferrals">Connect all</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearReferralLinks">Clear links</button>
-                </div>
+        <FormSection Title="Referral interconnections"
+                     Subtitle="Choose which enabled services can send patients to one another"
+                     Icon="bi-arrow-left-right"
+                     IconBgClass="feature-icon-violet"
+                     Collapsible="true"
+                     InitiallyExpanded="@(_enabled.Count >= 2)">
+            <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ConnectAllReferrals">
+                    <i class="bi bi-diagram-3 me-1"></i> Connect all
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearReferralLinks">
+                    <i class="bi bi-x-circle me-1"></i> Clear links
+                </button>
             </div>
 
             @if (_referralModules.Count == 0)
             {
-                <p class="text-muted small mb-0">Enable at least two referral-capable services to configure connections.</p>
+                <div class="admin-settings-empty-hint">
+                    <i class="bi bi-info-circle"></i>
+                    <p class="mb-0">Enable at least two referral-capable services to configure connections.</p>
+                </div>
             }
             else
             {
@@ -83,27 +93,30 @@
                         <thead>
                             <tr>
                                 <th>From \ To</th>
-                                @foreach (var target in _referralTargets)
+                                @foreach (var target in _referralTargets.Where(_enabled.Contains))
                                 {
-                                    <th>@ModuleNav.DisplayName(target)</th>
+                                    <th><span class="module-referral-col-label">@ModuleNav.DisplayName(target)</span></th>
                                 }
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var source in _referralSources)
+                            @foreach (var source in _referralSources.Where(_enabled.Contains))
                             {
                                 <tr>
                                     <th>@ModuleNav.DisplayName(source)</th>
-                                    @foreach (var target in _referralTargets)
+                                    @foreach (var target in _referralTargets.Where(_enabled.Contains))
                                     {
                                         var on = source != target && HasLink(source, target);
-                                        var disabled = source == target || !_enabled.Contains(source) || !_enabled.Contains(target);
-                                        <td class="@(disabled ? "is-disabled" : "")">
+                                        var disabled = source == target;
+                                        <td class="@(disabled ? "is-disabled" : on ? "is-linked" : "")">
                                             @if (!disabled)
                                             {
-                                                <input type="checkbox"
-                                                       checked="@on"
-                                                       @onchange="e => ToggleLink(source, target, e.Value)" />
+                                                <label class="module-referral-check">
+                                                    <input type="checkbox"
+                                                           checked="@on"
+                                                           @onchange="e => ToggleLink(source, target, e.Value)" />
+                                                    <span class="module-referral-check-ui"><i class="bi bi-check-lg"></i></span>
+                                                </label>
                                             }
                                         </td>
                                     }
@@ -113,14 +126,16 @@
                     </table>
                 </div>
             }
-        </div>
+        </FormSection>
 
-        <div class="mt-3">
+        <div class="admin-settings-save-bar">
+            <p class="text-muted small mb-0">Changes apply immediately after saving. Staff may need to sign in again.</p>
             <button type="button" class="btn btn-primary" disabled="@_saving" @onclick="SaveAsync">
                 @if (_saving)
                 {
                     <span class="spinner-border spinner-border-sm me-1"></span>
                 }
+                <i class="bi bi-check2-circle me-1"></i>
                 Save module configuration
             </button>
         </div>
@@ -277,4 +292,18 @@
             _saving = false;
         }
     }
+
+    private static string ModuleAccentClass(AppModule module) => module switch
+    {
+        AppModule.Triage => "home-accent-coral",
+        AppModule.Consultations => "home-accent-slate",
+        AppModule.Pharmacy => "home-accent-indigo",
+        AppModule.Laboratory => "home-accent-sky",
+        AppModule.Dental => "home-accent-amber",
+        AppModule.Ancillary => "home-accent-rose",
+        AppModule.Optometrists => "home-accent-violet",
+        AppModule.Ophthalmologists => "home-accent-emerald",
+        AppModule.Stakeholders => "home-accent-gold",
+        _ => "home-accent-teal"
+    };
 }
