@@ -3,13 +3,20 @@
 <FormSection Title="Service Details" Icon="bi-bandaid">
     <div class="row g-3">
         <div class="col-md-8">
-            <FormLabel Text="Services" Icon="bi-list-check" />
-            <InputTextArea class="form-control" rows="3" @bind-Value="Model.ServicesText" />
-            <div class="form-hint">One per line or comma-separated</div>
+            <CatalogTextPicker Label="Services"
+                               Icon="bi-list-check"
+                               Options="ClinicalCatalog.AncillaryServices"
+                               @bind-Value="Model.ServicesText" />
         </div>
         <div class="col-md-4">
             <FormLabel Text="Pregnancy Status" Icon="bi-heart" />
-            <InputText class="form-control" @bind-Value="Model.PregnancyStatus" />
+            <InputSelect class="form-select" @bind-Value="Model.PregnancyStatus">
+                <option value="">Select status…</option>
+                @foreach (var status in ClinicalCatalog.PregnancyStatuses)
+                {
+                    <option value="@status">@status</option>
+                }
+            </InputSelect>
         </div>
     </div>
 </FormSection>

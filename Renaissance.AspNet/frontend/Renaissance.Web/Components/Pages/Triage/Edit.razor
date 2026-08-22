@@ -6,26 +6,64 @@
 
 <PageTitle>Edit Triage - Renaissance</PageTitle>
 
-@if (_loading) { <LoadingState /> }
-else if (_model is null) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Triage not found.</div> }
-else
-{
-    <PageHeader Title="Edit Triage" Icon="bi-activity" />
-    <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
-        <TriageForm Model="_model" />
-        <FormActions SaveLabel="Update" CancelHref="@($"/patient-dashboard/{_model.PatientId}")" />
-    </EditForm>
-    <button class="btn btn-outline-danger mt-2" @onclick="ArchiveAsync"><i class="bi bi-archive me-1"></i> Archive</button>
-}
+<div class="module-page module-triage">
+    @if (_loading)
+    {
+        <LoadingState />
+    }
+    else if (_model is null)
+    {
+        <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Triage not found.</div>
+    }
+    else
+    {
+        <header class="triage-station-header triage-station-header-compact">
+            <a class="triage-back-link" href="@($"/patient-dashboard/{_model.PatientId}")">
+                <i class="bi bi-arrow-left"></i> Patient dashboard
+            </a>
+            <div class="triage-station-brand">
+                <span class="triage-station-icon" aria-hidden="true"><i class="bi bi-activity"></i></span>
+                <div>
+                    <h1>Edit triage</h1>
+                    <p>Update vitals and medical history</p>
+                </div>
+            </div>
+        </header>
+
+        @if (_patient is not null)
+        {
+            <div class="triage-patient-strip">
+                <ClientIdentity Patient="_patient" />
+                <span class="triage-patient-tag"><i class="bi bi-pencil"></i> Editing record</span>
+            </div>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="SaveAsync" class="triage-form-shell">
+            <TriageForm Model="_model" />
+            <FormActions SaveLabel="Update triage" SaveIcon="bi-check-lg" CancelHref="@($"/patient-dashboard/{_model.PatientId}")" />
+        </EditForm>
+
+        <div class="triage-danger-zone">
+            <button class="btn btn-outline-danger" type="button" @onclick="ArchiveAsync">
+                <i class="bi bi-archive me-1"></i> Archive record
+            </button>
+        </div>
+    }
+</div>
 
 @code {
     [Parameter] public Guid Id { get; set; }
     private Triage? _model;
+    private Patient? _patient;
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
         _model = await Api.GetTriageAsync(Id);
+        if (_model is not null)
+        {
+            _patient = await Api.GetPatientAsync(_model.PatientId);
+        }
         _loading = false;
     }
 

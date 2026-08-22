@@ -201,6 +201,8 @@ using (var scope = app.Services.CreateScope())
         db.Database.Migrate();
         await IdentitySeeder.SeedAsync(db, logger);
         await SampleDataSeeder.SeedAsync(db, logger);
+        await SurveillanceDemoSeeder.EnsureAsync(db, logger);
+        await ClinicalModuleDemoSeeder.EnsureAsync(db, logger);
     }
     catch (Exception ex)
     {

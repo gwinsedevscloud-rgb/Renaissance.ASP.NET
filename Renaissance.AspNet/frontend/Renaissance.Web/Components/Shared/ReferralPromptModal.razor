@@ -11,10 +11,11 @@
                     <i class="bi bi-send-check"></i>
                 </div>
                 <div class="referral-modal-header-text">
-                    <h2 id="referral-modal-title" class="referral-modal-title">Refer to another module</h2>
+                    <h2 id="referral-modal-title" class="referral-modal-title">@Title</h2>
                     <p class="referral-modal-subtitle">
                         From <span class="referral-meta-chip">@ModuleNav.DisplayName(SourceModule)</span>
-                        for <span class="referral-meta-chip referral-meta-chip-client">@PatientName</span>
+                        for <span class="referral-meta-chip referral-meta-chip-client">@PatientName</span>.
+                        @Subtitle
                     </p>
                 </div>
                 <button type="button" class="referral-modal-close" aria-label="Close" @onclick="SkipAsync">
@@ -106,7 +107,7 @@
                     }
                 </div>
                 <div class="referral-modal-actions">
-                    <button type="button" class="btn btn-outline-secondary" @onclick="SkipAsync">Skip for now</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="SkipAsync">@SkipLabel</button>
                     <button type="button"
                             class="btn btn-primary"
                             disabled="@(_submitting || _selected.Count == 0)"
@@ -132,6 +133,9 @@
     [Parameter] public Guid? SourceRecordId { get; set; }
     [Parameter] public EventCallback OnSkipped { get; set; }
     [Parameter] public EventCallback OnCompleted { get; set; }
+    [Parameter] public string SkipLabel { get; set; } = "Done without referring";
+    [Parameter] public string Title { get; set; } = "Refer to another module";
+    [Parameter] public string Subtitle { get; set; } = "Optional — send this patient to additional modules";
 
     private readonly HashSet<AppModule> _selected = [];
     private ReferralPriority _priority = ReferralPriority.Routine;

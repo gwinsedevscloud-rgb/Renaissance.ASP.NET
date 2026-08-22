@@ -12,13 +12,54 @@ else
     <PageHeader Title="New Prescription" Subtitle="Prescribe medication for this patient" Icon="bi-prescription2" IconBgClass="feature-icon-violet" />
     <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
         <div class="row g-3">
-            <div class="col-md-4"><label class="form-label"><i class="bi bi-tag me-1"></i>Drug Category</label><InputText class="form-control" @bind-Value="_model.DrugCategory" /></div>
-            <div class="col-md-4"><label class="form-label"><i class="bi bi-capsule me-1"></i>Drug Name</label><InputText class="form-control" @bind-Value="_model.DrugName" /></div>
-            <div class="col-md-4"><label class="form-label">Dosage</label><InputText class="form-control" @bind-Value="_model.Dosage" /></div>
-            <div class="col-md-4"><label class="form-label">Frequency</label><InputText class="form-control" @bind-Value="_model.Frequency" /></div>
-            <div class="col-md-4"><label class="form-label">Duration</label><InputText class="form-control" @bind-Value="_model.Duration" /></div>
+            <div class="col-md-4">
+                <label class="form-label"><i class="bi bi-tag me-1"></i>Drug Category</label>
+                <InputSelect class="form-select" @bind-Value="_selectedCategory" @bind-Value:after="OnCategoryChanged">
+                    <option value="">Select category...</option>
+                    @foreach (var category in DrugCatalog.Categories)
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"><i class="bi bi-capsule me-1"></i>Drug Name</label>
+                <InputSelect class="form-select" @bind-Value="_selectedDrugName" @bind-Value:after="OnDrugChanged" disabled="@(_availableDrugs.Count == 0)">
+                    <option value="">@(_availableDrugs.Count == 0 ? "Choose category first" : "Select drug...")</option>
+                    @foreach (var drug in _availableDrugs)
+                    {
+                        <option value="@drug.Name">@drug.Name</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Dosage</label>
+                <InputText class="form-control" @bind-Value="_model.Dosage" placeholder="e.g. 500 mg" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Frequency</label>
+                <InputText class="form-control" @bind-Value="_model.Frequency" placeholder="e.g. Twice daily" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Duration</label>
+                <InputText class="form-control" @bind-Value="_model.Duration" placeholder="e.g. 7 days" />
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_selectedCategory))
+            {
+                <div class="col-12">
+                    <div class="pharmacy-catalog-hint">
+                        <i class="bi bi-info-circle"></i>
+                        Standard dosing from the <strong>@_selectedCategory</strong> formulary is pre-filled — adjust if clinically indicated.
+                    </div>
+                </div>
+            }
         </div>
-        <FormActions SaveLabel="Save Prescription" SaveIcon="bi-prescription2" CancelHref="@($"/patient-dashboard/{PatientId}")" Saving="_saving" />
+        <FormActions SaveLabel="Save prescription"
+                     SaveIcon="bi-prescription2"
+                     CancelHref="@($"/patient-dashboard/{PatientId}")"
+                     Saving="_saving"
+                     ShowReferAfterSave="true"
+                     OnReferAfterSave="SaveAndReferAsync" />
     </EditForm>
 
     <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the patient")"
@@ -33,6 +74,9 @@ else
     private bool _saving;
     private bool _showReferral;
     private Guid? _savedId;
+    private string _selectedCategory = string.Empty;
+    private string _selectedDrugName = string.Empty;
+    private IReadOnlyList<DrugOption> _availableDrugs = Array.Empty<DrugOption>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -41,20 +85,64 @@ else
         _model.PatientId = PatientId;
     }
 
+    private void OnCategoryChanged()
+    {
+        _model.DrugCategory = _selectedCategory;
+        _availableDrugs = DrugCatalog.GetDrugs(_selectedCategory);
+        _selectedDrugName = string.Empty;
+        _model.DrugName = string.Empty;
+        _model.Dosage = string.Empty;
+        _model.Frequency = string.Empty;
+        _model.Duration = string.Empty;
+    }
+
+    private void OnDrugChanged()
+    {
+        var drug = DrugCatalog.FindDrug(_selectedCategory, _selectedDrugName);
+        if (drug is null)
+        {
+            _model.DrugName = _selectedDrugName;
+            return;
+        }
+
+        _model.DrugName = drug.Name;
+        _model.Dosage = drug.Dosage;
+        _model.Frequency = drug.Frequency;
+        _model.Duration = drug.Duration;
+    }
+
     private async Task SaveAsync()
     {
         _saving = true;
-        if (_model.Id == Guid.Empty) _model.Id = Guid.NewGuid();
-        _model.Status = DispensationStatus.PENDING;
-        _model.Dispensed = false;
         try
         {
-            await Api.CreatePharmacyAsync(_model);
-            _savedId = _model.Id;
+            await PersistAsync();
             Notifications.ShowSuccess("Prescription saved.");
+            _showReferral = false;
+            Nav.NavigateTo($"/patient-dashboard/{PatientId}");
+        }
+        finally { _saving = false; }
+    }
+
+    private async Task SaveAndReferAsync()
+    {
+        _saving = true;
+        try
+        {
+            await PersistAsync();
+            Notifications.ShowSuccess("Prescription saved. Select modules to refer the patient to.");
             _showReferral = true;
         }
         finally { _saving = false; }
+    }
+
+    private async Task PersistAsync()
+    {
+        if (_model.Id == Guid.Empty) _model.Id = Guid.NewGuid();
+        _model.Status = DispensationStatus.PENDING;
+        _model.Dispensed = false;
+        await Api.CreatePharmacyAsync(_model);
+        _savedId = _model.Id;
     }
 
     private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/patient-dashboard/{PatientId}"); return Task.CompletedTask; }

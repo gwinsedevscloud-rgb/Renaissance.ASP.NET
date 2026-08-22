@@ -67,12 +67,13 @@
                 <div class="section-card table-card p-0">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
+                            <ModuleRecordColGroup Widths="@(new[] { "42%", "14%", "22%", "8rem" })" />
                             <thead>
                                 <tr>
                                     <th>File</th>
                                     <th>Size</th>
                                     <th>Created (UTC)</th>
-                                    <th></th>
+                                    <ModuleTableActionTh />
                                 </tr>
                             </thead>
                             <tbody>
@@ -82,7 +83,7 @@
                                     <td><code>@backup.FileName</code></td>
                                     <td>@backup.SizeLabel</td>
                                     <td>@backup.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
-                                    <td class="text-end">
+                                    <td class="text-end module-table-actions">
                                         <button class="btn btn-sm btn-outline-primary me-1"
                                                 type="button"
                                                 disabled="@_busy"

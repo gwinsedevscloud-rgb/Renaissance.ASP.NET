@@ -1,0 +1,36 @@
+<div class="ren-login-wrap">
+    <div class="ren-login-card">
+        <div class="ren-login-brand">
+            <mat-icon [svgIcon]="'heroicons_solid:heart'"></mat-icon>
+            <h1>{{ facilityName() }}</h1>
+            <p>Sign in to access clinical modules assigned to your role.</p>
+        </div>
+
+        @if (error()) {
+            <div class="ren-alert ren-alert-danger">{{ error() }}</div>
+        }
+
+        <form [formGroup]="form" (ngSubmit)="submit()">
+            <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Username</mat-label>
+                <mat-icon matPrefix [svgIcon]="'heroicons_outline:user'"></mat-icon>
+                <input matInput formControlName="userName" autocomplete="username" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Password</mat-label>
+                <mat-icon matPrefix [svgIcon]="'heroicons_outline:lock-closed'"></mat-icon>
+                <input matInput type="password" formControlName="password" autocomplete="current-password" />
+            </mat-form-field>
+
+            <button mat-flat-button color="primary" class="ren-login-btn" type="submit" [disabled]="loading()">
+                @if (loading()) {
+                    <span>Signing in...</span>
+                } @else {
+                    <mat-icon [svgIcon]="'heroicons_outline:arrow-right-on-rectangle'"></mat-icon>
+                    <span>Sign in</span>
+                }
+            </button>
+        </form>
+    </div>
+</div>

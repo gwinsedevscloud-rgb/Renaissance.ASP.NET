@@ -12,11 +12,21 @@ else
     <PageHeader Title="New Ancillary Service" Icon="bi-bandaid" />
     <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
         <AncillaryForm Model="_vm" />
-        <FormActions SaveLabel="Save" SaveIcon="bi-bandaid" CancelHref="@($"/patient-dashboard/{PatientId}")" Saving="_saving" />
+        <FormActions SaveLabel="Save ancillary record"
+                     SaveIcon="bi-bandaid"
+                     CancelHref="@($"/patient-dashboard/{PatientId}")"
+                     Saving="_saving"
+                     ShowReferAfterSave="true"
+                     OnReferAfterSave="SaveAndReferAsync" />
     </EditForm>
 
-    <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the patient")"
-                         SourceModule="AppModule.Ancillary" SourceRecordId="_savedId" OnSkipped="FinishAsync" OnCompleted="FinishAsync" />
+    <ReferralPromptModal Visible="_showReferral"
+                         PatientId="PatientId"
+                         PatientName="@(_patient?.FullName ?? "the patient")"
+                         SourceModule="AppModule.Ancillary"
+                         SourceRecordId="_savedId"
+                         OnSkipped="FinishAsync"
+                         OnCompleted="FinishAsync" />
 }
 
 @code {
@@ -38,20 +48,38 @@ else
     private async Task SaveAsync()
     {
         _saving = true;
-        var entity = new Ancillary
-        {
-            Id = Guid.NewGuid(), PatientId = _vm.PatientId,
-            Services = ListTextHelper.FromMultiline(_vm.ServicesText),
-            PregnancyStatus = _vm.PregnancyStatus
-        };
         try
         {
-            await Api.CreateAncillaryAsync(entity);
-            _savedId = entity.Id;
+            await PersistAsync();
             Notifications.ShowSuccess("Ancillary service saved.");
+            Nav.NavigateTo($"/patient-dashboard/{PatientId}");
+        }
+        finally { _saving = false; }
+    }
+
+    private async Task SaveAndReferAsync()
+    {
+        _saving = true;
+        try
+        {
+            await PersistAsync();
+            Notifications.ShowSuccess("Ancillary record saved. Select modules to refer the patient to.");
             _showReferral = true;
         }
         finally { _saving = false; }
+    }
+
+    private async Task PersistAsync()
+    {
+        var entity = new Ancillary
+        {
+            Id = Guid.NewGuid(),
+            PatientId = _vm.PatientId,
+            Services = ListTextHelper.FromMultiline(_vm.ServicesText),
+            PregnancyStatus = _vm.PregnancyStatus
+        };
+        await Api.CreateAncillaryAsync(entity);
+        _savedId = entity.Id;
     }
 
     private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/patient-dashboard/{PatientId}"); return Task.CompletedTask; }

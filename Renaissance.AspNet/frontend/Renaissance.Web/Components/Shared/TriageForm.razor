@@ -1,60 +1,131 @@
 @using Renaissance.Web.Models
+@using Renaissance.Web.Helpers
 
-<FormSection Title="Medical History" Icon="bi-heart-pulse">
-    <div class="row g-3">
-        <div class="col-md-3"><div class="checkbox-card"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="Diabetes" /><label class="form-check-label"><i class="bi bi-droplet me-1"></i> Diabetes</label></div></div></div>
-        <div class="col-md-3"><div class="checkbox-card"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="Asthma" /><label class="form-check-label"><i class="bi bi-wind me-1"></i> Asthma</label></div></div></div>
-        <div class="col-md-3"><div class="checkbox-card"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="SickleCell" /><label class="form-check-label"><i class="bi bi-heart me-1"></i> Sickle Cell</label></div></div></div>
-        <div class="col-md-3"><div class="checkbox-card"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="Smoking" /><label class="form-check-label"><i class="bi bi-cloud me-1"></i> Smoking</label></div></div></div>
-    </div>
-</FormSection>
+<div class="triage-form triage-form-station">
+    <aside class="triage-monitor @(_hasVitals ? "is-live" : "")" aria-label="Live vitals monitor">
+        <div class="triage-monitor-head">
+            <i class="bi bi-activity"></i>
+            <span>Vitals monitor</span>
+        </div>
 
-<FormSection Title="Vitals" Icon="bi-activity" IconBgClass="feature-icon-blue">
-    <div class="row g-3 align-items-end">
-        <div class="col-md-3">
-            <FormLabel Text="Weight (kg)" Icon="bi-speedometer" />
-            <InputNumber class="form-control" @bind-Value="Model.Weight" @bind-Value:after="OnVitalsChanged" />
-        </div>
-        <div class="col-md-3">
-            <FormLabel Text="Height (cm)" Icon="bi-rulers" />
-            <InputNumber class="form-control" @bind-Value="Model.Height" @bind-Value:after="OnVitalsChanged" />
-        </div>
-        <div class="col-md-3">
-            <FormLabel Text="BMI" Icon="bi-calculator" />
-            <div class="bmi-display @BmiCssClass">
-                @if (Bmi.HasValue)
-                {
-                    <span class="bmi-value">@Bmi.Value.ToString("0.0")</span>
-                    <span class="bmi-category">@BmiCategory</span>
-                }
-                else
-                {
-                    <span class="bmi-placeholder">Enter weight &amp; height</span>
-                }
+        <div class="triage-monitor-grid">
+            <div class="triage-monitor-card @TriageVitalsHelper.BpCssClass(Model.SystolicBp, Model.DiastolicBp)">
+                <span class="triage-monitor-label">Blood pressure</span>
+                <strong class="triage-monitor-value">@(Model.SystolicBp is not null && Model.DiastolicBp is not null ? $"{Model.SystolicBp}/{Model.DiastolicBp}" : "—")</strong>
+                <small>mmHg</small>
+            </div>
+            <div class="triage-monitor-card @TriageVitalsHelper.TempCssClass(Model.Temperature)">
+                <span class="triage-monitor-label">Temperature</span>
+                <strong class="triage-monitor-value">@(Model.Temperature?.ToString("0.0") ?? "—")</strong>
+                <small>°C</small>
+            </div>
+            <div class="triage-monitor-card @TriageVitalsHelper.PulseCssClass(Model.PulseRate)">
+                <span class="triage-monitor-label">Pulse</span>
+                <strong class="triage-monitor-value">@(Model.PulseRate?.ToString() ?? "—")</strong>
+                <small>bpm</small>
+            </div>
+            <div class="triage-monitor-card triage-monitor-bmi @BmiCssClass">
+                <span class="triage-monitor-label">BMI</span>
+                <strong class="triage-monitor-value">@(Bmi?.ToString("0.0") ?? "—")</strong>
+                <small>@(Bmi.HasValue ? BmiCategory : "Auto-calculated")</small>
             </div>
         </div>
-        <div class="col-md-3">
-            <FormLabel Text="Temperature (°C)" Icon="bi-thermometer-half" />
-            <InputNumber class="form-control" @bind-Value="Model.Temperature" />
-        </div>
-        <div class="col-md-3">
-            <FormLabel Text="Pulse Rate" Icon="bi-heart-pulse" />
-            <InputNumber class="form-control" @bind-Value="Model.PulseRate" />
-        </div>
-        <div class="col-md-3">
-            <FormLabel Text="Systolic BP" />
-            <InputNumber class="form-control" @bind-Value="Model.SystolicBp" />
-        </div>
-        <div class="col-md-3">
-            <FormLabel Text="Diastolic BP" />
-            <InputNumber class="form-control" @bind-Value="Model.DiastolicBp" />
-        </div>
-        <div class="col-md-3">
-            <FormLabel Text="Respiratory Rate" Icon="bi-lungs" />
-            <InputNumber class="form-control" @bind-Value="Model.RespiratoryRate" />
-        </div>
+    </aside>
+
+    <div class="triage-form-panels">
+        <section class="triage-panel">
+            <div class="triage-panel-head">
+                <span class="triage-panel-icon"><i class="bi bi-clipboard2-pulse"></i></span>
+                <div>
+                    <h3>Medical history</h3>
+                    <p>Flag conditions relevant to this encounter</p>
+                </div>
+            </div>
+            <div class="triage-history-grid">
+                <label class="triage-history-toggle @(Diabetes ? "is-on" : "")">
+                    <InputCheckbox class="form-check-input" @bind-Value="Diabetes" />
+                    <span><i class="bi bi-droplet"></i> Diabetes</span>
+                </label>
+                <label class="triage-history-toggle @(Asthma ? "is-on" : "")">
+                    <InputCheckbox class="form-check-input" @bind-Value="Asthma" />
+                    <span><i class="bi bi-wind"></i> Asthma</span>
+                </label>
+                <label class="triage-history-toggle @(SickleCell ? "is-on" : "")">
+                    <InputCheckbox class="form-check-input" @bind-Value="SickleCell" />
+                    <span><i class="bi bi-heart"></i> Sickle cell</span>
+                </label>
+                <label class="triage-history-toggle @(Smoking ? "is-on" : "")">
+                    <InputCheckbox class="form-check-input" @bind-Value="Smoking" />
+                    <span><i class="bi bi-cloud"></i> Smoking</span>
+                </label>
+            </div>
+        </section>
+
+        <section class="triage-panel">
+            <div class="triage-panel-head">
+                <span class="triage-panel-icon"><i class="bi bi-person-lines-fill"></i></span>
+                <div>
+                    <h3>Body measurements</h3>
+                    <p>Weight and height for BMI calculation</p>
+                </div>
+            </div>
+            <div class="triage-input-row">
+                <div class="triage-field">
+                    <FormLabel Text="Weight (kg)" Icon="bi-speedometer" />
+                    <InputNumber class="form-control" @bind-Value="Model.Weight" @bind-Value:after="OnVitalsChanged" />
+                </div>
+                <div class="triage-field">
+                    <FormLabel Text="Height (cm)" Icon="bi-rulers" />
+                    <InputNumber class="form-control" @bind-Value="Model.Height" @bind-Value:after="OnVitalsChanged" />
+                </div>
+            </div>
+        </section>
+
+        <section class="triage-panel">
+            <div class="triage-panel-head">
+                <span class="triage-panel-icon"><i class="bi bi-heart-pulse"></i></span>
+                <div>
+                    <h3>Cardiovascular</h3>
+                    <p>Blood pressure and pulse rate</p>
+                </div>
+            </div>
+            <div class="triage-input-row triage-input-row-3">
+                <div class="triage-field">
+                    <FormLabel Text="Systolic BP" Icon="bi-heart-pulse" />
+                    <InputNumber class="form-control" @bind-Value="Model.SystolicBp" @bind-Value:after="OnVitalsChanged" />
+                </div>
+                <div class="triage-field">
+                    <FormLabel Text="Diastolic BP" Icon="bi-heart-pulse" />
+                    <InputNumber class="form-control" @bind-Value="Model.DiastolicBp" @bind-Value:after="OnVitalsChanged" />
+                </div>
+                <div class="triage-field">
+                    <FormLabel Text="Pulse rate" Icon="bi-activity" />
+                    <InputNumber class="form-control" @bind-Value="Model.PulseRate" @bind-Value:after="OnVitalsChanged" />
+                </div>
+            </div>
+        </section>
+
+        <section class="triage-panel">
+            <div class="triage-panel-head">
+                <span class="triage-panel-icon"><i class="bi bi-lungs"></i></span>
+                <div>
+                    <h3>Respiratory</h3>
+                    <p>Temperature and breathing rate</p>
+                </div>
+            </div>
+            <div class="triage-input-row">
+                <div class="triage-field">
+                    <FormLabel Text="Temperature (°C)" Icon="bi-thermometer-half" />
+                    <InputNumber class="form-control" @bind-Value="Model.Temperature" @bind-Value:after="OnVitalsChanged" />
+                </div>
+                <div class="triage-field">
+                    <FormLabel Text="Respiratory rate" Icon="bi-lungs" />
+                    <InputNumber class="form-control" @bind-Value="Model.RespiratoryRate" @bind-Value:after="OnVitalsChanged" />
+                </div>
+            </div>
+        </section>
     </div>
-</FormSection>
+</div>
 
 @code {
     [Parameter, EditorRequired]
@@ -68,6 +139,10 @@
     private double? Bmi => TriageVitalsHelper.CalculateBmi(Model.Weight, Model.Height);
     private string BmiCategory => TriageVitalsHelper.BmiCategory(Bmi);
     private string BmiCssClass => TriageVitalsHelper.BmiCssClass(Bmi);
+
+    private bool _hasVitals =>
+        Model.Weight is > 0 || Model.Height is > 0 || Model.Temperature is not null
+        || Model.PulseRate is not null || Model.SystolicBp is not null || Model.DiastolicBp is not null;
 
     private void OnVitalsChanged() => StateHasChanged();
 }

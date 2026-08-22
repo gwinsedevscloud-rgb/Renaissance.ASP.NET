@@ -32,13 +32,14 @@
         <div class="section-card table-card p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 module-record-table module-table-pharmacy">
+                    <ModuleRecordColGroup Widths="@(new[] { "24%", "30%", "16%", "16%", "4.5rem" })" />
                     <thead>
                         <tr>
                             <ModuleTableTh Label="Patient" Icon="bi-person" />
                             <ModuleTableTh Label="Drug" Icon="bi-capsule" />
                             <ModuleTableTh Label="Status" Icon="bi-check2-circle" />
                             <ModuleTableTh Label="Recorded" Icon="bi-calendar3" CssClass="d-none d-sm-table-cell" />
-                            <th></th>
+                            <ModuleTableActionTh />
                         </tr>
                     </thead>
                     <tbody>

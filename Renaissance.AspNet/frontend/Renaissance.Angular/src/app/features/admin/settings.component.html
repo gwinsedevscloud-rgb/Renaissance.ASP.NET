@@ -1,0 +1,66 @@
+<div class="ren-page">
+    <app-page-header
+        title="Hospital settings"
+        subtitle="Facility branding and clinical service configuration"
+        icon="heroicons_outline:cog-6-tooth">
+        <a mat-stroked-button routerLink="/admin/lan-access">
+            <mat-icon [svgIcon]="'heroicons_outline:wifi'"></mat-icon>
+            <span>LAN access</span>
+        </a>
+    </app-page-header>
+
+    @if (message()) {
+        <div class="ren-alert ren-alert-success">{{ message() }}</div>
+    }
+    @if (error()) {
+        <div class="ren-alert ren-alert-danger">{{ error() }}</div>
+    }
+
+    @if (loading()) {
+        <app-loading-state message="Loading settings..." />
+    } @else {
+        <form [formGroup]="form" (ngSubmit)="saveFacility()" class="ren-card ren-card-body ren-form-stack">
+            <h2 class="ren-section-title">Facility</h2>
+            <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Hospital / facility name</mat-label>
+                <input matInput formControlName="facilityName" />
+            </mat-form-field>
+            <div class="ren-form-row">
+                <mat-form-field appearance="outline" class="flex-1">
+                    <mat-label>Patient number prefix</mat-label>
+                    <input matInput formControlName="clientNumberPrefix" maxlength="10" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="flex-1">
+                    <mat-label>Time zone</mat-label>
+                    <input matInput formControlName="timeZoneId" />
+                </mat-form-field>
+            </div>
+            <div class="ren-form-actions">
+                <button mat-flat-button color="primary" type="submit" [disabled]="saving()">Save facility settings</button>
+            </div>
+        </form>
+
+        <div class="ren-card ren-card-body ren-form-stack mt-4">
+            <h2 class="ren-section-title">Clinical services</h2>
+            <p class="ren-text-muted">Enable or disable modules for this hospital.</p>
+            <div class="ren-module-grid">
+                @for (service of optionalServices(); track service.module) {
+                    <label class="ren-module-card">
+                        <div class="ren-module-card-head">
+                            <strong>{{ service.name }}</strong>
+                            <mat-slide-toggle
+                                [checked]="enabledModules().has(service.module)"
+                                (change)="toggleModule(service.module, $event.checked)" />
+                        </div>
+                        <small>{{ service.description }}</small>
+                    </label>
+                }
+            </div>
+            <div class="ren-form-actions">
+                <button mat-flat-button color="primary" type="button" [disabled]="savingModules()" (click)="saveModules()">
+                    Save module configuration
+                </button>
+            </div>
+        </div>
+    }
+</div>

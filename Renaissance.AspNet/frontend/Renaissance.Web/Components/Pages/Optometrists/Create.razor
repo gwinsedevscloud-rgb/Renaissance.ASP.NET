@@ -12,11 +12,21 @@ else
     <PageHeader Title="New Optometrist Visit" Icon="bi-eye" />
     <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
         <OptometristForm Model="_model" />
-        <FormActions SaveLabel="Save" SaveIcon="bi-eye" CancelHref="@($"/patient-dashboard/{PatientId}")" Saving="_saving" />
+        <FormActions SaveLabel="Save optometry record"
+                     SaveIcon="bi-eye"
+                     CancelHref="@($"/patient-dashboard/{PatientId}")"
+                     Saving="_saving"
+                     ShowReferAfterSave="true"
+                     OnReferAfterSave="SaveAndReferAsync" />
     </EditForm>
 
-    <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the patient")"
-                         SourceModule="AppModule.Optometrists" SourceRecordId="_savedId" OnSkipped="FinishAsync" OnCompleted="FinishAsync" />
+    <ReferralPromptModal Visible="_showReferral"
+                         PatientId="PatientId"
+                         PatientName="@(_patient?.FullName ?? "the patient")"
+                         SourceModule="AppModule.Optometrists"
+                         SourceRecordId="_savedId"
+                         OnSkipped="FinishAsync"
+                         OnCompleted="FinishAsync" />
 }
 
 @code {
@@ -38,15 +48,32 @@ else
     private async Task SaveAsync()
     {
         _saving = true;
-        if (_model.Id == Guid.Empty) _model.Id = Guid.NewGuid();
         try
         {
-            await Api.CreateOptometristAsync(_model);
-            _savedId = _model.Id;
+            await PersistAsync();
             Notifications.ShowSuccess("Optometrist visit saved.");
+            Nav.NavigateTo($"/patient-dashboard/{PatientId}");
+        }
+        finally { _saving = false; }
+    }
+
+    private async Task SaveAndReferAsync()
+    {
+        _saving = true;
+        try
+        {
+            await PersistAsync();
+            Notifications.ShowSuccess("Optometry record saved. Select modules to refer the patient to.");
             _showReferral = true;
         }
         finally { _saving = false; }
+    }
+
+    private async Task PersistAsync()
+    {
+        if (_model.Id == Guid.Empty) _model.Id = Guid.NewGuid();
+        await Api.CreateOptometristAsync(_model);
+        _savedId = _model.Id;
     }
 
     private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/patient-dashboard/{PatientId}"); return Task.CompletedTask; }

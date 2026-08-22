@@ -57,7 +57,10 @@ export class ClientFormComponent implements OnInit {
             this.loading.set(true);
             this.api.getPatient(this.patientId).subscribe({
                 next: patient => {
-                    this.form.patchValue(patient);
+                    if (patient) {
+                        this.form.patchValue(patient);
+                    }
+
                     this.loading.set(false);
                 },
                 error: () => this.loading.set(false)

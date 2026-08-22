@@ -21,162 +21,218 @@ else
     var patient = _dashboard.Patient;
     var patientId = patient.Id;
 
-    <div class="patient-hero">
-        <div class="d-flex gap-3 align-items-start">
-            <div class="patient-hero-avatar">@ClientDisplayHelper.Initials(patient)</div>
-            <div>
-                <h1 class="h3 mb-1">@ClientDisplayHelper.DisplayName(patient)</h1>
-                <div class="client-number mb-1">@patient.ClientNumber</div>
-                <div class="patient-meta">
-                    <span class="patient-meta-item"><i class="bi bi-gender-ambiguous"></i> @patient.Sex</span>
-                    <span class="patient-meta-item"><i class="bi bi-calendar3"></i> @patient.Age @patient.AgeUnit</span>
-                    <span class="patient-meta-item"><i class="bi bi-telephone"></i> @(patient.PhoneNumber ?? "No phone")</span>
+    <div class="patient-dashboard">
+        <header class="pd-profile">
+            <div class="pd-profile-glow" aria-hidden="true"></div>
+            <div class="pd-profile-inner">
+                <div class="pd-profile-main">
+                    <div class="pd-avatar">@ClientDisplayHelper.Initials(patient)</div>
+                    <div class="pd-identity">
+                        <div class="pd-name-row">
+                            <h1>@ClientDisplayHelper.DisplayName(patient)</h1>
+                            <span class="pd-id-badge">@patient.ClientNumber</span>
+                        </div>
+                        <div class="pd-meta">
+                            <span class="pd-meta-pill"><i class="bi bi-gender-ambiguous"></i> @patient.Sex</span>
+                            <span class="pd-meta-pill"><i class="bi bi-calendar3"></i> @patient.Age @patient.AgeUnit</span>
+                            <span class="pd-meta-pill"><i class="bi bi-telephone"></i> @(patient.PhoneNumber ?? "No phone")</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pd-profile-side">
+                    <div class="pd-stat-grid">
+                        <div class="pd-stat">
+                            <strong>@TotalRecords</strong>
+                            <span>Records</span>
+                        </div>
+                        <div class="pd-stat">
+                            <strong>@_dashboard.Triages.Count</strong>
+                            <span>Triage</span>
+                        </div>
+                        <div class="pd-stat">
+                            <strong>@_dashboard.Consultations.Count</strong>
+                            <span>Consults</span>
+                        </div>
+                    </div>
+                    <a class="pd-back-link" href="/patients">
+                        <i class="bi bi-arrow-left"></i> All patients
+                    </a>
                 </div>
             </div>
-        </div>
-        <a class="btn btn-outline-secondary" href="/patients">
-            <i class="bi bi-arrow-left me-1"></i> All Patients
-        </a>
-    </div>
+        </header>
 
-    <PatientJourneyPanel PatientId="patientId" />
+        <PatientJourneyPanel PatientId="patientId" />
 
-    @if (_dashboard.HasPendingPharmacy && Auth.HasModule(AppModule.Pharmacy))
-    {
-        <div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
-            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
-            <span class="flex-grow-1">Pending pharmacy prescriptions require dispensation.</span>
-            <a class="btn btn-sm btn-warning" href="/pharmacy/dispense/@patientId">
-                <i class="bi bi-capsule me-1"></i> Dispense now
-            </a>
-        </div>
-    }
+        @if (_dashboard.HasPendingPharmacy && Auth.HasModule(AppModule.Pharmacy))
+        {
+            <div class="pd-alert pd-alert-pharmacy">
+                <div class="pd-alert-icon"><i class="bi bi-capsule"></i></div>
+                <div class="pd-alert-body">
+                    <strong>Pharmacy pending</strong>
+                    <span>Prescriptions need dispensation for this patient.</span>
+                </div>
+                <a class="pd-alert-action" href="/pharmacy/dispense/@patientId">
+                    Dispense now <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        }
 
-    <div class="section-card mb-4">
-        <div class="section-card-header">
-            <span class="section-icon feature-icon-teal"><i class="bi bi-plus-circle"></i></span>
-            <h2>Quick Actions</h2>
-        </div>
-        <div class="action-grid">
-            @if (Auth.HasModule(AppModule.Triage)) { <ActionChip Href="@($"/triage/create/{patientId}")" Icon="bi-activity" Label="Triage" /> }
-            @if (Auth.HasModule(AppModule.Consultations)) { <ActionChip Href="@($"/consultations/create/{patientId}")" Icon="bi-clipboard2-pulse" Label="Consultation" /> }
-            @if (Auth.HasModule(AppModule.Pharmacy))
-            {
-                <ActionChip Href="@($"/pharmacy/create/{patientId}")" Icon="bi-prescription2" Label="Prescribe" />
-                <ActionChip Href="@($"/pharmacy/dispense/{patientId}")" Icon="bi-capsule" Label="Dispense" CssClass="chip-outline" />
-            }
-            @if (Auth.HasModule(AppModule.Laboratory)) { <ActionChip Href="@($"/laboratory/create/{patientId}")" Icon="bi-droplet-half" Label="Laboratory" /> }
-            @if (Auth.HasModule(AppModule.Dental)) { <ActionChip Href="@($"/dental/create/{patientId}")" Icon="bi-emoji-smile" Label="Dental" /> }
-            @if (Auth.HasModule(AppModule.Ancillary)) { <ActionChip Href="@($"/ancillary/create/{patientId}")" Icon="bi-bandaid" Label="Ancillary" /> }
-            @if (Auth.HasModule(AppModule.Optometrists)) { <ActionChip Href="@($"/optometrists/create/{patientId}")" Icon="bi-eye" Label="Optometrist" /> }
-            @if (Auth.HasModule(AppModule.Ophthalmologists)) { <ActionChip Href="@($"/ophthalmologists/create/{patientId}")" Icon="bi-eye-fill" Label="Ophthalmologist" /> }
-        </div>
-    </div>
+        <section class="pd-actions">
+            <div class="pd-section-head">
+                <span class="pd-section-icon"><i class="bi bi-plus-circle"></i></span>
+                <div>
+                    <h2>Start encounter</h2>
+                    <p>Open a module to record care for this patient</p>
+                </div>
+            </div>
+            <div class="pd-action-grid">
+                @if (Auth.HasModule(AppModule.Triage)) { <ActionChip Href="@($"/triage/create/{patientId}")" Icon="bi-activity" Label="Triage" CssClass="pd-chip pd-chip-triage" /> }
+                @if (Auth.HasModule(AppModule.Consultations)) { <ActionChip Href="@($"/consultations/create/{patientId}")" Icon="bi-clipboard2-pulse" Label="Consultation" CssClass="pd-chip pd-chip-consult" /> }
+                @if (Auth.HasModule(AppModule.Pharmacy))
+                {
+                    <ActionChip Href="@($"/pharmacy/create/{patientId}")" Icon="bi-prescription2" Label="Prescribe" CssClass="pd-chip pd-chip-pharmacy" />
+                    <ActionChip Href="@($"/pharmacy/dispense/{patientId}")" Icon="bi-capsule" Label="Dispense" CssClass="pd-chip pd-chip-pharmacy pd-chip-outline" />
+                }
+                @if (Auth.HasModule(AppModule.Laboratory)) { <ActionChip Href="@($"/laboratory/create/{patientId}")" Icon="bi-droplet-half" Label="Laboratory" CssClass="pd-chip pd-chip-lab" /> }
+                @if (Auth.HasModule(AppModule.Dental)) { <ActionChip Href="@($"/dental/create/{patientId}")" Icon="bi-emoji-smile" Label="Dental" CssClass="pd-chip pd-chip-dental" /> }
+                @if (Auth.HasModule(AppModule.Ancillary)) { <ActionChip Href="@($"/ancillary/create/{patientId}")" Icon="bi-bandaid" Label="Ancillary" CssClass="pd-chip pd-chip-ancillary" /> }
+                @if (Auth.HasModule(AppModule.Optometrists)) { <ActionChip Href="@($"/optometrists/create/{patientId}")" Icon="bi-eye" Label="Optometrist" CssClass="pd-chip pd-chip-optometry" /> }
+                @if (Auth.HasModule(AppModule.Ophthalmologists)) { <ActionChip Href="@($"/ophthalmologists/create/{patientId}")" Icon="bi-eye-fill" Label="Ophthalmologist" CssClass="pd-chip pd-chip-ophthalmology" /> }
+            </div>
+        </section>
 
-    <div class="client-dashboard-records">
-        <div class="row g-3">
-            <div class="col-lg-6 client-dashboard-col">
-                <SectionList Title="Triage" Icon="bi-activity" IconBgClass="feature-icon-teal" Count="_dashboard.Triages.Count" EmptyIcon="bi-activity" CssClass="section-card-stretch">
+        <section class="pd-records">
+            <div class="pd-section-head pd-section-head-compact">
+                <span class="pd-section-icon pd-section-icon-muted"><i class="bi bi-journal-medical"></i></span>
+                <div>
+                    <h2>Clinical history</h2>
+                    <p>Recent records across all modules</p>
+                </div>
+            </div>
+
+            <div class="pd-records-grid">
+                <SectionList Title="Triage" Icon="bi-activity" IconBgClass="feature-icon-coral" Count="_dashboard.Triages.Count" EmptyIcon="bi-activity" CssClass="pd-record-card section-card-stretch">
                     @foreach (var t in _dashboard.Triages)
                     {
-                        <div class="record-item">
-                            <span><i class="bi bi-heart-pulse me-1 text-muted"></i> BP @t.SystolicBp/@t.DiastolicBp · Temp @t.Temperature°C<br />
-                                <small class="text-muted">@(t.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small></span>
-                            <a href="/triage/edit/@t.Id" class="@(Auth.HasModule(AppModule.Triage) ? "" : "d-none")"><i class="bi bi-pencil me-1"></i>Edit</a>
+                        <div class="pd-record-row">
+                            <div class="pd-record-body">
+                                <span class="pd-record-title"><i class="bi bi-heart-pulse"></i> BP @t.SystolicBp/@t.DiastolicBp · @t.Temperature°C</span>
+                                <span class="pd-record-meta">@(t.CreatedDate?.ToLocalTime().ToString("MMM d, yyyy · h:mm tt") ?? "—")</span>
+                            </div>
+                            @if (Auth.HasModule(AppModule.Triage))
+                            {
+                                <a class="pd-record-edit" href="/triage/edit/@t.Id"><i class="bi bi-pencil"></i></a>
+                            }
                         </div>
                     }
                 </SectionList>
-            </div>
-            <div class="col-lg-6 client-dashboard-col">
-                <SectionList Title="Dental" Icon="bi-emoji-smile" Count="_dashboard.DentalConsultations.Count" CssClass="section-card-stretch">
-                    @foreach (var d in _dashboard.DentalConsultations)
-                    {
-                        <div class="record-item">
-                            <span>@(string.Join(", ", d.Diagnoses.Take(3)))</span>
-                            <a href="/dental/edit/@d.Id" class="@(Auth.HasModule(AppModule.Dental) ? "" : "d-none")"><i class="bi bi-pencil me-1"></i>Edit</a>
-                        </div>
-                    }
-                </SectionList>
-            </div>
-        </div>
 
-        <div class="row g-3">
-            <div class="col-lg-6 client-dashboard-col">
-                <SectionList Title="Consultations" Icon="bi-clipboard2-pulse" IconBgClass="feature-icon-blue" Count="_dashboard.Consultations.Count" CssClass="section-card-stretch">
+                <SectionList Title="Consultations" Icon="bi-clipboard2-pulse" IconBgClass="feature-icon-blue" Count="_dashboard.Consultations.Count" CssClass="pd-record-card section-card-stretch">
                     @foreach (var c in _dashboard.Consultations)
                     {
-                        <div class="record-item">
-                            <span>
-                                @(string.IsNullOrWhiteSpace(string.Join(", ", c.Diagnoses)) ? "No diagnosis recorded" : string.Join(", ", c.Diagnoses.Take(3)))
-                                <br /><small class="text-muted"><i class="bi bi-moon-stars me-1"></i>ITN: @(c.ItnOrder == true ? "ordered" : "—") / @(c.ItnDispense == true ? "dispensed" : "not dispensed")</small>
-                            </span>
-                            <a href="/consultations/edit/@c.Id" class="@(Auth.HasModule(AppModule.Consultations) ? "" : "d-none")"><i class="bi bi-pencil me-1"></i>Edit</a>
+                        <div class="pd-record-row">
+                            <div class="pd-record-body">
+                                <span class="pd-record-title">@(string.IsNullOrWhiteSpace(string.Join(", ", c.Diagnoses)) ? "No diagnosis recorded" : string.Join(", ", c.Diagnoses.Take(3)))</span>
+                                <span class="pd-record-meta">ITN: @(c.ItnOrder == true ? "ordered" : "—") / @(c.ItnDispense == true ? "dispensed" : "not dispensed")</span>
+                            </div>
+                            @if (Auth.HasModule(AppModule.Consultations))
+                            {
+                                <a class="pd-record-edit" href="/consultations/edit/@c.Id"><i class="bi bi-pencil"></i></a>
+                            }
                         </div>
                     }
                 </SectionList>
-            </div>
-            <div class="col-lg-6 client-dashboard-col">
-                <SectionList Title="Ancillary" Icon="bi-bandaid" Count="_dashboard.Ancillaries.Count" CssClass="section-card-stretch">
-                    @foreach (var a in _dashboard.Ancillaries)
-                    {
-                        <div class="record-item">
-                            <span>@string.Join(", ", a.Services)</span>
-                            <a href="/ancillary/edit/@a.Id" class="@(Auth.HasModule(AppModule.Ancillary) ? "" : "d-none")"><i class="bi bi-pencil me-1"></i>Edit</a>
-                        </div>
-                    }
-                </SectionList>
-            </div>
-        </div>
 
-        <div class="row g-3">
-            <div class="col-lg-6 client-dashboard-col">
-                <SectionList Title="Pharmacy" Icon="bi-capsule" IconBgClass="feature-icon-violet" Count="_dashboard.Prescriptions.Count" CssClass="section-card-stretch">
+                <SectionList Title="Pharmacy" Icon="bi-capsule" IconBgClass="feature-icon-indigo" Count="_dashboard.Prescriptions.Count" CssClass="pd-record-card section-card-stretch">
                     @foreach (var p in _dashboard.Prescriptions)
                     {
-                        <div class="record-item">
-                            <span><i class="bi bi-prescription me-1 text-muted"></i> @p.DrugName <StatusBadge Status="p.Status" /></span>
-                            <small class="text-muted">@(p.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small>
+                        <div class="pd-record-row">
+                            <div class="pd-record-body">
+                                <span class="pd-record-title"><i class="bi bi-prescription"></i> @p.DrugName <StatusBadge Status="p.Status" /></span>
+                                <span class="pd-record-meta">@(p.CreatedDate?.ToLocalTime().ToString("MMM d, yyyy · h:mm tt") ?? "—")</span>
+                            </div>
                         </div>
                     }
                 </SectionList>
-            </div>
-            <div class="col-lg-6 client-dashboard-col">
-                <SectionList Title="Optometrist" Icon="bi-eye" Count="_dashboard.Optometrists.Count" CssClass="section-card-stretch">
-                    @foreach (var o in _dashboard.Optometrists)
-                    {
-                        <div class="record-item">
-                            <span>VA R:@o.VisualAcuityRight · L:@o.VisualAcuityLeft</span>
-                            <a href="/optometrists/edit/@o.Id" class="@(Auth.HasModule(AppModule.Optometrists) ? "" : "d-none")"><i class="bi bi-pencil me-1"></i>Edit</a>
-                        </div>
-                    }
-                </SectionList>
-            </div>
-        </div>
 
-        <div class="row g-3">
-            <div class="col-lg-6 client-dashboard-col">
-                <SectionList Title="Laboratory" Icon="bi-droplet-half" IconBgClass="feature-icon-blue" Count="_dashboard.Laboratories.Count" CssClass="section-card-stretch">
+                <SectionList Title="Laboratory" Icon="bi-droplet-half" IconBgClass="feature-icon-blue" Count="_dashboard.Laboratories.Count" CssClass="pd-record-card section-card-stretch">
                     @foreach (var l in _dashboard.Laboratories)
                     {
-                        <div class="record-item">
-                            <span>@l.TestName — <strong>@(l.Result ?? "pending")</strong></span>
-                            <a href="/laboratory/edit/@l.Id" class="@(Auth.HasModule(AppModule.Laboratory) ? "" : "d-none")"><i class="bi bi-pencil me-1"></i>Edit</a>
+                        <div class="pd-record-row">
+                            <div class="pd-record-body">
+                                <span class="pd-record-title">@l.TestName</span>
+                                <span class="pd-record-meta">Result: <strong>@(l.Result ?? "pending")</strong></span>
+                            </div>
+                            @if (Auth.HasModule(AppModule.Laboratory))
+                            {
+                                <a class="pd-record-edit" href="/laboratory/edit/@l.Id"><i class="bi bi-pencil"></i></a>
+                            }
                         </div>
                     }
                 </SectionList>
-            </div>
-            <div class="col-lg-6 client-dashboard-col">
-                <SectionList Title="Ophthalmologist" Icon="bi-eye-fill" Count="_dashboard.Ophthalmologists.Count" CssClass="section-card-stretch">
+
+                <SectionList Title="Dental" Icon="bi-emoji-smile" Count="_dashboard.DentalConsultations.Count" CssClass="pd-record-card section-card-stretch">
+                    @foreach (var d in _dashboard.DentalConsultations)
+                    {
+                        <div class="pd-record-row">
+                            <div class="pd-record-body">
+                                <span class="pd-record-title">@(string.Join(", ", d.Diagnoses.Take(3)))</span>
+                            </div>
+                            @if (Auth.HasModule(AppModule.Dental))
+                            {
+                                <a class="pd-record-edit" href="/dental/edit/@d.Id"><i class="bi bi-pencil"></i></a>
+                            }
+                        </div>
+                    }
+                </SectionList>
+
+                <SectionList Title="Ancillary" Icon="bi-bandaid" Count="_dashboard.Ancillaries.Count" CssClass="pd-record-card section-card-stretch">
+                    @foreach (var a in _dashboard.Ancillaries)
+                    {
+                        <div class="pd-record-row">
+                            <div class="pd-record-body">
+                                <span class="pd-record-title">@string.Join(", ", a.Services)</span>
+                            </div>
+                            @if (Auth.HasModule(AppModule.Ancillary))
+                            {
+                                <a class="pd-record-edit" href="/ancillary/edit/@a.Id"><i class="bi bi-pencil"></i></a>
+                            }
+                        </div>
+                    }
+                </SectionList>
+
+                <SectionList Title="Optometrist" Icon="bi-eye" Count="_dashboard.Optometrists.Count" CssClass="pd-record-card section-card-stretch">
+                    @foreach (var o in _dashboard.Optometrists)
+                    {
+                        <div class="pd-record-row">
+                            <div class="pd-record-body">
+                                <span class="pd-record-title">VA R: @o.VisualAcuityRight · L: @o.VisualAcuityLeft</span>
+                            </div>
+                            @if (Auth.HasModule(AppModule.Optometrists))
+                            {
+                                <a class="pd-record-edit" href="/optometrists/edit/@o.Id"><i class="bi bi-pencil"></i></a>
+                            }
+                        </div>
+                    }
+                </SectionList>
+
+                <SectionList Title="Ophthalmologist" Icon="bi-eye-fill" Count="_dashboard.Ophthalmologists.Count" CssClass="pd-record-card section-card-stretch">
                     @foreach (var o in _dashboard.Ophthalmologists)
                     {
-                        <div class="record-item">
-                            <span>@(string.Join(", ", o.Diagnoses.Take(3)))</span>
-                            <a href="/ophthalmologists/edit/@o.Id" class="@(Auth.HasModule(AppModule.Ophthalmologists) ? "" : "d-none")"><i class="bi bi-pencil me-1"></i>Edit</a>
+                        <div class="pd-record-row">
+                            <div class="pd-record-body">
+                                <span class="pd-record-title">@(string.Join(", ", o.Diagnoses.Take(3)))</span>
+                            </div>
+                            @if (Auth.HasModule(AppModule.Ophthalmologists))
+                            {
+                                <a class="pd-record-edit" href="/ophthalmologists/edit/@o.Id"><i class="bi bi-pencil"></i></a>
+                            }
                         </div>
                     }
                 </SectionList>
             </div>
-        </div>
+        </section>
     </div>
 }
 
@@ -186,6 +242,17 @@ else
 
     private ClientDashboardViewModel? _dashboard;
     private bool _loading = true;
+
+    private int TotalRecords =>
+        _dashboard is null ? 0
+        : _dashboard.Triages.Count
+          + _dashboard.Consultations.Count
+          + _dashboard.Prescriptions.Count
+          + _dashboard.Laboratories.Count
+          + _dashboard.DentalConsultations.Count
+          + _dashboard.Ancillaries.Count
+          + _dashboard.Optometrists.Count
+          + _dashboard.Ophthalmologists.Count;
 
     protected override async Task OnInitializedAsync()
     {

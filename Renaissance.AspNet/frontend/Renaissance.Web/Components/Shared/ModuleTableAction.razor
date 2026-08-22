@@ -1,10 +1,10 @@
-<td class="text-end module-table-actions">
+<td class="text-end module-table-actions @CssClass">
     <div class="client-actions">
-        <a class="btn btn-sm btn-outline-primary" href="@Href" title="@Title">
+        <a class="module-row-action" href="@Href" title="@Title" aria-label="@Title">
             <i class="bi @Icon"></i>
             @if (!string.IsNullOrWhiteSpace(Label))
             {
-                <span>@Label</span>
+                <span class="module-row-action-label">@Label</span>
             }
         </a>
     </div>
@@ -15,4 +15,5 @@
     [Parameter] public string Title { get; set; } = "Open";
     [Parameter] public string Icon { get; set; } = "bi-pencil";
     [Parameter] public string? Label { get; set; }
+    [Parameter] public string? CssClass { get; set; }
 }

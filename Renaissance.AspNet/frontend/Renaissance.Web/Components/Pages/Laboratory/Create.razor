@@ -12,11 +12,21 @@ else
     <PageHeader Title="New Laboratory Record" Icon="bi-droplet-half" IconBgClass="feature-icon-blue" />
     <EditForm Model="_model" OnValidSubmit="SaveAsync" class="form-card">
         <LabForm Model="_model" />
-        <FormActions SaveLabel="Save Record" SaveIcon="bi-droplet" CancelHref="@($"/patient-dashboard/{PatientId}")" Saving="_saving" />
+        <FormActions SaveLabel="Save record"
+                     SaveIcon="bi-droplet"
+                     CancelHref="@($"/patient-dashboard/{PatientId}")"
+                     Saving="_saving"
+                     ShowReferAfterSave="true"
+                     OnReferAfterSave="SaveAndReferAsync" />
     </EditForm>
 
-    <ReferralPromptModal Visible="_showReferral" PatientId="PatientId" PatientName="@(_patient?.FullName ?? "the patient")"
-                         SourceModule="AppModule.Laboratory" SourceRecordId="_savedId" OnSkipped="FinishAsync" OnCompleted="FinishAsync" />
+    <ReferralPromptModal Visible="_showReferral"
+                         PatientId="PatientId"
+                         PatientName="@(_patient?.FullName ?? "the patient")"
+                         SourceModule="AppModule.Laboratory"
+                         SourceRecordId="_savedId"
+                         OnSkipped="FinishAsync"
+                         OnCompleted="FinishAsync" />
 }
 
 @code {
@@ -38,15 +48,32 @@ else
     private async Task SaveAsync()
     {
         _saving = true;
-        if (_model.Id == Guid.Empty) _model.Id = Guid.NewGuid();
         try
         {
-            await Api.CreateLaboratoryAsync(_model);
-            _savedId = _model.Id;
+            await PersistAsync();
             Notifications.ShowSuccess("Laboratory record saved.");
+            Nav.NavigateTo($"/patient-dashboard/{PatientId}");
+        }
+        finally { _saving = false; }
+    }
+
+    private async Task SaveAndReferAsync()
+    {
+        _saving = true;
+        try
+        {
+            await PersistAsync();
+            Notifications.ShowSuccess("Laboratory record saved. Select modules to refer the patient to.");
             _showReferral = true;
         }
         finally { _saving = false; }
+    }
+
+    private async Task PersistAsync()
+    {
+        if (_model.Id == Guid.Empty) _model.Id = Guid.NewGuid();
+        await Api.CreateLaboratoryAsync(_model);
+        _savedId = _model.Id;
     }
 
     private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/patient-dashboard/{PatientId}"); return Task.CompletedTask; }

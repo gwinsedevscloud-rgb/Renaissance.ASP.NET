@@ -1,0 +1,55 @@
+<div class="catalog-picker">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <FormLabel Text="@Label" Icon="@Icon" />
+    }
+    <InputSelect class="form-select catalog-picker-select" @bind-Value="_selected" @bind-Value:after="AppendSelectionAsync">
+        <option value="">@Placeholder</option>
+        @foreach (var option in Options)
+        {
+            <option value="@option">@option</option>
+        }
+    </InputSelect>
+    <InputTextArea class="form-control mt-2" rows="@Rows" @bind-Value="Value" />
+    @if (!string.IsNullOrWhiteSpace(Hint))
+    {
+        <div class="form-hint">@Hint</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string Icon { get; set; } = "bi-list-check";
+    [Parameter] public string Placeholder { get; set; } = "Add from standard list…";
+    [Parameter] public string? Hint { get; set; } = "One per line or comma-separated. Use the list above to add standard entries.";
+    [Parameter] public int Rows { get; set; } = 3;
+    [Parameter] public IReadOnlyList<string> Options { get; set; } = Array.Empty<string>();
+
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    private string _selected = string.Empty;
+
+    private async Task AppendSelectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_selected))
+        {
+            return;
+        }
+
+        var current = Value?.Trim() ?? string.Empty;
+        var alreadyPresent = current.Split(['\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(x => string.Equals(x, _selected, StringComparison.OrdinalIgnoreCase));
+
+        if (!alreadyPresent)
+        {
+            Value = string.IsNullOrWhiteSpace(current) ? _selected : $"{current}\n{_selected}";
+            await ValueChanged.InvokeAsync(Value);
+        }
+
+        _selected = string.Empty;
+    }
+}

@@ -77,6 +77,128 @@ else
             </div>
         </div>
 
+        <div class="surveillance-section">
+            <div class="section-card-header mb-3">
+                <span class="section-icon feature-icon-coral"><i class="bi bi-shield-exclamation"></i></span>
+                <div>
+                    <strong>Priority disease surveillance</strong>
+                    <div class="chart-subtitle">Malaria, HIV, and TB laboratory findings stakeholders monitor closely</div>
+                </div>
+            </div>
+
+            <div class="surveillance-kpi-grid mb-4">
+                <div class="surveillance-kpi surveillance-kpi-malaria">
+                    <div class="surveillance-kpi-label">Malaria positives</div>
+                    <div class="surveillance-kpi-value">@_data.LabSurveillance.MalariaPositives</div>
+                </div>
+                <div class="surveillance-kpi surveillance-kpi-hiv">
+                    <div class="surveillance-kpi-label">HIV positives</div>
+                    <div class="surveillance-kpi-value">@_data.LabSurveillance.HivPositives</div>
+                </div>
+                <div class="surveillance-kpi surveillance-kpi-tb">
+                    <div class="surveillance-kpi-label">TB positives</div>
+                    <div class="surveillance-kpi-value">@_data.LabSurveillance.TbPositives</div>
+                </div>
+                <div class="surveillance-kpi surveillance-kpi-rate">
+                    <div class="surveillance-kpi-label">Priority positivity rate</div>
+                    <div class="surveillance-kpi-value">@_data.LabSurveillance.PriorityPositivityRate%</div>
+                    <div class="surveillance-kpi-sub">@_data.LabSurveillance.TotalLabTests total lab tests</div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-lg-7">
+                    <div class="section-card chart-card h-100">
+                        <div class="section-card-header">
+                            <span class="section-icon feature-icon-coral"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                            <strong>Recent priority positive results</strong>
+                        </div>
+                        @if (_data.LabSurveillance.RecentAlerts.Count == 0)
+                        {
+                            <p class="text-muted mb-0 px-3 pb-3">No malaria, HIV, or TB positive results recorded yet.</p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover surveillance-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Patient</th>
+                                            <th>Category</th>
+                                            <th>Test</th>
+                                            <th>Result</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var alert in _data.LabSurveillance.RecentAlerts)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@alert.PatientName</strong>
+                                                    <span class="d-block text-muted small">@alert.ClientNumber</span>
+                                                </td>
+                                                <td><span class="surveillance-badge surveillance-badge-@alert.Category.ToLowerInvariant()">@alert.Category</span></td>
+                                                <td>@alert.TestName</td>
+                                                <td><span class="surveillance-result-positive">@alert.Result</span></td>
+                                                <td><small class="text-muted">@(alert.RecordedAt?.ToLocalTime().ToString("g") ?? "—")</small></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="section-card chart-card h-100">
+                        <div class="section-card-header">
+                            <span class="section-icon feature-icon-violet"><i class="bi bi-heart-pulse-fill"></i></span>
+                            <div>
+                                <strong>Antenatal lab surveillance</strong>
+                                <div class="chart-subtitle">@_data.PregnancySurveillance.PregnantWomenTracked pregnant patients · @_data.PregnancySurveillance.WithLabResults with lab results</div>
+                            </div>
+                        </div>
+                        @if (_data.PregnancySurveillance.Cases.Count == 0)
+                        {
+                            <p class="text-muted mb-0 px-3 pb-3">No antenatal pregnancy records with lab follow-up yet.</p>
+                        }
+                        else
+                        {
+                            <div class="pregnancy-case-list">
+                                @foreach (var pregnancyCase in _data.PregnancySurveillance.Cases)
+                                {
+                                    <article class="pregnancy-case-card">
+                                        <div class="pregnancy-case-head">
+                                            <strong>@pregnancyCase.PatientName</strong>
+                                            <span class="text-muted small">@pregnancyCase.ClientNumber</span>
+                                        </div>
+                                        <div class="pregnancy-case-status">@pregnancyCase.PregnancyStatus</div>
+                                        @if (pregnancyCase.LabResults.Count == 0)
+                                        {
+                                            <div class="text-muted small">No laboratory results linked yet.</div>
+                                        }
+                                        else
+                                        {
+                                            <ul class="pregnancy-lab-list">
+                                                @foreach (var lab in pregnancyCase.LabResults)
+                                                {
+                                                    <li>
+                                                        <span>@lab.TestName</span>
+                                                        <strong class="@SurveillanceResultClass(lab.TestName, lab.Result)">@lab.Result</strong>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        }
+                                    </article>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row g-4 mb-4">
             <div class="col-lg-8">
                 <div class="section-card chart-card">
@@ -329,8 +451,37 @@ else
             moduleShare = new { labels = d.ModuleMetrics.Where(m => m.Total > 0).Select(m => m.Module), values = d.ModuleMetrics.Where(m => m.Total > 0).Select(m => m.Total) },
             clients = new { labels = clientLabels, actual = clientActual, forecast = clientForecast },
             demographics = new { labels = d.AgeGroupDistribution.Select(a => a.Label), values = d.AgeGroupDistribution.Select(a => a.Count) },
-            pharmacy = new { labels = d.PharmacyStatusBreakdown.Select(p => p.Label), values = d.PharmacyStatusBreakdown.Select(p => p.Count) }
+            pharmacy = new { labels = d.PharmacyStatusBreakdown.Select(p => p.Label), values = d.PharmacyStatusBreakdown.Select(p => p.Count) },
+            surveillance = new { labels = d.LabSurveillance.PriorityTestBreakdown.Select(x => x.Label), values = d.LabSurveillance.PriorityTestBreakdown.Select(x => x.Count) }
         };
+    }
+
+    private static string SurveillanceResultClass(string testName, string result)
+    {
+        var positive = result.Contains("positive", StringComparison.OrdinalIgnoreCase)
+            || result.Contains("reactive", StringComparison.OrdinalIgnoreCase)
+            || result.Contains("detected", StringComparison.OrdinalIgnoreCase);
+        if (!positive)
+        {
+            return "pregnancy-lab-neutral";
+        }
+
+        if (testName.Contains("malaria", StringComparison.OrdinalIgnoreCase))
+        {
+            return "pregnancy-lab-malaria";
+        }
+
+        if (testName.Contains("hiv", StringComparison.OrdinalIgnoreCase))
+        {
+            return "pregnancy-lab-hiv";
+        }
+
+        if (testName.Contains("tb", StringComparison.OrdinalIgnoreCase) || testName.Contains("afb", StringComparison.OrdinalIgnoreCase))
+        {
+            return "pregnancy-lab-tb";
+        }
+
+        return "pregnancy-lab-alert";
     }
 
     private static string FormatGrowth(double value) => value >= 0 ? $"+{value}%" : $"{value}%";

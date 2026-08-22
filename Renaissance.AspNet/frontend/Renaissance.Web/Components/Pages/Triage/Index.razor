@@ -1,13 +1,44 @@
 @page "/triage"
 @rendermode InteractiveServer
 @inject RenaissanceApiClient Api
+@using Renaissance.Web.Helpers
 
 <PageTitle>Triage - Renaissance</PageTitle>
 
-<div class="module-page">
-    <PageHeader Title="Triage" Subtitle="Record vitals and open a new encounter" Icon="bi-activity" />
+<div class="module-page module-triage">
+    <header class="triage-station-header">
+        <div class="triage-station-brand">
+            <span class="triage-station-icon" aria-hidden="true"><i class="bi bi-activity"></i></span>
+            <div>
+                <h1>Triage station</h1>
+                <p>Record vitals, flag history, and open encounters</p>
+            </div>
+        </div>
+        @if (!_loading && _items.Count > 0)
+        {
+            <div class="triage-station-metrics">
+                <span class="triage-metric-pill"><strong>@_items.Count</strong> records</span>
+                <span class="triage-metric-pill"><strong>@_uniquePatients</strong> patients</span>
+                @if (_pendingVitals > 0)
+                {
+                    <span class="triage-metric-pill triage-metric-pill-warn"><strong>@_pendingVitals</strong> incomplete</span>
+                }
+            </div>
+        }
+    </header>
 
-    <PatientQuickSearch CreateHrefPrefix="/triage/create" ActionLabel="New triage" />
+    <section class="triage-station-start">
+        <div class="triage-start-panel">
+            <div class="triage-start-copy">
+                <span class="triage-start-step">Step 1</span>
+                <h2>Find a patient</h2>
+                <p>Search by number, phone, or name to begin a new triage encounter.</p>
+            </div>
+            <div class="triage-start-search">
+                <PatientQuickSearch CreateHrefPrefix="/triage/create" ActionLabel="Begin triage" />
+            </div>
+        </div>
+    </section>
 
     @if (_loading)
     {
@@ -15,58 +46,57 @@
     }
     else if (_items.Count == 0)
     {
-        <EmptyPanel Icon="bi-activity" Title="No triage records yet" Message="Search for a patient above to start a new encounter." />
+        <EmptyPanel Icon="bi-activity" Title="No triage records yet" Message="Search for a patient above to record vitals and start an encounter." />
     }
     else
     {
-        <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
-        <div class="section-card table-card p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 module-record-table module-table-triage">
-                    <thead>
-                        <tr>
-                            <ModuleTableTh Label="Patient" Icon="bi-person" />
-                            <ModuleTableTh Label="BP" Icon="bi-heart-pulse" />
-                            <ModuleTableTh Label="Temp" Icon="bi-thermometer-half" CssClass="d-none d-sm-table-cell" />
-                            <ModuleTableTh Label="Pulse" Icon="bi-activity" CssClass="d-none d-md-table-cell" />
-                            <ModuleTableTh Label="Recorded" Icon="bi-calendar3" CssClass="d-none d-sm-table-cell" />
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var t in _items)
-                    {
-                        <tr>
-                            <td><ClientIdentity Patient="Patient(t.PatientId)" /></td>
-                            <td><span class="record-field"><i class="bi bi-heart-pulse"></i>@t.SystolicBp/@t.DiastolicBp</span></td>
-                            <td class="d-none d-sm-table-cell">
-                                @if (t.Temperature is null)
-                                {
-                                    <span class="record-empty-value">—</span>
-                                }
-                                else
-                                {
-                                    <span class="record-field"><i class="bi bi-thermometer-half"></i>@t.Temperature.Value.ToString("0.0")°C</span>
-                                }
-                            </td>
-                            <td class="d-none d-md-table-cell">
-                                @if (t.PulseRate is null)
-                                {
-                                    <span class="record-empty-value">—</span>
-                                }
-                                else
-                                {
-                                    <span class="record-field"><i class="bi bi-activity"></i>@t.PulseRate bpm</span>
-                                }
-                            </td>
-                            <ModuleRecordDate Value="t.CreatedDate" CssClass="d-none d-sm-table-cell" />
-                            <ModuleTableAction Href="@($"/triage/edit/{t.Id}")" Title="Edit triage" Icon="bi-pencil" />
-                        </tr>
-                    }
-                    </tbody>
-                </table>
+        <section class="triage-feed">
+            <div class="triage-feed-header">
+                <div>
+                    <span class="triage-start-step">Step 2</span>
+                    <h2>Recent encounters</h2>
+                </div>
+                <span class="triage-feed-count">@_items.Count shown</span>
             </div>
-        </div>
+
+            <div class="triage-feed-list">
+                @foreach (var t in _items)
+                {
+                    var patient = Patient(t.PatientId);
+                    <article class="triage-feed-item">
+                        <div class="triage-feed-patient">
+                            <ClientIdentity Patient="patient" />
+                        </div>
+
+                        <div class="triage-feed-metrics">
+                            <div class="triage-metric @TriageVitalsHelper.BpCssClass(t.SystolicBp, t.DiastolicBp)">
+                                <i class="bi bi-heart-pulse"></i>
+                                <span class="triage-metric-name">BP</span>
+                                <strong>@(t.SystolicBp is not null && t.DiastolicBp is not null ? $"{t.SystolicBp}/{t.DiastolicBp}" : "—")</strong>
+                            </div>
+                            <div class="triage-metric @TriageVitalsHelper.TempCssClass(t.Temperature)">
+                                <i class="bi bi-thermometer-half"></i>
+                                <span class="triage-metric-name">Temp</span>
+                                <strong>@(t.Temperature?.ToString("0.0") is { } temp ? $"{temp}°C" : "—")</strong>
+                            </div>
+                            <div class="triage-metric @TriageVitalsHelper.PulseCssClass(t.PulseRate)">
+                                <i class="bi bi-activity"></i>
+                                <span class="triage-metric-name">Pulse</span>
+                                <strong>@(t.PulseRate is not null ? $"{t.PulseRate} bpm" : "—")</strong>
+                            </div>
+                        </div>
+
+                        <div class="triage-feed-actions">
+                            <time class="triage-feed-time">@(t.CreatedDate?.ToLocalTime().ToString("MMM d, h:mm tt") ?? "—")</time>
+                            <a class="triage-feed-edit" href="@($"/triage/edit/{t.Id}")" title="Edit triage">
+                                <i class="bi bi-pencil"></i>
+                                <span>Edit</span>
+                            </a>
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
     }
 </div>
 
@@ -74,6 +104,12 @@
     private bool _loading = true;
     private List<Triage> _items = [];
     private Dictionary<Guid, Patient> _patients = [];
+
+    private int _pendingVitals =>
+        _items.Count(t => t.Temperature is null || t.PulseRate is null);
+
+    private int _uniquePatients =>
+        _items.Select(t => t.PatientId).Distinct().Count();
 
     protected override async Task OnInitializedAsync()
     {

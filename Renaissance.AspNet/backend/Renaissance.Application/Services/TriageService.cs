@@ -1,17 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using Renaissance.Application.Common;
 using Renaissance.Application.Common.Interfaces;
+using Renaissance.Application.DTOs;
 using Renaissance.Domain.Entities;
+using Renaissance.Domain.Enums;
 
 namespace Renaissance.Application.Services;
 
 public class TriageService : ITriageService
 {
     private readonly IApplicationDbContext _db;
+    private readonly IReferralService _referrals;
 
-    public TriageService(IApplicationDbContext db)
+    public TriageService(IApplicationDbContext db, IReferralService referrals)
     {
         _db = db;
+        _referrals = referrals;
     }
 
     public async Task<List<Triage>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -51,7 +55,35 @@ public class TriageService : ITriageService
         AuditHelper.SetCreated(triage);
         _db.Triages.Add(triage);
         await _db.SaveChangesAsync(cancellationToken);
+
+        await EnsureConsultationReferralAsync(triage, cancellationToken);
         return triage;
+    }
+
+    private async Task EnsureConsultationReferralAsync(Triage triage, CancellationToken cancellationToken)
+    {
+        var actor = triage.CreatedBy ?? "system";
+        var hasActive = await _db.Referrals.AnyAsync(
+            r => !r.Archived
+                 && r.PatientId == triage.PatientId
+                 && r.TargetModule == AppModule.Consultations
+                 && (r.Status == ReferralStatus.Pending || r.Status == ReferralStatus.InProgress),
+            cancellationToken);
+
+        if (hasActive)
+        {
+            return;
+        }
+
+        await _referrals.CreateAsync(new CreateReferralsRequest
+        {
+            PatientId = triage.PatientId,
+            SourceModule = AppModule.Triage,
+            SourceRecordId = triage.Id,
+            TargetModules = [AppModule.Consultations],
+            Notes = "Auto-referred after triage",
+            Priority = ReferralPriority.Routine
+        }, actor, cancellationToken);
     }
 
     public async Task<Triage?> UpdateAsync(Guid id, Triage incoming, CancellationToken cancellationToken = default)

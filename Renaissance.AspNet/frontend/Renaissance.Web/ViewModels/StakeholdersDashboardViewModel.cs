@@ -12,7 +12,53 @@ public class StakeholdersDashboardViewModel
     public List<LabelCountViewModel> SexDistribution { get; set; } = [];
     public List<LabelCountViewModel> AgeGroupDistribution { get; set; } = [];
     public List<LabelCountViewModel> PharmacyStatusBreakdown { get; set; } = [];
+    public LabSurveillanceViewModel LabSurveillance { get; set; } = new();
+    public PregnancySurveillanceViewModel PregnancySurveillance { get; set; } = new();
     public OperationalInsightsViewModel Insights { get; set; } = new();
+}
+
+public class LabSurveillanceViewModel
+{
+    public int TotalLabTests { get; set; }
+    public int MalariaPositives { get; set; }
+    public int HivPositives { get; set; }
+    public int TbPositives { get; set; }
+    public int TotalPriorityPositives { get; set; }
+    public double PriorityPositivityRate { get; set; }
+    public List<LabSurveillanceAlertViewModel> RecentAlerts { get; set; } = [];
+    public List<LabelCountViewModel> PriorityTestBreakdown { get; set; } = [];
+}
+
+public class LabSurveillanceAlertViewModel
+{
+    public string PatientName { get; set; } = string.Empty;
+    public string ClientNumber { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string TestName { get; set; } = string.Empty;
+    public string Result { get; set; } = string.Empty;
+    public DateTime? RecordedAt { get; set; }
+}
+
+public class PregnancySurveillanceViewModel
+{
+    public int PregnantWomenTracked { get; set; }
+    public int WithLabResults { get; set; }
+    public List<PregnancyLabCaseViewModel> Cases { get; set; } = [];
+}
+
+public class PregnancyLabCaseViewModel
+{
+    public string PatientName { get; set; } = string.Empty;
+    public string ClientNumber { get; set; } = string.Empty;
+    public string PregnancyStatus { get; set; } = string.Empty;
+    public List<PregnancyLabResultViewModel> LabResults { get; set; } = [];
+}
+
+public class PregnancyLabResultViewModel
+{
+    public string TestName { get; set; } = string.Empty;
+    public string Result { get; set; } = string.Empty;
+    public string? Note { get; set; }
 }
 
 public class StakeholdersKpiViewModel

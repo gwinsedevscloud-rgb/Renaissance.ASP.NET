@@ -2,8 +2,18 @@
 
 <FormSection Title="Clinical Assessment" Icon="bi-clipboard2-pulse">
     <div class="row g-3">
-        <div class="col-md-6"><FormLabel Text="Diagnoses" Icon="bi-search" /><InputTextArea class="form-control" rows="3" @bind-Value="Model.DiagnosesText" /><div class="form-hint">One per line or comma-separated</div></div>
-        <div class="col-md-6"><FormLabel Text="Treatments" Icon="bi-capsule" /><InputTextArea class="form-control" rows="3" @bind-Value="Model.TreatmentsText" /></div>
+        <div class="col-md-6">
+            <CatalogTextPicker Label="Diagnoses"
+                               Icon="bi-search"
+                               Options="ClinicalCatalog.ConsultationDiagnoses"
+                               @bind-Value="Model.DiagnosesText" />
+        </div>
+        <div class="col-md-6">
+            <CatalogTextPicker Label="Treatments"
+                               Icon="bi-capsule"
+                               Options="ClinicalCatalog.ConsultationTreatments"
+                               @bind-Value="Model.TreatmentsText" />
+        </div>
         <div class="col-md-6"><FormLabel Text="Other Diagnoses" /><InputTextArea class="form-control" rows="2" @bind-Value="Model.OthersDiagnosisText" /></div>
         <div class="col-md-6"><FormLabel Text="Other Treatments" /><InputTextArea class="form-control" rows="2" @bind-Value="Model.OthersTreatmentText" /></div>
     </div>
@@ -14,21 +24,18 @@
              IconBgClass="feature-icon-blue"
              Collapsible
              InitiallyExpanded="@HasReferralContent"
-             CollapsedHint="Expand to add referrals or ITN tasks">
+             CollapsedHint="Expand for ITN tasks or referral notes">
     <div class="row g-3">
         <div class="col-md-6">
-            <FormLabel Text="Services Referred" Icon="bi-send" />
-            <InputTextArea class="form-control" rows="2" @bind-Value="Model.ServicesReferredText" placeholder="e.g. Laboratory, Dental…" />
-            <div class="form-hint">Document services; use <strong>Referred</strong> below to route via the live queue.</div>
+            <CatalogTextPicker Label="Services Referred (notes)"
+                               Icon="bi-send"
+                               Options="ClinicalCatalog.ReferralServices"
+                               Placeholder="Add referral note…"
+                               Hint="Document planned referrals. Use Save & refer after saving to send the patient to other modules."
+                               Rows="2"
+                               @bind-Value="Model.ServicesReferredText" />
         </div>
         <div class="col-md-6 d-flex align-items-stretch gap-3 flex-wrap">
-            <div class="checkbox-card flex-fill consultation-flag-card">
-                <div class="form-check">
-                    <InputCheckbox class="form-check-input" @bind-Value="Model.Referred" />
-                    <label class="form-check-label"><i class="bi bi-box-arrow-up-right me-1"></i> Referred</label>
-                </div>
-                <small class="consultation-flag-hint">Opens referral prompt after save to send patient to other modules.</small>
-            </div>
             <div class="checkbox-card flex-fill consultation-flag-card">
                 <div class="form-check">
                     <InputCheckbox class="form-check-input" @bind-Value="Model.ItnOrder" />
@@ -44,6 +51,12 @@
                 <small class="consultation-flag-hint">Marks the ITN pharmacy task as dispensed and clears the pharmacy referral.</small>
             </div>
         </div>
+        <div class="col-12">
+            <div class="pharmacy-catalog-hint">
+                <i class="bi bi-info-circle"></i>
+                Saving records this consultation only. To send the patient to Laboratory, Pharmacy, Dental, or other modules, use <strong>Save &amp; refer to another module</strong> after entering clinical details.
+            </div>
+        </div>
     </div>
 </FormSection>
 
@@ -52,8 +65,7 @@
     public ConsultationFormViewModel Model { get; set; } = null!;
 
     private bool HasReferralContent =>
-        Model.Referred
-        || Model.ItnOrder
+        Model.ItnOrder
         || Model.ItnDispense
         || !string.IsNullOrWhiteSpace(Model.ServicesReferredText);
 }

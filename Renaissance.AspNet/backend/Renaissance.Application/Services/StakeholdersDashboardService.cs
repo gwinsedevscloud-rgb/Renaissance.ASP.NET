@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Renaissance.Application.Common.Interfaces;
 using Renaissance.Application.DTOs;
+using Renaissance.Application.Helpers;
 using Renaissance.Domain.Enums;
 
 namespace Renaissance.Application.Services;
@@ -69,6 +70,9 @@ public class StakeholdersDashboardService : IStakeholdersDashboardService
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);
 
+        var labSurveillance = await BuildLabSurveillanceAsync(cancellationToken);
+        var pregnancySurveillance = await BuildPregnancySurveillanceAsync(cancellationToken);
+
         var avgEncounters = totalClients > 0 ? Math.Round((double)totalEncounters / totalClients, 1) : 0;
         var momGrowth = encountersLastMonth > 0
             ? Math.Round((encountersThisMonth - encountersLastMonth) / (double)encountersLastMonth * 100, 1)
@@ -114,6 +118,8 @@ public class StakeholdersDashboardService : IStakeholdersDashboardService
             PharmacyStatusBreakdown = ToLabelCounts(
                 pharmacyBreakdown.Select(x => (x.Status.ToString(), x.Count)),
                 totalPharmacy),
+            LabSurveillance = labSurveillance,
+            PregnancySurveillance = pregnancySurveillance,
             Insights = new OperationalInsightsDto
             {
                 BusiestModule = busiest?.Module ?? "—",
@@ -121,8 +127,150 @@ public class StakeholdersDashboardService : IStakeholdersDashboardService
                 AvgDailyEncounters = avgDaily,
                 ProjectedMonthlyClients = projectedMonthlyClients,
                 ProjectedMonthlyEncounters = projectedMonthlyEncounters,
-                Summary = BuildSummary(totalClients, encountersThisMonth, momGrowth, pendingPharmacy, projectedMonthlyEncounters)
+                Summary = BuildSummary(
+                    totalClients,
+                    encountersThisMonth,
+                    momGrowth,
+                    pendingPharmacy,
+                    projectedMonthlyEncounters,
+                    labSurveillance,
+                    pregnancySurveillance)
             }
+        };
+    }
+
+    private async Task<LabSurveillanceSummaryDto> BuildLabSurveillanceAsync(CancellationToken ct)
+    {
+        var labs = await _db.Laboratories.AsNoTracking()
+            .Where(l => !l.Archived)
+            .Join(
+                _db.Patients.AsNoTracking().Where(p => !p.Archived),
+                lab => lab.PatientId,
+                patient => patient.Id,
+                (lab, patient) => new
+                {
+                    lab.TestName,
+                    lab.Result,
+                    lab.Note,
+                    lab.CreatedDate,
+                    PatientName = patient.FullName ?? "Unknown",
+                    patient.ClientNumber
+                })
+            .ToListAsync(ct);
+
+        var malariaPositives = labs.Count(l =>
+            LaboratorySurveillanceHelper.IsMalariaTest(l.TestName) &&
+            LaboratorySurveillanceHelper.IsPositiveResult(l.TestName, l.Result));
+        var hivPositives = labs.Count(l =>
+            LaboratorySurveillanceHelper.IsHivTest(l.TestName) &&
+            LaboratorySurveillanceHelper.IsPositiveResult(l.TestName, l.Result));
+        var tbPositives = labs.Count(l =>
+            LaboratorySurveillanceHelper.IsTbTest(l.TestName) &&
+            LaboratorySurveillanceHelper.IsPositiveResult(l.TestName, l.Result));
+
+        var priorityTests = labs.Where(l =>
+            LaboratorySurveillanceHelper.IsMalariaTest(l.TestName) ||
+            LaboratorySurveillanceHelper.IsHivTest(l.TestName) ||
+            LaboratorySurveillanceHelper.IsTbTest(l.TestName)).ToList();
+
+        var totalPriorityPositives = malariaPositives + hivPositives + tbPositives;
+
+        var recentAlerts = labs
+            .Where(l => LaboratorySurveillanceHelper.IsPositiveResult(l.TestName, l.Result))
+            .Where(l =>
+                LaboratorySurveillanceHelper.IsMalariaTest(l.TestName) ||
+                LaboratorySurveillanceHelper.IsHivTest(l.TestName) ||
+                LaboratorySurveillanceHelper.IsTbTest(l.TestName))
+            .OrderByDescending(l => l.CreatedDate)
+            .Take(12)
+            .Select(l => new LabSurveillanceAlertDto
+            {
+                PatientName = l.PatientName,
+                ClientNumber = l.ClientNumber ?? "—",
+                Category = LaboratorySurveillanceHelper.SurveillanceCategory(l.TestName),
+                TestName = l.TestName ?? "—",
+                Result = l.Result ?? "—",
+                RecordedAt = l.CreatedDate
+            })
+            .ToList();
+
+        return new LabSurveillanceSummaryDto
+        {
+            TotalLabTests = labs.Count,
+            MalariaPositives = malariaPositives,
+            HivPositives = hivPositives,
+            TbPositives = tbPositives,
+            TotalPriorityPositives = totalPriorityPositives,
+            PriorityPositivityRate = priorityTests.Count > 0
+                ? Math.Round(totalPriorityPositives / (double)priorityTests.Count * 100, 1)
+                : 0,
+            RecentAlerts = recentAlerts,
+            PriorityTestBreakdown =
+            [
+                new LabelCountDto { Label = "Malaria", Count = malariaPositives },
+                new LabelCountDto { Label = "HIV", Count = hivPositives },
+                new LabelCountDto { Label = "TB", Count = tbPositives }
+            ]
+        };
+    }
+
+    private async Task<PregnancySurveillanceSummaryDto> BuildPregnancySurveillanceAsync(CancellationToken ct)
+    {
+        var pregnancyRecords = await _db.Ancillaries.AsNoTracking()
+            .Where(a => !a.Archived && a.PregnancyStatus != null && a.PregnancyStatus != "")
+            .Where(a => a.PregnancyStatus!.ToLower().Contains("pregnan"))
+            .Join(
+                _db.Patients.AsNoTracking().Where(p => !p.Archived),
+                ancillary => ancillary.PatientId,
+                patient => patient.Id,
+                (ancillary, patient) => new
+                {
+                    ancillary.PatientId,
+                    ancillary.PregnancyStatus,
+                    PatientName = patient.FullName ?? "Unknown",
+                    patient.ClientNumber
+                })
+            .ToListAsync(ct);
+
+        var patientIds = pregnancyRecords.Select(p => p.PatientId).Distinct().ToList();
+        var labs = await _db.Laboratories.AsNoTracking()
+            .Where(l => !l.Archived && patientIds.Contains(l.PatientId))
+            .Select(l => new
+            {
+                l.PatientId,
+                l.TestName,
+                l.Result,
+                l.Note
+            })
+            .ToListAsync(ct);
+
+        var cases = pregnancyRecords
+            .GroupBy(p => p.PatientId)
+            .Select(group =>
+            {
+                var first = group.First();
+                var patientLabs = labs.Where(l => l.PatientId == group.Key).ToList();
+                return new PregnancyLabCaseDto
+                {
+                    PatientName = first.PatientName,
+                    ClientNumber = first.ClientNumber ?? "—",
+                    PregnancyStatus = first.PregnancyStatus ?? "Pregnant",
+                    LabResults = patientLabs.Select(l => new PregnancyLabResultDto
+                    {
+                        TestName = l.TestName ?? "—",
+                        Result = l.Result ?? "Pending",
+                        Note = l.Note
+                    }).ToList()
+                };
+            })
+            .OrderBy(c => c.PatientName)
+            .ToList();
+
+        return new PregnancySurveillanceSummaryDto
+        {
+            PregnantWomenTracked = cases.Count,
+            WithLabResults = cases.Count(c => c.LabResults.Count > 0),
+            Cases = cases
         };
     }
 
@@ -330,13 +478,23 @@ public class StakeholdersDashboardService : IStakeholdersDashboardService
         }).ToList();
     }
 
-    private static string BuildSummary(int clients, int encountersThisMonth, double momGrowth, int pendingPharmacy, double projectedEncounters)
+    private static string BuildSummary(
+        int clients,
+        int encountersThisMonth,
+        double momGrowth,
+        int pendingPharmacy,
+        double projectedEncounters,
+        LabSurveillanceSummaryDto labSurveillance,
+        PregnancySurveillanceSummaryDto pregnancySurveillance)
     {
         var growthText = momGrowth >= 0 ? $"up {momGrowth}%" : $"down {Math.Abs(momGrowth)}%";
         var pharmacyNote = pendingPharmacy > 0
             ? $" {pendingPharmacy} pharmacy order(s) pending dispensation."
             : " Pharmacy queue is clear.";
+        var surveillanceNote =
+            $" Priority lab findings: {labSurveillance.MalariaPositives} malaria, {labSurveillance.HivPositives} HIV, and {labSurveillance.TbPositives} TB positive result(s)." +
+            $" Antenatal surveillance covers {pregnancySurveillance.PregnantWomenTracked} pregnant patient(s) with lab results for {pregnancySurveillance.WithLabResults}.";
         return $"The platform serves {clients} registered patient(s) with {encountersThisMonth} encounter(s) this month ({growthText} vs last month). " +
-               $"Based on recent activity, projected monthly volume is ~{projectedEncounters:0} encounters.{pharmacyNote}";
+               $"Based on recent activity, projected monthly volume is ~{projectedEncounters:0} encounters.{pharmacyNote}{surveillanceNote}";
     }
 }

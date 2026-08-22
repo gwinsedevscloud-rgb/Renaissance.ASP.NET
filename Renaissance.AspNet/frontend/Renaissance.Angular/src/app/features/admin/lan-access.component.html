@@ -1,0 +1,97 @@
+<div class="ren-page">
+    <app-page-header
+        title="LAN access"
+        subtitle="Network deployment and staff workstation URLs"
+        icon="heroicons_outline:wifi"
+        backLink="/admin/settings"
+        backLabel="Settings" />
+
+    @if (message()) {
+        <div class="ren-alert ren-alert-success">{{ message() }}</div>
+    }
+    @if (error()) {
+        <div class="ren-alert ren-alert-danger">{{ error() }}</div>
+    }
+
+    @if (!lanAccess.isUnlocked) {
+        <div class="ren-card ren-card-body ren-lan-gate">
+            <mat-icon [svgIcon]="'heroicons_outline:shield-check'"></mat-icon>
+            <h2>Protected network settings</h2>
+            <p class="ren-text-muted">Enter the LAN access password. This is separate from your admin login.</p>
+            <form [formGroup]="unlockForm" (ngSubmit)="unlock()" class="ren-form-stack">
+                <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>LAN access password</mat-label>
+                    <input matInput type="password" formControlName="password" autocomplete="current-password" />
+                </mat-form-field>
+                <button mat-flat-button color="primary" type="submit" [disabled]="unlocking()">Unlock LAN settings</button>
+            </form>
+        </div>
+    } @else {
+        <div class="ren-form-actions mb-3">
+            <span class="ren-badge-success">LAN settings unlocked</span>
+            <button mat-stroked-button type="button" (click)="lock()">Lock</button>
+        </div>
+
+        @if (loading()) {
+            <app-loading-state message="Loading network settings..." />
+        } @else if (deployment()) {
+            <div class="ren-card ren-card-body ren-form-stack">
+                <div class="ren-badge-row">
+                    <span [class]="deployment()!.lanReady ? 'ren-badge-success' : 'ren-badge-neutral'">
+                        {{ deployment()!.lanReady ? 'LAN ready' : 'Local only' }}
+                    </span>
+                </div>
+
+                <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()" class="ren-form-stack">
+                    <mat-form-field appearance="outline" class="w-full">
+                        <mat-label>Staff access URL</mat-label>
+                        <input matInput formControlName="webAccessUrl" [placeholder]="deployment()!.suggestedStaffUrl" />
+                    </mat-form-field>
+                    <button mat-stroked-button type="button" (click)="copyUrl(settingsForm.controls.webAccessUrl.value, deployment()!.suggestedStaffUrl)">
+                        Copy suggested URL
+                    </button>
+
+                    <mat-form-field appearance="outline" class="w-full">
+                        <mat-label>API URL (reference)</mat-label>
+                        <input matInput formControlName="apiAccessUrl" [placeholder]="deployment()!.suggestedApiUrl" />
+                    </mat-form-field>
+
+                    @if (deployment()!.localIpAddresses.length) {
+                        <div class="ren-chip-row">
+                            @for (ip of deployment()!.localIpAddresses; track ip) {
+                                <span class="ren-chip">{{ ip }}</span>
+                            }
+                        </div>
+                    }
+
+                    <ul class="ren-checklist">
+                        @for (step of deployment()!.setupSteps; track step) {
+                            <li>{{ step }}</li>
+                        }
+                    </ul>
+
+                    <div class="ren-form-actions">
+                        <button mat-flat-button color="primary" type="submit" [disabled]="saving()">Save network settings</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="ren-card ren-card-body ren-form-stack mt-4">
+                <h2 class="ren-section-title">Change LAN password</h2>
+                <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="ren-form-stack">
+                    <div class="ren-form-row">
+                        <mat-form-field appearance="outline" class="flex-1">
+                            <mat-label>Current password</mat-label>
+                            <input matInput type="password" formControlName="currentPassword" />
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="flex-1">
+                            <mat-label>New password</mat-label>
+                            <input matInput type="password" formControlName="newPassword" />
+                        </mat-form-field>
+                    </div>
+                    <button mat-stroked-button color="primary" type="submit" [disabled]="changingPassword()">Update password</button>
+                </form>
+            </div>
+        }
+    }
+</div>

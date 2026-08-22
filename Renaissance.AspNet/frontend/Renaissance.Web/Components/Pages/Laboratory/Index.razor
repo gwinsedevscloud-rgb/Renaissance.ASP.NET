@@ -25,13 +25,14 @@
         <div class="section-card table-card p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 module-record-table module-table-laboratory">
+                    <ModuleRecordColGroup Widths="@(new[] { "24%", "28%", "18%", "16%", "4.5rem" })" />
                     <thead>
                         <tr>
                             <ModuleTableTh Label="Patient" Icon="bi-person" />
                             <ModuleTableTh Label="Test" Icon="bi-droplet-half" />
                             <ModuleTableTh Label="Result" Icon="bi-clipboard2-data" />
                             <ModuleTableTh Label="Recorded" Icon="bi-calendar3" CssClass="d-none d-sm-table-cell" />
-                            <th></th>
+                            <ModuleTableActionTh />
                         </tr>
                     </thead>
                     <tbody>

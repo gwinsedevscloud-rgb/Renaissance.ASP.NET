@@ -12,7 +12,53 @@ public class StakeholdersDashboardDto
     public List<LabelCountDto> SexDistribution { get; set; } = [];
     public List<LabelCountDto> AgeGroupDistribution { get; set; } = [];
     public List<LabelCountDto> PharmacyStatusBreakdown { get; set; } = [];
+    public LabSurveillanceSummaryDto LabSurveillance { get; set; } = new();
+    public PregnancySurveillanceSummaryDto PregnancySurveillance { get; set; } = new();
     public OperationalInsightsDto Insights { get; set; } = new();
+}
+
+public class LabSurveillanceSummaryDto
+{
+    public int TotalLabTests { get; set; }
+    public int MalariaPositives { get; set; }
+    public int HivPositives { get; set; }
+    public int TbPositives { get; set; }
+    public int TotalPriorityPositives { get; set; }
+    public double PriorityPositivityRate { get; set; }
+    public List<LabSurveillanceAlertDto> RecentAlerts { get; set; } = [];
+    public List<LabelCountDto> PriorityTestBreakdown { get; set; } = [];
+}
+
+public class LabSurveillanceAlertDto
+{
+    public string PatientName { get; set; } = string.Empty;
+    public string ClientNumber { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string TestName { get; set; } = string.Empty;
+    public string Result { get; set; } = string.Empty;
+    public DateTime? RecordedAt { get; set; }
+}
+
+public class PregnancySurveillanceSummaryDto
+{
+    public int PregnantWomenTracked { get; set; }
+    public int WithLabResults { get; set; }
+    public List<PregnancyLabCaseDto> Cases { get; set; } = [];
+}
+
+public class PregnancyLabCaseDto
+{
+    public string PatientName { get; set; } = string.Empty;
+    public string ClientNumber { get; set; } = string.Empty;
+    public string PregnancyStatus { get; set; } = string.Empty;
+    public List<PregnancyLabResultDto> LabResults { get; set; } = [];
+}
+
+public class PregnancyLabResultDto
+{
+    public string TestName { get; set; } = string.Empty;
+    public string Result { get; set; } = string.Empty;
+    public string? Note { get; set; }
 }
 
 public class StakeholdersKpiSummary

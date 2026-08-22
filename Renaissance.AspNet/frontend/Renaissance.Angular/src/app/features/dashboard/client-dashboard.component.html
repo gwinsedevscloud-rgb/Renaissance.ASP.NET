@@ -24,9 +24,9 @@
                         <mat-icon [svgIcon]="'heroicons_outline:user'"></mat-icon>
                         <span>Profile</span>
                     </a>
-                    <a mat-button routerLink="/clients">
+                    <a mat-button routerLink="/patients">
                         <mat-icon [svgIcon]="'heroicons_outline:arrow-left'"></mat-icon>
-                        <span>Clients</span>
+                        <span>Patients</span>
                     </a>
                 </div>
             </div>
@@ -59,9 +59,23 @@
 
             <app-page-header title="Clinical Modules" subtitle="Overview of all department records" icon="heroicons_outline:squares-2x2"></app-page-header>
 
+            @if (journey().length > 0) {
+                <div class="ren-card ren-card-body mb-4">
+                    <h2 class="ren-section-title">Visit journey</h2>
+                    <div class="ren-journey-list">
+                        @for (step of journey(); track step.referralId) {
+                            <div class="ren-journey-step">
+                                <strong>{{ journeyLabel(step) }}</strong>
+                                <span class="ren-text-muted">{{ step.status }}</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
             <div class="ren-action-grid">
                 @for (chip of chips(d); track chip.title) {
-                    <div class="ren-action-chip" [class.done]="chip.done" [class.pending]="chip.pending">
+                    <a class="ren-action-chip ren-action-chip-link" [class.done]="chip.done" [class.pending]="chip.pending" [routerLink]="chip.createHref">
                         <div class="ren-action-chip-icon">
                             <mat-icon [svgIcon]="chip.icon"></mat-icon>
                         </div>
@@ -72,7 +86,8 @@
                                 <mat-icon [svgIcon]="'heroicons_solid:check-circle'"></mat-icon>
                             </span>
                         }
-                    </div>
+                        <span class="ren-action-chip-cta">New record</span>
+                    </a>
                 }
             </div>
 

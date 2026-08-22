@@ -1,0 +1,11 @@
+<colgroup>
+@foreach (var width in Widths)
+{
+    <col style="width:@width" />
+}
+</colgroup>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> Widths { get; set; } = [];
+}

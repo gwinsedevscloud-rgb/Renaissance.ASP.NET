@@ -91,6 +91,7 @@
         <div class="section-card table-card p-0 d-none d-md-block">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 clients-table">
+                    <ModuleRecordColGroup Widths="@(new[] { "30%", "12%", "12%", "22%", "16%", "5rem" })" />
                     <thead>
                         <tr>
                             <th>Patient</th>
@@ -98,7 +99,7 @@
                             <th>Sex</th>
                             <th>Phone</th>
                             <th class="d-none d-lg-table-cell">Registered</th>
-                            <th></th>
+                            <ModuleTableActionTh />
                         </tr>
                     </thead>
                     <tbody>
@@ -135,7 +136,7 @@
                             <td class="d-none d-lg-table-cell">
                                 <small class="text-muted">@(p.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small>
                             </td>
-                            <td class="text-end">
+                            <td class="text-end module-table-actions">
                                 <div class="client-actions">
                                     <a class="btn btn-sm btn-primary" href="/patient-dashboard/@p.Id" title="Dashboard">
                                         <i class="bi bi-grid-1x2"></i><span>Dashboard</span>

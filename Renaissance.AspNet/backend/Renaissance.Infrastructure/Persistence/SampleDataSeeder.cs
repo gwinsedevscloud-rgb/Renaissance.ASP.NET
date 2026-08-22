@@ -120,48 +120,83 @@ public static class SampleDataSeeder
     private static IEnumerable<Laboratory> BuildLaboratories(IReadOnlyList<Patient> patients, DateTime now)
     {
         yield return Lab(patients[0], now.AddDays(-23), "Malaria Parasite (MP)", "Positive", "Ring forms seen on thick film.");
+        yield return Lab(patients[0], now.AddDays(-22), "HIV Rapid Test", "Non-reactive", "Routine screening negative.");
+        yield return Lab(patients[1], now.AddDays(-17), "HIV Rapid Antibody Test", "Reactive (Positive)", "Confirmatory testing advised.");
+        yield return Lab(patients[1], now.AddDays(-16), "CD4 Count", "398 cells/µL", "Immunology review recommended.");
         yield return Lab(patients[1], now.AddDays(-17), "Lipid Profile", "Borderline high LDL", "Repeat in 3 months advised.");
         yield return Lab(patients[2], now.AddDays(-12), "Haemoglobin (Hb)", "11.2 g/dL", "Mild anaemia in pregnancy.");
+        yield return Lab(patients[2], now.AddDays(-12), "HIV Rapid Test", "Non-reactive", "Antenatal screening negative.");
+        yield return Lab(patients[2], now.AddDays(-11), "Syphilis RPR", "Non-reactive", "No active syphilis detected.");
         yield return Lab(patients[3], now.AddDays(-8), "Fasting Blood Sugar", "8.4 mmol/L", "Elevated — correlate clinically.");
+        yield return Lab(patients[3], now.AddDays(-7), "TB GeneXpert MTB/RIF", "MTB Detected, RIF Sensitive", "Initiate TB regimen.");
+        yield return Lab(patients[4], now.AddDays(-5), "Malaria Parasite (MP)", "Positive", "Adolescent antenatal case.");
+        yield return Lab(patients[4], now.AddDays(-5), "Haemoglobin (Hb)", "10.1 g/dL", "Anaemia in pregnancy.");
+        yield return Lab(patients[5], now.AddDays(-2), "Sputum AFB Smear", "Positive (1+)", "AFB seen — TB treatment started.");
         yield return Lab(patients[6], now.AddDays(-1), "Full Blood Count", "Within normal limits", "No leucocytosis.");
+        yield return Lab(patients[6], now.AddDays(-1), "Malaria RDT", "Positive", "Uncomplicated malaria.");
     }
 
     private static IEnumerable<PharmacyPrescription> BuildPharmacy(IReadOnlyList<Patient> patients, DateTime now)
     {
-        yield return Rx(patients[0], now.AddDays(-22), "Antimalarial", "Coartem", "80/480mg", "Twice daily", "3 days",
+        yield return Rx(patients[0], now.AddDays(-22), "Antimalarial", "Artemether/Lumefantrine (Coartem)", "80/480 mg", "Twice daily", "3 days",
             DispensationStatus.DISPENSED, true, 6);
-        yield return Rx(patients[1], now.AddDays(-16), "Antihypertensive", "Amlodipine", "5mg", "Once daily", "30 days",
-            DispensationStatus.PENDING, false, null);
-        yield return Rx(patients[2], now.AddDays(-11), "Supplement", "Folic Acid", "5mg", "Once daily", "30 days",
+        yield return Rx(patients[1], now.AddDays(-15), "Antiretroviral", "TDF/3TC/DTG (TLD)", "One tablet", "Once daily", "Continuous",
             DispensationStatus.DISPENSED, true, 30);
-        yield return Rx(patients[3], now.AddDays(-7), "Antidiabetic", "Metformin", "500mg", "Twice daily", "30 days",
+        yield return Rx(patients[1], now.AddDays(-16), "Antihypertensive", "Amlodipine", "5 mg", "Once daily", "30 days",
+            DispensationStatus.PENDING, false, null);
+        yield return Rx(patients[2], now.AddDays(-11), "Supplement", "Ferrous Sulphate + Folic Acid", "200/5 mg", "Once daily", "90 days",
+            DispensationStatus.DISPENSED, true, 90);
+        yield return Rx(patients[2], now.AddDays(-11), "Antenatal", "Tetanus Toxoid", "0.5 mL IM", "Single dose", "Once",
+            DispensationStatus.DISPENSED, true, 1);
+        yield return Rx(patients[3], now.AddDays(-7), "Antidiabetic", "Metformin", "500 mg", "Twice daily", "30 days",
             DispensationStatus.DISPENSED, true, 60);
-        yield return Rx(patients[6], now.AddDays(-1), "Analgesic", "Paracetamol", "500mg", "Three times daily", "5 days",
-            DispensationStatus.DISPENSED, true, 15);
+        yield return Rx(patients[3], now.AddDays(-6), "Antitubercular", "RHZE (4FDC)", "Fixed-dose combination", "Once daily", "2 months (intensive phase)",
+            DispensationStatus.PENDING, false, null);
+        yield return Rx(patients[4], now.AddDays(-4), "Antimalarial", "Artesunate-Amodiaquine", "100/270 mg", "Once daily", "3 days",
+            DispensationStatus.DISPENSED, true, 3);
         yield return Rx(patients[5], now.AddDays(-2), "Antiglaucoma", "Timolol eye drops", "0.5%", "Twice daily", "30 days",
             DispensationStatus.DECLINED, false, null, "Patient referred for surgery first.");
+        yield return Rx(patients[6], now.AddDays(-1), "Analgesic", "Paracetamol", "500 mg", "Three times daily", "5 days",
+            DispensationStatus.DISPENSED, true, 15);
+        yield return Rx(patients[6], now.AddDays(-1), "Antibiotic", "Amoxicillin", "500 mg", "Three times daily", "7 days",
+            DispensationStatus.DISPENSED, true, 21);
+        yield return Rx(patients[0], now.AddDays(-10), "Antihypertensive", "Lisinopril", "10 mg", "Once daily", "30 days",
+            DispensationStatus.DISPENSED, true, 30);
+        yield return Rx(patients[5], now.AddDays(-1), "Antitubercular", "RHZE (4FDC)", "Fixed-dose combination", "Once daily", "2 months (intensive phase)",
+            DispensationStatus.DISPENSED, true, 60);
     }
 
     private static IEnumerable<DentalConsultation> BuildDental(IReadOnlyList<Patient> patients, DateTime now)
     {
         yield return Dental(patients[3], now.AddDays(-7), ["Dental caries — lower molar"], ["Extraction planned"], ["Tooth extraction"]);
+        yield return Dental(patients[1], now.AddDays(-4), ["Gingivitis"], ["Scaling and polishing"], ["Chlorhexidine mouthwash"]);
+        yield return Dental(patients[5], now.AddDays(-2), ["Pericoronitis"], ["Incision and drainage"], ["Amoxicillin 500 mg"]);
     }
 
     private static IEnumerable<Ancillary> BuildAncillary(IReadOnlyList<Patient> patients, DateTime now)
     {
-        yield return Ancillary(patients[2], now.AddDays(-11), ["Antenatal counselling", "Nutrition education"], "Pregnant — first trimester");
+        yield return Ancillary(patients[2], now.AddDays(-11), ["Antenatal counselling", "Nutrition education"], "Pregnant — first trimester (14 weeks)");
+        yield return Ancillary(patients[4], now.AddDays(-5), ["Antenatal booking", "Adolescent pregnancy support"], "Pregnant — first trimester (12 weeks)");
         yield return Ancillary(patients[6], now.AddDays(-1), ["Health talk — road safety"], "Not applicable");
+        yield return Ancillary(patients[0], now.AddDays(-3), ["HIV prevention counselling"], "Not applicable");
+        yield return Ancillary(patients[6], now.AddDays(-2), ["Family planning counselling"], "Not applicable");
     }
 
     private static IEnumerable<Optometrist> BuildOptometrists(IReadOnlyList<Patient> patients, DateTime now)
     {
         yield return Opto(patients[4], now.AddDays(-4), "6/24", "6/18", glasses: true, referred: false);
+        yield return Opto(patients[0], now.AddDays(-3), "6/12", "6/12", glasses: false, referred: false);
+        yield return Opto(patients[2], now.AddDays(-2), "6/18", "6/18", glasses: true, referred: true);
     }
 
     private static IEnumerable<Ophthalmologist> BuildOphthalmologists(IReadOnlyList<Patient> patients, DateTime now)
     {
         yield return Ophth(patients[5], now.AddDays(-1), ["Immature cataract — OS"], ["Phacoemulsification recommended"],
             ["Cataract surgery — left eye"], "3/60", "6/18", referred: true);
+        yield return Ophth(patients[1], now.AddDays(-3), ["Primary open-angle glaucoma"], ["Timolol eye drops"],
+            [], "6/18", "6/24", referred: false);
+        yield return Ophth(patients[4], now.AddDays(-2), ["Allergic conjunctivitis"], ["Artificial tears"],
+            [], "6/9", "6/9", referred: false);
     }
 
     private static Triage Triage(

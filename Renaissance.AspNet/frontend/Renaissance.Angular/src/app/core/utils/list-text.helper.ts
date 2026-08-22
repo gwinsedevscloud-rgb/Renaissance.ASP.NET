@@ -14,3 +14,17 @@ export function clientDisplayName(fullName?: string | null, address?: string | n
     const comma = address.indexOf(',');
     return comma > 0 ? address.slice(0, comma).trim() : address.trim();
 }
+
+export function patientInitials(fullName?: string | null, address?: string | null, clientNumber?: string | null): string {
+    const name = clientDisplayName(fullName, address);
+    if (name !== '—') {
+        const parts = name.split(/\s+/).filter(Boolean);
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return name.slice(0, 2).toUpperCase();
+    }
+
+    const num = clientNumber?.replace(/[^A-Z0-9]/gi, '') ?? '';
+    return num.slice(0, 2).toUpperCase() || 'CL';
+}

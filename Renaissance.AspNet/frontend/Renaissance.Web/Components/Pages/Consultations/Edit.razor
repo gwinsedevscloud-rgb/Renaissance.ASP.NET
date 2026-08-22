@@ -13,12 +13,22 @@ else
     <PageHeader Title="Edit Consultation" Icon="bi-clipboard2-pulse" IconBgClass="feature-icon-blue" />
     <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
         <ConsultationForm Model="_vm" />
-        <FormActions SaveLabel="Update" CancelHref="@($"/patient-dashboard/{_vm.PatientId}")" Saving="_saving" />
+        <FormActions SaveLabel="Update consultation"
+                     SaveIcon="bi-check-lg"
+                     CancelHref="@($"/patient-dashboard/{_vm.PatientId}")"
+                     Saving="_saving" />
     </EditForm>
-    <button class="btn btn-outline-danger mt-2" @onclick="ArchiveAsync"><i class="bi bi-archive me-1"></i> Archive</button>
+    <div class="d-flex flex-wrap gap-2 mt-2">
+        <button type="button" class="btn btn-outline-primary" @onclick="OpenReferralAsync">
+            <i class="bi bi-send-check me-1"></i> Refer to another module
+        </button>
+        <button class="btn btn-outline-danger" @onclick="ArchiveAsync"><i class="bi bi-archive me-1"></i> Archive</button>
+    </div>
 
     <ReferralPromptModal Visible="_showReferral" PatientId="_vm.PatientId" PatientName="@(_patientName ?? "the patient")"
-                         SourceModule="AppModule.Consultations" SourceRecordId="Id" OnSkipped="FinishReferralAsync" OnCompleted="FinishReferralAsync" />
+                         SourceModule="AppModule.Consultations" SourceRecordId="Id"
+                         Subtitle="Select one or more modules — referral is optional."
+                         OnSkipped="FinishReferralAsync" OnCompleted="FinishReferralAsync" />
 }
 
 @code {
@@ -51,16 +61,15 @@ else
         {
             await Api.UpdateConsultationAsync(Id, entity);
             Notifications.ShowSuccess(BuildSaveMessage());
-            if (_vm.Referred)
-            {
-                _showReferral = true;
-            }
-            else
-            {
-                Nav.NavigateTo($"/patient-dashboard/{_vm.PatientId}");
-            }
+            Nav.NavigateTo($"/patient-dashboard/{_vm.PatientId}");
         }
         finally { _saving = false; }
+    }
+
+    private Task OpenReferralAsync()
+    {
+        _showReferral = true;
+        return Task.CompletedTask;
     }
 
     private string BuildSaveMessage()
@@ -69,7 +78,6 @@ else
         var parts = new List<string> { "Consultation updated." };
         if (_vm.ItnOrder) parts.Add("ITN pharmacy task synced.");
         if (_vm.ItnDispense) parts.Add("ITN marked dispensed.");
-        if (_vm.Referred) parts.Add("Select referral destinations next.");
         return string.Join(" ", parts);
     }
 
@@ -108,7 +116,7 @@ else
         Diagnoses = ListTextHelper.FromMultiline(vm.DiagnosesText),
         Treatments = ListTextHelper.FromMultiline(vm.TreatmentsText),
         ServicesReferred = ListTextHelper.FromMultiline(vm.ServicesReferredText),
-        Referred = vm.Referred, ItnOrder = vm.ItnOrder, ItnDispense = vm.ItnDispense,
+        Referred = false, ItnOrder = vm.ItnOrder, ItnDispense = vm.ItnDispense,
         OthersDiagnosis = ListTextHelper.FromMultiline(vm.OthersDiagnosisText),
         OthersTreatment = ListTextHelper.FromMultiline(vm.OthersTreatmentText)
     };
