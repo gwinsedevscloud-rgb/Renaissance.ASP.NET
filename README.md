@@ -1,36 +1,32 @@
-# Renaissance Plugin
+# MedReach
 
-Original stack (Java + Angular module federation) remains in this repository root.
+Clinical outreach / EMR data-collection app (ASP.NET Core).
 
-## ASP.NET Core redesign
+## Apps
 
-Split into separate folders under **[`Renaissance.AspNet/`](Renaissance.AspNet/README.md)**:
+| App | Stack | Role |
+|-----|--------|------|
+| **API** | ASP.NET Core | Backend + EF Core + SQL Server |
+| **Web UI** | Blazor Server | Hospital / clinic desktop UI |
+| **Field PWA** | Blazor WASM | Offline outreach on Android tablets |
 
-| Folder | Role |
-|--------|------|
-| `backend/Renaissance.Api` | ASP.NET Core Web API + EF Core + SQL Server |
-| `frontend/Renaissance.Web` | Blazor Web App (Interactive Server) calling the API |
+Everything lives under [`Renaissance.AspNet/`](Renaissance.AspNet/README.md).
+
+## Quick start
+
+Double-click **`Start MedReach.bat`**, or:
 
 ```powershell
-# API
-cd Renaissance.AspNet\backend\Renaissance.Api
-dotnet run
-
-# UI (separate terminal)
-cd Renaissance.AspNet\frontend\Renaissance.Web
-dotnet run
+cd Renaissance.AspNet
+.\start-dev.ps1 -Field
 ```
 
-- API: http://localhost:5280  
-- UI: http://localhost:5281  
+| Service | URL |
+|---------|-----|
+| Web UI | http://localhost:5281 |
+| Field PWA | http://localhost:5121 |
+| API | http://localhost:5280/swagger |
 
-Sign in as `admin` / `Admin@123`. Administrators assign roles and module access under **Admin → Roles & modules**.
+**Login:** `admin` / `Admin@123`
 
-## Legacy (Java / Angular)
-
-- ``yarn install``
-- ``yarn start``
-- Navigate to http://localhost:7463
-
-Module Federation related information can be found in [webpack.common.js](webpack/webpack.common.js) and [plugin.yml](src/main/resources/plugin.yml).
-[plugin-config-doc.yml](src/main/resources/plugin-config-doc.yml) provides additional information on how [plugin.yml](src/main/resources/plugin.yml) is organized.
+Full setup, LAN deploy, and troubleshooting: [`Renaissance.AspNet/README.md`](Renaissance.AspNet/README.md).

@@ -136,6 +136,8 @@
     [Parameter] public string SkipLabel { get; set; } = "Done without referring";
     [Parameter] public string Title { get; set; } = "Refer to another module";
     [Parameter] public string Subtitle { get; set; } = "Optional — send this patient to additional modules";
+    [Parameter] public IReadOnlyList<AppModule>? AllowedTargetModules { get; set; }
+    [Parameter] public IReadOnlyDictionary<AppModule, string>? TargetLabels { get; set; }
 
     private readonly HashSet<AppModule> _selected = [];
     private ReferralPriority _priority = ReferralPriority.Routine;
@@ -149,9 +151,29 @@
         new(ReferralPriority.Routine, "Routine", "Standard queue · 30 min target", "priority-routine", "bi-clock-history")
     ];
 
-    private IEnumerable<ModuleNavItem> AvailableTargets =>
-        ModuleState.FilterNavItems(ModuleState.GetReferralTargets(SourceModule))
-            .Where(t => t.Module != SourceModule);
+    private IEnumerable<ModuleNavItem> AvailableTargets
+    {
+        get
+        {
+            var targets = ModuleState.FilterNavItems(ModuleState.GetReferralTargets(SourceModule))
+                .Where(t => t.Module != SourceModule);
+
+            if (AllowedTargetModules is { Count: > 0 })
+            {
+                targets = targets.Where(t => AllowedTargetModules.Contains(t.Module));
+            }
+
+            return targets.Select(t =>
+            {
+                if (TargetLabels is not null && TargetLabels.TryGetValue(t.Module, out var label))
+                {
+                    return t with { Label = label };
+                }
+
+                return t;
+            });
+        }
+    }
 
     private void SelectPriority(ReferralPriority priority) => _priority = priority;
 

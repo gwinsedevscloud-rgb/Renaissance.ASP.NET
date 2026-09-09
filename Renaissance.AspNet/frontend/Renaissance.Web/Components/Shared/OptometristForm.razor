@@ -1,4 +1,5 @@
 @using Renaissance.Web.Models
+@using Renaissance.Web.Helpers
 
 <FormSection Title="Vision Assessment" Icon="bi-eye">
     <div class="row g-3">
@@ -29,10 +30,97 @@
     </div>
 </FormSection>
 
+<FormSection Title="Diagnosis" Icon="bi-clipboard2-pulse" IconBgClass="feature-icon-teal">
+    <CheckboxMultiSelect Label="Diagnoses"
+                         Icon="bi-clipboard2-pulse"
+                         Placeholder="Select diagnoses…"
+                         Hint="Open the list and tick all diagnoses that apply."
+                         Options="ClinicalCatalog.EyeClinicDiagnoses"
+                         Selected="Model.Diagnoses"
+                         SelectedChanged="OnDiagnosesChanged" />
+</FormSection>
+
+<FormSection Title="Treatment" Icon="bi-heart-pulse" IconBgClass="feature-icon-blue">
+    <p class="form-hint mb-2">Select the treatment plan for this visit.</p>
+    <div class="eye-treatment-grid">
+        @foreach (var option in ClinicalCatalog.EyeClinicTreatments)
+        {
+            <button type="button"
+                    class="eye-treatment-chip @(IsOn(Model.Treatments, option) ? "is-on" : null)"
+                    @onclick="() => ToggleTreatment(option)">
+                <i class="bi @TreatmentIcon(option)" aria-hidden="true"></i>
+                <span>@option</span>
+            </button>
+        }
+    </div>
+</FormSection>
+
+@if (IsOn(Model.Treatments, "MEDICATION"))
+{
+    <FormSection Title="Eye medications" Icon="bi-eyedropper" IconBgClass="feature-icon-orange">
+        <CatalogTextPicker Label="Medications dispensed / prescribed"
+                           Icon="bi-eyedropper"
+                           Options="ClinicalCatalog.EyeClinicMedications"
+                           @bind-Value="MedicationsText" />
+    </FormSection>
+}
+
 @code {
     [Parameter, EditorRequired]
     public Optometrist Model { get; set; } = null!;
 
     private bool GlassesDispensed { get => Model.GlassesDispensed == true; set => Model.GlassesDispensed = value; }
     private bool Referred { get => Model.Referred == true; set => Model.Referred = value; }
+
+    private string MedicationsText
+    {
+        get => string.Join("\n", Model.Medications);
+        set => Model.Medications = SplitLines(value);
+    }
+
+    private Task OnDiagnosesChanged(List<string> values)
+    {
+        Model.Diagnoses = values;
+        return Task.CompletedTask;
+    }
+
+    private static bool IsOn(IEnumerable<string>? items, string option) =>
+        items?.Any(x => string.Equals(x, option, StringComparison.OrdinalIgnoreCase)) == true;
+
+    private static string TreatmentIcon(string treatment) => treatment switch
+    {
+        "MEDICATION" => "bi-capsule",
+        "REFRACTION" => "bi-eyeglasses",
+        "SURGERY" => "bi-hospital",
+        _ => "bi-check2-circle"
+    };
+
+    private void ToggleTreatment(string option)
+    {
+        Toggle(Model.Treatments, option);
+        if (!IsOn(Model.Treatments, "MEDICATION"))
+        {
+            Model.Medications.Clear();
+        }
+    }
+
+    private void Toggle(List<string> items, string option)
+    {
+        var existing = items.FirstOrDefault(x => string.Equals(x, option, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            items.Remove(existing);
+        }
+        else
+        {
+            items.Add(option);
+        }
+    }
+
+    private static List<string> SplitLines(string? value)
+        => (value ?? string.Empty)
+            .Split(['\r', '\n', ';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 }

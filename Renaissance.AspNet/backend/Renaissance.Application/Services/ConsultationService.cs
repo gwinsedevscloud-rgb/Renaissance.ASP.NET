@@ -14,11 +14,13 @@ public class ConsultationService : IConsultationService
 
     private readonly IApplicationDbContext _db;
     private readonly IReferralService _referrals;
+    private readonly IOutreachModeService _outreach;
 
-    public ConsultationService(IApplicationDbContext db, IReferralService referrals)
+    public ConsultationService(IApplicationDbContext db, IReferralService referrals, IOutreachModeService outreach)
     {
         _db = db;
         _referrals = referrals;
+        _outreach = outreach;
     }
 
     public async Task<List<Consultation>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -63,8 +65,41 @@ public class ConsultationService : IConsultationService
         await _referrals.CompleteActiveForPatientModuleAsync(
             consultation.PatientId, AppModule.Consultations, consultation.CreatedBy ?? "system", cancellationToken);
 
+        await EnsureOutreachPharmacyReferralAsync(consultation, cancellationToken);
         await SyncItnWorkflowAsync(consultation, wasItnOrder: false, wasItnDispense: false, cancellationToken);
         return consultation;
+    }
+
+    private async Task EnsureOutreachPharmacyReferralAsync(Consultation consultation, CancellationToken cancellationToken)
+    {
+        var nextModule = await _outreach.GetNextModuleAfterAsync(AppModule.Consultations, cancellationToken);
+        if (nextModule != AppModule.Pharmacy)
+        {
+            return;
+        }
+
+        var actor = consultation.CreatedBy ?? "system";
+        var hasActive = await _db.Referrals.AnyAsync(
+            r => !r.Archived
+                 && r.PatientId == consultation.PatientId
+                 && r.TargetModule == AppModule.Pharmacy
+                 && (r.Status == ReferralStatus.Pending || r.Status == ReferralStatus.InProgress),
+            cancellationToken);
+
+        if (hasActive)
+        {
+            return;
+        }
+
+        await _referrals.CreateAsync(new CreateReferralsRequest
+        {
+            PatientId = consultation.PatientId,
+            SourceModule = AppModule.Consultations,
+            SourceRecordId = consultation.Id,
+            TargetModules = [AppModule.Pharmacy],
+            Notes = "Auto-referred to pharmacy after consultation (outreach)",
+            Priority = ReferralPriority.Routine
+        }, actor, cancellationToken);
     }
 
     public async Task<Consultation?> UpdateAsync(Guid id, Consultation incoming, CancellationToken cancellationToken = default)

@@ -33,6 +33,7 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ReferralRealtimeService>();
 builder.Services.AddScoped<HospitalModuleStateService>();
+builder.Services.AddScoped<OutreachStateService>();
 
 var app = builder.Build();
 

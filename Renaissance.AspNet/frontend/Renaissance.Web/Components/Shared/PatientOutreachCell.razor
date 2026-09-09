@@ -1,0 +1,26 @@
+@if (Patient.CareProgramId.HasValue && !string.IsNullOrWhiteSpace(Patient.CareProgramName))
+{
+    <span class="patient-outreach-badge outreach-primary">
+        <i class="bi bi-megaphone"></i>
+        @Patient.CareProgramName
+    </span>
+    <span class="patient-outreach-meta">
+        Registered @((Patient.OutreachRegisteredAt ?? Patient.CreatedDate)?.ToLocalTime().ToString("d") ?? "—")
+        @if (!string.IsNullOrWhiteSpace(Patient.OutreachCode))
+        {
+            <text> · @Patient.OutreachCode</text>
+        }
+    </span>
+}
+else
+{
+    <span class="patient-outreach-badge outreach-facility">
+        <i class="bi bi-hospital"></i>
+        Facility
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public Patient Patient { get; set; } = default!;
+}

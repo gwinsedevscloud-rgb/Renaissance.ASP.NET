@@ -1,81 +1,223 @@
 @using Renaissance.Web.Models
+@using Renaissance.Web.Helpers
 
-<FormSection Title="Test Details" Icon="bi-droplet-half" IconBgClass="feature-icon-blue">
-    <div class="row g-3">
-        <div class="col-md-4">
-            <FormLabel Text="Test Name" Icon="bi-flask" />
-            <InputSelect class="form-select" @bind-Value="_selectedTestName" @bind-Value:after="OnTestChanged">
-                <option value="">Select a test...</option>
-                @foreach (var test in LaboratoryTestCatalog.Tests)
-                {
-                    <option value="@test.Name">@test.Name</option>
-                }
-                <option value="__custom__">Other (custom)</option>
-            </InputSelect>
-            @if (_selectedTestName == "__custom__")
+@if (DualTests)
+{
+    <FormSection Title="Laboratory tests" Subtitle="Select up to two tests and enter a result for each" Icon="bi-droplet-half" IconBgClass="feature-icon-blue">
+        <div class="lab-dual-stack">
+            @for (var i = 0; i < _lines.Length; i++)
             {
-                <InputText class="form-control mt-2" @bind-Value="Model.TestName" placeholder="Enter custom test name" />
+                var index = i;
+                <div class="lab-test-line">
+                    <div class="lab-test-line-label">Test @(index + 1)@(index == 0 ? " *" : " (optional)")</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <FormLabel Text="Test name" Icon="bi-flask" Required="@(index == 0)" />
+                            <InputSelect class="form-select" @bind-Value="_lines[index].SelectedKey" @bind-Value:after="() => OnLineTestChanged(index)">
+                                <option value="">Select a test…</option>
+                                @foreach (var name in LaboratoryTestCatalog.TestNames)
+                                {
+                                    <option value="@name" disabled="@IsTakenByOtherLine(index, name)">@name</option>
+                                }
+                                <option value="@LaboratoryTestCatalog.OtherKey">Other</option>
+                            </InputSelect>
+                            @if (_lines[index].SelectedKey == LaboratoryTestCatalog.OtherKey)
+                            {
+                                <InputText class="form-control mt-2" @bind-Value="_lines[index].CustomName" placeholder="Type the test name" />
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <FormLabel Text="Result" Icon="bi-check2-square" Required="@(index == 0)" />
+                            <InputText class="form-control" @bind-Value="_lines[index].Result" placeholder="Enter result" />
+                        </div>
+                    </div>
+                </div>
             }
         </div>
-        <div class="col-md-4">
-            <FormLabel Text="Result" Icon="bi-check2-square" />
-            @if (_resultOptions.Count > 0)
-            {
-                <InputSelect class="form-select" @bind-Value="Model.Result">
-                    <option value="">Select result...</option>
-                    @foreach (var result in _resultOptions)
+
+        <div class="row g-3 mt-1">
+            <div class="col-12">
+                <FormLabel Text="Note" Icon="bi-journal-text" />
+                <InputTextArea class="form-control" rows="2" @bind-Value="SharedNote" />
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <div class="alert alert-danger py-2 px-3 mt-3 mb-0">@_error</div>
+        }
+    </FormSection>
+}
+else
+{
+    <FormSection Title="Test details" Icon="bi-droplet-half" IconBgClass="feature-icon-blue">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <FormLabel Text="Test name" Icon="bi-flask" Required="true" />
+                <InputSelect class="form-select" @bind-Value="_selectedTestName" @bind-Value:after="OnSingleTestChanged">
+                    <option value="">Select a test…</option>
+                    @foreach (var name in LaboratoryTestCatalog.TestNames)
                     {
-                        <option value="@result">@result</option>
+                        <option value="@name">@name</option>
                     }
+                    <option value="@LaboratoryTestCatalog.OtherKey">Other</option>
                 </InputSelect>
-            }
-            else
-            {
-                <InputText class="form-control" @bind-Value="Model.Result" placeholder="Enter result" />
-            }
+                @if (_selectedTestName == LaboratoryTestCatalog.OtherKey)
+                {
+                    <InputText class="form-control mt-2" @bind-Value="Model!.TestName" placeholder="Type the test name" />
+                }
+            </div>
+            <div class="col-md-6">
+                <FormLabel Text="Result" Icon="bi-check2-square" Required="true" />
+                <InputText class="form-control" @bind-Value="Model!.Result" placeholder="Enter result" />
+            </div>
+            <div class="col-12">
+                <FormLabel Text="Note" Icon="bi-journal-text" />
+                <InputTextArea class="form-control" rows="3" @bind-Value="Model!.Note" />
+            </div>
         </div>
-        <div class="col-md-12">
-            <FormLabel Text="Note" Icon="bi-journal-text" />
-            <InputTextArea class="form-control" rows="3" @bind-Value="Model.Note" />
-        </div>
-    </div>
-</FormSection>
+    </FormSection>
+}
 
 @code {
-    [Parameter, EditorRequired]
-    public Laboratory Model { get; set; } = null!;
+    public sealed class LabTestLine
+    {
+        public string SelectedKey { get; set; } = string.Empty;
+        public string? CustomName { get; set; }
+        public string? Result { get; set; }
 
+        public string? ResolvedName =>
+            SelectedKey == LaboratoryTestCatalog.OtherKey
+                ? CustomName?.Trim()
+                : string.IsNullOrWhiteSpace(SelectedKey) ? null : SelectedKey;
+    }
+
+    [Parameter] public Laboratory? Model { get; set; }
+    [Parameter] public bool DualTests { get; set; }
+
+    private readonly LabTestLine[] _lines = [new(), new()];
+    private string? SharedNote { get; set; }
     private string _selectedTestName = string.Empty;
-    private List<string> _resultOptions = [];
+    private string? _error;
 
     protected override void OnParametersSet()
     {
+        if (DualTests || Model is null)
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(Model.TestName))
         {
             _selectedTestName = string.Empty;
-            _resultOptions = [];
             return;
         }
 
-        var known = LaboratoryTestCatalog.FindTest(Model.TestName);
-        if (known is null)
-        {
-            _selectedTestName = "__custom__";
-            _resultOptions = [];
-            return;
-        }
-
-        _selectedTestName = known.Name;
-        _resultOptions = known.StandardResults.ToList();
+        _selectedTestName = LaboratoryTestCatalog.IsKnownTest(Model.TestName)
+            ? Model.TestName!
+            : LaboratoryTestCatalog.OtherKey;
     }
 
-    private void OnTestChanged()
+    public bool TryBuildRecords(Guid patientId, out List<Laboratory> records, out string? error)
     {
-        if (_selectedTestName == "__custom__")
+        records = [];
+        error = null;
+        _error = null;
+
+        if (!DualTests)
+        {
+            if (Model is null || string.IsNullOrWhiteSpace(Model.TestName))
+            {
+                error = _error = "Select a test.";
+                return false;
+            }
+
+            records.Add(Model);
+            return true;
+        }
+
+        foreach (var line in _lines)
+        {
+            var name = line.ResolvedName;
+            var hasName = !string.IsNullOrWhiteSpace(name);
+            var hasResult = !string.IsNullOrWhiteSpace(line.Result);
+
+            if (!hasName && !hasResult)
+            {
+                continue;
+            }
+
+            if (!hasName)
+            {
+                error = _error = "Enter or select a test name for each result.";
+                return false;
+            }
+
+            if (!hasResult)
+            {
+                error = _error = $"Enter a result for {name}.";
+                return false;
+            }
+
+            records.Add(new Laboratory
+            {
+                Id = Guid.NewGuid(),
+                PatientId = patientId,
+                TestName = name,
+                Result = line.Result!.Trim(),
+                Note = SharedNote
+            });
+        }
+
+        if (records.Count == 0)
+        {
+            error = _error = "Select at least one test and enter its result.";
+            return false;
+        }
+
+        if (records.Count > 2)
+        {
+            error = _error = "A maximum of two tests can be saved at once.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool IsTakenByOtherLine(int index, string name)
+    {
+        for (var i = 0; i < _lines.Length; i++)
+        {
+            if (i == index) continue;
+            if (string.Equals(_lines[i].SelectedKey, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void OnLineTestChanged(int index)
+    {
+        var line = _lines[index];
+        if (line.SelectedKey != LaboratoryTestCatalog.OtherKey)
+        {
+            line.CustomName = null;
+        }
+
+        line.Result = null;
+        _error = null;
+    }
+
+    private void OnSingleTestChanged()
+    {
+        if (Model is null) return;
+
+        if (_selectedTestName == LaboratoryTestCatalog.OtherKey)
         {
             Model.TestName = string.Empty;
             Model.Result = string.Empty;
-            _resultOptions = [];
             return;
         }
 
@@ -84,22 +226,10 @@
             Model.TestName = string.Empty;
             Model.Result = string.Empty;
             Model.Note = string.Empty;
-            _resultOptions = [];
             return;
         }
 
-        var test = LaboratoryTestCatalog.FindTest(_selectedTestName);
-        if (test is null)
-        {
-            return;
-        }
-
-        Model.TestName = test.Name;
-        _resultOptions = test.StandardResults.ToList();
-        Model.Result = _resultOptions.FirstOrDefault() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(Model.Note))
-        {
-            Model.Note = test.DefaultNote;
-        }
+        Model.TestName = _selectedTestName;
+        Model.Result = string.Empty;
     }
 }

@@ -16,6 +16,11 @@ public class Optometrist : AuditEntity
     [MaxLength(50)]
     public string? VisualAcuityLeft { get; set; }
 
+    public List<string> Diagnoses { get; set; } = [];
+    public List<string> Treatments { get; set; } = [];
+    public List<string> Services { get; set; } = [];
+    public List<string> Medications { get; set; } = [];
+
     [Display(Name = "Glasses Dispensed")]
     public bool? GlassesDispensed { get; set; }
 

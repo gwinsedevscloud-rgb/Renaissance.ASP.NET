@@ -32,6 +32,12 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
     public DbSet<HospitalSettings> HospitalSettings => Set<HospitalSettings>();
     public DbSet<HospitalModuleConfig> HospitalModuleConfigs => Set<HospitalModuleConfig>();
     public DbSet<ModuleReferralLink> ModuleReferralLinks => Set<ModuleReferralLink>();
+    public DbSet<CareProgram> CarePrograms => Set<CareProgram>();
+    public DbSet<ProgramPatientId> ProgramPatientIds => Set<ProgramPatientId>();
+    public DbSet<CareProgramStaff> CareProgramStaff => Set<CareProgramStaff>();
+    public DbSet<SecondaryOutreachRegistration> SecondaryOutreachRegistrations => Set<SecondaryOutreachRegistration>();
+    public DbSet<FieldSyncReceipt> FieldSyncReceipts => Set<FieldSyncReceipt>();
+    public DbSet<FieldDevice> FieldDevices => Set<FieldDevice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,7 +63,98 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
             e.Property(x => x.FullName).HasMaxLength(150).IsRequired();
             e.Property(x => x.AgeUnit).HasMaxLength(20);
             e.Property(x => x.Sex).HasMaxLength(20);
-            e.Property(x => x.Address).HasMaxLength(500);
+            e.Property(x => x.PhoneNumber).HasMaxLength(50);
+            e.HasOne(x => x.CareProgram)
+                .WithMany()
+                .HasForeignKey(x => x.CareProgramId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<CareProgram>(e =>
+        {
+            e.ToTable("care_program");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.TargetAudience).HasMaxLength(300);
+            e.Property(x => x.TargetAgeGroup).HasMaxLength(100);
+            e.Property(x => x.TargetCommunity).HasMaxLength(300);
+            e.Property(x => x.TargetedTreatment).HasMaxLength(300);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.ProgramType).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.LinkedClinicalModule).HasConversion<string>().HasMaxLength(50);
+            e.Property(x => x.PatientIdMode).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.OutreachCode).HasMaxLength(12).IsRequired();
+            e.HasIndex(x => x.Status);
+        });
+
+        modelBuilder.Entity<ProgramPatientId>(e =>
+        {
+            e.ToTable("program_patient_id");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Code).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.HasIndex(x => new { x.CareProgramId, x.Code }).IsUnique();
+            e.HasIndex(x => new { x.CareProgramId, x.Status });
+            e.HasOne(x => x.CareProgram)
+                .WithMany(p => p.PatientIds)
+                .HasForeignKey(x => x.CareProgramId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Patient)
+                .WithMany()
+                .HasForeignKey(x => x.PatientId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<CareProgramStaff>(e =>
+        {
+            e.ToTable("care_program_staff");
+            e.HasKey(x => new { x.CareProgramId, x.UserId });
+            e.HasOne(x => x.CareProgram)
+                .WithMany()
+                .HasForeignKey(x => x.CareProgramId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SecondaryOutreachRegistration>(e =>
+        {
+            e.ToTable("secondary_outreach_registration");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FullName).HasMaxLength(150).IsRequired();
+            e.Property(x => x.Sex).HasMaxLength(20).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(50).IsRequired();
+            e.Property(x => x.RegistrationCode).HasMaxLength(50);
+            e.HasIndex(x => x.CareProgramId);
+            e.HasOne(x => x.CareProgram)
+                .WithMany()
+                .HasForeignKey(x => x.CareProgramId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.ProgramPatientId)
+                .WithMany()
+                .HasForeignKey(x => x.ProgramPatientIdId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<FieldSyncReceipt>(e =>
+        {
+            e.ToTable("field_sync_receipt");
+            e.HasKey(x => x.ClientRecordId);
+            e.Property(x => x.DeviceId).HasMaxLength(80).IsRequired();
+            e.Property(x => x.RecordType).HasMaxLength(40).IsRequired();
+            e.Property(x => x.ClientNumber).HasMaxLength(50);
+            e.HasIndex(x => new { x.DeviceId, x.RecordType });
+        });
+
+        modelBuilder.Entity<FieldDevice>(e =>
+        {
+            e.ToTable("field_device");
+            e.HasKey(x => x.DeviceId);
+            e.Property(x => x.DeviceId).HasMaxLength(80);
+            e.Property(x => x.DeviceLabel).HasMaxLength(120);
+            e.Property(x => x.LastActor).HasMaxLength(120);
         });
 
         modelBuilder.Entity<Triage>(e =>
@@ -145,6 +242,10 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
                 .WithMany()
                 .HasForeignKey(x => x.PatientId)
                 .OnDelete(DeleteBehavior.Restrict);
+            ConfigureList(e.Property(x => x.Diagnoses));
+            ConfigureList(e.Property(x => x.Treatments));
+            ConfigureList(e.Property(x => x.Services));
+            ConfigureList(e.Property(x => x.Medications));
         });
 
         modelBuilder.Entity<Ophthalmologist>(e =>
@@ -261,9 +362,10 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
             e.HasData(new Domain.Entities.HospitalSettings
             {
                 Id = 1,
-                FacilityName = "Renaissance Hospital",
+                FacilityName = "MedReach",
                 ClientNumberPrefix = "ACH",
-                TimeZoneId = "UTC"
+                TimeZoneId = "UTC",
+                OutreachModuleEnabled = true
             });
         });
 

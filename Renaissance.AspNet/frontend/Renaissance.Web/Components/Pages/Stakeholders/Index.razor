@@ -4,7 +4,7 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<PageTitle>Stakeholders Dashboard - Renaissance</PageTitle>
+<PageTitle>Stakeholders Dashboard - MedReach</PageTitle>
 
 <PageHeader
     Title="Stakeholders Dashboard"
@@ -18,6 +18,91 @@
     </Actions>
 </PageHeader>
 
+@if (!_loading && _outreachOverview?.OutreachDashboards.Count > 0)
+{
+    <ul class="nav nav-tabs mb-3 stakeholders-outreach-tabs">
+        <li class="nav-item">
+            <button type="button" class="nav-link @(_tab == "facility" ? "active" : "")" @onclick='() => _tab = "facility"'>Facility overview</button>
+        </li>
+        @foreach (var outreach in _outreachOverview!.OutreachDashboards)
+        {
+            <li class="nav-item">
+                <button type="button" class="nav-link @(_tab == outreach.ProgramId.ToString() ? "active" : "")"
+                        @onclick="() => _tab = outreach.ProgramId.ToString()">
+                    @outreach.ProgramName
+                </button>
+            </li>
+        }
+    </ul>
+}
+
+@if (_tab != "facility" && _selectedOutreach is not null)
+{
+    <div class="stakeholders-dashboard mb-4">
+        <div class="insights-banner">
+            <div class="insights-banner-icon"><i class="bi bi-megaphone-fill"></i></div>
+            <div>
+                <div class="insights-banner-label">@_selectedOutreach.ProgramType outreach</div>
+                <p class="mb-0"><strong>@_selectedOutreach.ProgramName</strong> — @_selectedOutreach.StartDate.ToString("d MMM yyyy") to @_selectedOutreach.EndDate.ToString("d MMM yyyy")</p>
+            </div>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-value">@_selectedOutreach.TotalRegistrations</div>
+                <div class="kpi-label">Total registrations</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value">@_selectedOutreach.RegistrationsThisMonth</div>
+                <div class="kpi-label">This month</div>
+            </div>
+            @if (_selectedOutreach.TargetBatchSize is not null)
+            {
+                <div class="kpi-card">
+                    <div class="kpi-value">@_selectedOutreach.TargetBatchSize</div>
+                    <div class="kpi-label">Target batch</div>
+                </div>
+            }
+        </div>
+        <div class="row g-3 mt-1">
+            <div class="col-md-4">
+                <div class="section-card h-100">
+                    <strong>Status breakdown</strong>
+                    <ul class="list-unstyled small mt-2 mb-0">
+                        @foreach (var item in _selectedOutreach.StatusBreakdown)
+                        {
+                            <li class="d-flex justify-content-between"><span>@item.Label</span><span>@item.Count (@item.Percent%)</span></li>
+                        }
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="section-card h-100">
+                    <strong>Gender</strong>
+                    <ul class="list-unstyled small mt-2 mb-0">
+                        @foreach (var item in _selectedOutreach.SexDistribution)
+                        {
+                            <li class="d-flex justify-content-between"><span>@item.Label</span><span>@item.Count</span></li>
+                        }
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="section-card h-100">
+                    <strong>Age groups</strong>
+                    <ul class="list-unstyled small mt-2 mb-0">
+                        @foreach (var item in _selectedOutreach.AgeGroupDistribution)
+                        {
+                            <li class="d-flex justify-content-between"><span>@item.Label</span><span>@item.Count</span></li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_tab == "facility")
+{
 @if (_loading)
 {
     <LoadingState Message="Loading operational analytics..." />
@@ -372,11 +457,17 @@ else
         </div>
     </div>
 }
+}
 
 @code {
     private StakeholdersDashboardViewModel? _data;
+    private StakeholdersOutreachOverviewDto? _outreachOverview;
+    private string _tab = "facility";
     private bool _loading = true;
     private bool _chartsRendered;
+
+    private OutreachStakeholdersDashboardDto? _selectedOutreach =>
+        _outreachOverview?.OutreachDashboards.FirstOrDefault(o => o.ProgramId.ToString() == _tab);
 
     protected override async Task OnInitializedAsync()
     {
@@ -397,6 +488,7 @@ else
         _loading = true;
         _chartsRendered = false;
         _data = await Api.GetStakeholdersDashboardAsync();
+        _outreachOverview = await Api.GetStakeholdersOutreachOverviewAsync();
         _loading = false;
     }
 

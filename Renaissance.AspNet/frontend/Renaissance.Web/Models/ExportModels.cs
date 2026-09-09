@@ -11,7 +11,23 @@ public enum ExportRecordModule
     Ancillary = 7,
     Optometrists = 8,
     Ophthalmologists = 9,
-    Referrals = 10
+    Referrals = 10,
+    SecondaryOutreach = 11
+}
+
+public enum ExportOutreachScope
+{
+    All = 0,
+    FacilityOnly = 1,
+    CareProgram = 2
+}
+
+public class ExportOutreachOptionDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string ProgramType { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
 }
 
 public class ExportModuleInfoDto
@@ -28,6 +44,8 @@ public class ExportRecordsRequest
     public DateTime? ToDate { get; set; }
     public bool IncludeArchived { get; set; }
     public string? ClientSearch { get; set; }
+    public ExportOutreachScope OutreachScope { get; set; } = ExportOutreachScope.All;
+    public Guid? CareProgramId { get; set; }
 }
 
 public class ExportModuleCountDto

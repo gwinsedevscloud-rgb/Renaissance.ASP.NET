@@ -1,0 +1,599 @@
+@page "/admin/care-programs/create"
+@page "/admin/care-programs/edit/{Id:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+<PageTitle>@(_isEdit ? "Edit" : "New") Care Program - MedReach</PageTitle>
+
+<div class="client-form-page care-program-form-page">
+    <PageHeader Title="@(_isEdit ? "Edit care program" : "New care program")"
+                Subtitle="@PageSubtitle"
+                Icon="bi-megaphone"
+                BackHref="/admin/care-programs"
+                BackLabel="Care programs" />
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @_error
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading program..." />
+    }
+    else
+    {
+        <div class="client-form-layout">
+            <aside class="client-form-aside">
+                <div class="client-number-card care-program-preview-card">
+                    <div class="client-number-card-icon">
+                        <i class="bi @PreviewIcon"></i>
+                    </div>
+                    <div class="client-number-label">Live preview</div>
+                    <div class="client-number-value">@(string.IsNullOrWhiteSpace(_form.Name) ? "Untitled program" : _form.Name)</div>
+                    <p class="client-number-hint mb-2">
+                        <span class="care-preview-badge">@PreviewTypeLabel</span>
+                    </p>
+                    <div class="care-preview-id">
+                        <span>Sample ID</span>
+                        <strong>@SamplePatientId</strong>
+                    </div>
+                    <p class="client-number-hint mt-3 mb-0">
+                        @_form.StartDate.ToString("d MMM yyyy") – @_form.EndDate.ToString("d MMM yyyy")
+                    </p>
+                </div>
+
+                <div class="form-help-card">
+                    <i class="bi @HelpIcon"></i>
+                    <p>@HelpText</p>
+                </div>
+
+                <div class="form-tips-card">
+                    <h4><i class="bi bi-lightbulb me-1"></i> Setup tips</h4>
+                    <ul class="form-tips-list">
+                        @foreach (var tip in SetupTips)
+                        {
+                            <li><i class="bi bi-check2-circle"></i><span>@tip</span></li>
+                        }
+                    </ul>
+                </div>
+            </aside>
+
+            <div class="client-form-main">
+                <EditForm Model="_form" OnValidSubmit="SaveAsync" class="form-card form-card-create">
+                    <DataAnnotationsValidator />
+
+                    <FormSection Title="Program type"
+                                 Subtitle="Choose how this outreach runs in MedReach"
+                                 Icon="bi-signpost-split"
+                                 IconBgClass="feature-icon-teal">
+                        <div class="care-type-grid" role="radiogroup" aria-label="Program type">
+                            <button type="button"
+                                    class="care-type-card @(_form.ProgramType == CareProgramType.Primary ? "selected" : "")"
+                                    disabled="@_isEdit"
+                                    aria-pressed="@(_form.ProgramType == CareProgramType.Primary)"
+                                    @onclick="() => SetProgramType(CareProgramType.Primary)">
+                                <span class="care-type-icon feature-icon-teal"><i class="bi bi-hospital"></i></span>
+                                <span class="care-type-body">
+                                    <strong>Primary</strong>
+                                    <small>Full clinical flow — registration through pharmacy</small>
+                                </span>
+                                <span class="care-type-check"><i class="bi @(_form.ProgramType == CareProgramType.Primary ? "bi-check-circle-fill" : "bi-circle")"></i></span>
+                            </button>
+                            <button type="button"
+                                    class="care-type-card @(_form.ProgramType == CareProgramType.Secondary ? "selected" : "")"
+                                    disabled="@_isEdit"
+                                    aria-pressed="@(_form.ProgramType == CareProgramType.Secondary)"
+                                    @onclick="() => SetProgramType(CareProgramType.Secondary)">
+                                <span class="care-type-icon feature-icon-blue"><i class="bi bi-diagram-3"></i></span>
+                                <span class="care-type-body">
+                                    <strong>Secondary</strong>
+                                    <small>Registration-only or clinic linked from triage</small>
+                                </span>
+                                <span class="care-type-check"><i class="bi @(_form.ProgramType == CareProgramType.Secondary ? "bi-check-circle-fill" : "bi-circle")"></i></span>
+                            </button>
+                        </div>
+
+                        @if (_form.ProgramType == CareProgramType.Secondary)
+                        {
+                            <div class="care-clinic-block mt-3">
+                                <FormLabel Text="Clinic link" />
+                                <div class="care-clinic-grid">
+                                    <button type="button"
+                                            class="care-clinic-chip @(!_form.LinkedClinicalModule.HasValue ? "selected" : "")"
+                                            @onclick="() => SetClinicLink(null)">
+                                        <i class="bi bi-person-vcard"></i> Registration only
+                                    </button>
+                                    <button type="button"
+                                            class="care-clinic-chip @(_form.LinkedClinicalModule == AppModule.Dental ? "selected" : "")"
+                                            @onclick="() => SetClinicLink(AppModule.Dental)">
+                                        <i class="bi bi-emoji-smile"></i> Dental Clinic
+                                    </button>
+                                    <button type="button"
+                                            class="care-clinic-chip @(_form.LinkedClinicalModule == AppModule.Optometrists ? "selected" : "")"
+                                            @onclick="() => SetClinicLink(AppModule.Optometrists)">
+                                        <i class="bi bi-eye"></i> Eye Clinic
+                                    </button>
+                                </div>
+                                <div class="form-text mt-2">Clinic-linked programs receive patients referred from Triage during primary outreach.</div>
+                            </div>
+                        }
+                    </FormSection>
+
+                    <FormSection Title="Program details"
+                                 Subtitle="Name, schedule, and who you aim to reach"
+                                 Icon="bi-calendar-event"
+                                 IconBgClass="feature-icon-teal">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <FormLabel Text="Program name" Required="true" />
+                                <InputText class="form-control" @bind-Value="_form.Name" placeholder="e.g. Community Eye Outreach 2026" />
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="Start date" Required="true" />
+                                <InputDate class="form-control" @bind-Value="_form.StartDate" />
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="End date" Required="true" />
+                                <InputDate class="form-control" @bind-Value="_form.EndDate" />
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="Target audience" />
+                                <InputText class="form-control" @bind-Value="_form.TargetAudience" placeholder="e.g. School-age children" />
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="Target age group" />
+                                <InputText class="form-control" @bind-Value="_form.TargetAgeGroup" placeholder="e.g. 5–17 years" />
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="Target community" />
+                                <InputText class="form-control" @bind-Value="_form.TargetCommunity" placeholder="e.g. Local wards / camps" />
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="Targeted treatment" />
+                                <InputText class="form-control" @bind-Value="_form.TargetedTreatment" placeholder="e.g. Screening and referral" />
+                            </div>
+                        </div>
+                    </FormSection>
+
+                    @if (_form.LinkedClinicalModule is null)
+                    {
+                        <FormSection Title="Patient ID customization"
+                                     Subtitle="How outreach patient numbers are generated"
+                                     Icon="bi-upc-scan"
+                                     IconBgClass="feature-icon-blue">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <FormLabel Text="Outreach code" Required="true" />
+                                    <div class="form-input-group">
+                                        <span class="form-input-addon"><i class="bi bi-hash"></i></span>
+                                        <InputText class="form-control text-uppercase" maxlength="12" @bind-Value="_form.OutreachCode" placeholder="LAG-OPH" />
+                                    </div>
+                                    <div class="form-text">Becomes the prefix: @SamplePatientId</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <FormLabel Text="ID mode" />
+                                    <div class="care-id-mode-grid">
+                                        <button type="button"
+                                                class="care-clinic-chip @(_form.PatientIdMode == PatientIdMode.AutoSerial ? "selected" : "")"
+                                                @onclick="() => _form.PatientIdMode = PatientIdMode.AutoSerial">
+                                            <i class="bi bi-magic"></i> Auto serial
+                                        </button>
+                                        <button type="button"
+                                                class="care-clinic-chip @(_form.PatientIdMode == PatientIdMode.PreGenerated ? "selected" : "")"
+                                                @onclick="() => _form.PatientIdMode = PatientIdMode.PreGenerated">
+                                            <i class="bi bi-printer"></i> Pre-printed batch
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <FormLabel Text="Serial padding" />
+                                    <InputNumber class="form-control" @bind-Value="_form.SerialPadding" />
+                                </div>
+                                <div class="col-md-4">
+                                    <FormLabel Text="Serial start" />
+                                    <InputNumber class="form-control" @bind-Value="_form.SerialStartNumber" />
+                                </div>
+                                @if (_form.PatientIdMode == PatientIdMode.PreGenerated)
+                                {
+                                    <div class="col-md-4">
+                                        <FormLabel Text="Batch size" />
+                                        <InputNumber class="form-control" @bind-Value="_form.BatchSize" />
+                                    </div>
+                                }
+                            </div>
+                        </FormSection>
+                    }
+                    else
+                    {
+                        <FormSection Title="Clinic identity"
+                                     Subtitle="Code used in reports and export filters"
+                                     Icon="bi-hospital"
+                                     IconBgClass="feature-icon-blue">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <FormLabel Text="Outreach code" Required="true" />
+                                    <div class="form-input-group">
+                                        <span class="form-input-addon"><i class="bi bi-hash"></i></span>
+                                        <InputText class="form-control text-uppercase" maxlength="12" @bind-Value="_form.OutreachCode" placeholder="DENTAL" />
+                                    </div>
+                                    <div class="form-text">Example codes: DENTAL, EYE</div>
+                                </div>
+                            </div>
+                        </FormSection>
+                    }
+
+                    @if (_isEdit && _existing?.ProgramType == CareProgramType.Secondary)
+                    {
+                        <FormSection Title="Assigned staff"
+                                     Subtitle="Who can work this secondary outreach"
+                                     Icon="bi-people"
+                                     IconBgClass="feature-icon-teal">
+                            <p class="text-muted small mb-3">Only assigned staff can register participants for this secondary outreach.</p>
+                            <div class="care-staff-grid">
+                                @foreach (var user in _allUsers)
+                                {
+                                    var selected = _selectedStaff.Contains(user.Id);
+                                    <label class="care-staff-card @(selected ? "selected" : "")">
+                                        <input type="checkbox"
+                                               checked="@selected"
+                                               @onchange="e => ToggleStaff(user.Id, e.Value is bool b && b)" />
+                                        <span class="care-staff-avatar">@Initials(user.FullName)</span>
+                                        <span class="care-staff-text">
+                                            <strong>@user.FullName</strong>
+                                            <small>@user.RoleName</small>
+                                        </span>
+                                        <span class="care-staff-check">
+                                            <i class="bi @(selected ? "bi-check-circle-fill" : "bi-circle")"></i>
+                                        </span>
+                                    </label>
+                                }
+                            </div>
+                            <button class="btn btn-outline-primary mt-3" type="button" disabled="@_savingStaff" @onclick="SaveStaffAsync">
+                                @if (_savingStaff)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                }
+                                Save staff assignment
+                            </button>
+                        </FormSection>
+                    }
+
+                    @if (_isEdit && _existing?.PatientIdMode == PatientIdMode.PreGenerated)
+                    {
+                        <FormSection Title="Pre-generated IDs"
+                                     Subtitle="Printable ID batch for field cards"
+                                     Icon="bi-printer"
+                                     IconBgClass="feature-icon-violet">
+                            <div class="care-id-stats">
+                                <div class="care-id-stat">
+                                    <span>Available</span>
+                                    <strong>@_existing.AvailableIdCount</strong>
+                                </div>
+                                <div class="care-id-stat">
+                                    <span>Registered</span>
+                                    <strong>@_existing.RegisteredCount</strong>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 align-items-end mt-3">
+                                <div>
+                                    <FormLabel Text="Generate more IDs" />
+                                    <InputNumber class="form-control" @bind-Value="_generateCount" min="1" max="10000" />
+                                </div>
+                                <button class="btn btn-outline-primary" type="button" disabled="@_generating" @onclick="GenerateIdsAsync">
+                                    @if (_generating)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    Generate
+                                </button>
+                            </div>
+                        </FormSection>
+                    }
+
+                    <FormActions SaveLabel="@(_isEdit ? "Save changes" : "Create program")"
+                                 CancelHref="/admin/care-programs"
+                                 Saving="_saving" />
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private SaveCareProgramRequest _form = new();
+    private CareProgramDto? _existing;
+    private bool _isEdit;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _generating;
+    private bool _savingStaff;
+    private int _generateCount = 100;
+    private string? _error;
+    private List<UserDto> _allUsers = [];
+    private HashSet<Guid> _selectedStaff = [];
+
+    private string PageSubtitle => _isEdit
+        ? "Update outreach settings, audience, and patient ID configuration"
+        : "Configure outreach settings, audience, and how patient IDs are issued";
+
+    private string PreviewIcon => _form.LinkedClinicalModule switch
+    {
+        AppModule.Dental => "bi-emoji-smile",
+        AppModule.Optometrists => "bi-eye",
+        _ when _form.ProgramType == CareProgramType.Secondary => "bi-droplet",
+        _ => "bi-megaphone"
+    };
+
+    private string PreviewTypeLabel => _form.LinkedClinicalModule switch
+    {
+        AppModule.Dental => "Secondary · Dental Clinic",
+        AppModule.Optometrists => "Secondary · Eye Clinic",
+        _ when _form.ProgramType == CareProgramType.Secondary => "Secondary · Registration",
+        _ => "Primary outreach"
+    };
+
+    private string SamplePatientId
+    {
+        get
+        {
+            var code = string.IsNullOrWhiteSpace(_form.OutreachCode) ? "CODE" : _form.OutreachCode.Trim().ToUpperInvariant();
+            var pad = Math.Clamp(_form.SerialPadding, 1, 8);
+            var start = _form.SerialStartNumber > 0 ? _form.SerialStartNumber : 1;
+            return $"{code}-{start.ToString().PadLeft(pad, '0')}";
+        }
+    }
+
+    private string HelpIcon => _form.LinkedClinicalModule.HasValue
+        ? "bi-arrow-left-right"
+        : _form.ProgramType == CareProgramType.Secondary
+            ? "bi-person-vcard"
+            : "bi-signpost-split";
+
+    private string HelpText => _form.LinkedClinicalModule.HasValue
+        ? "Patients register under the primary program, complete Triage, then are referred into this clinic queue."
+        : _form.ProgramType == CareProgramType.Secondary
+            ? "Secondary registration programs collect name, age, gender, and status — they can run alongside primary outreach."
+            : "Primary flow: Registration → Triage → Laboratory → Consultation → Pharmacy. Activate this program to enter outreach mode.";
+
+    private IEnumerable<string> SetupTips => _form.LinkedClinicalModule.HasValue
+        ?
+        [
+            "Activate alongside a primary program",
+            "Refer from Triage after vitals",
+            "Use Dental or Eye clinic queues"
+        ]
+        : _form.ProgramType == CareProgramType.Secondary
+            ?
+            [
+                "Keep outreach code short and unique",
+                "Assign staff after creating the program",
+                "Can run with primary outreach"
+            ]
+            :
+            [
+                "Use a clear outreach code for IDs",
+                "Set realistic start and end dates",
+                "Activate from the Care Programs list"
+            ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isEdit = Id.HasValue;
+
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        if (!_isEdit && uri.Query.Contains("type=secondary", StringComparison.OrdinalIgnoreCase))
+        {
+            _form.ProgramType = CareProgramType.Secondary;
+            _form.Name = "Patient Deworming";
+            _form.TargetedTreatment = "Deworming";
+            _form.OutreachCode = "DEWORM";
+        }
+        else if (!_isEdit && uri.Query.Contains("type=itn", StringComparison.OrdinalIgnoreCase))
+        {
+            _form.ProgramType = CareProgramType.Secondary;
+            _form.Name = "Insecticide Treated Net (ITN)";
+            _form.TargetAudience = "Households and pregnant women";
+            _form.TargetAgeGroup = "All ages";
+            _form.TargetedTreatment = "Insecticide-treated net distribution";
+            _form.OutreachCode = "ITN";
+        }
+        else if (!_isEdit && uri.Query.Contains("type=dental", StringComparison.OrdinalIgnoreCase))
+        {
+            _form.ProgramType = CareProgramType.Secondary;
+            _form.LinkedClinicalModule = AppModule.Dental;
+            _form.Name = "Dental Clinic";
+            _form.TargetAudience = "Primary outreach patients referred from triage";
+            _form.TargetAgeGroup = "All ages";
+            _form.TargetedTreatment = "Dental services (check-up, preventive, restorative, oral surgery)";
+            _form.OutreachCode = "DENTAL";
+        }
+        else if (!_isEdit && uri.Query.Contains("type=eye", StringComparison.OrdinalIgnoreCase))
+        {
+            _form.ProgramType = CareProgramType.Secondary;
+            _form.LinkedClinicalModule = AppModule.Optometrists;
+            _form.Name = "Eye Clinic";
+            _form.TargetAudience = "Primary outreach patients referred from triage";
+            _form.TargetAgeGroup = "All ages";
+            _form.TargetedTreatment = "Eye health screening, refraction, and minor ocular care";
+            _form.OutreachCode = "EYE";
+        }
+        else if (!_isEdit)
+        {
+            _form.OutreachCode = "OUT";
+            _form.SerialPadding = 4;
+            _form.SerialStartNumber = 1;
+        }
+
+        if (_isEdit)
+        {
+            _existing = await Api.GetCareProgramAsync(Id!.Value);
+            if (_existing is null)
+            {
+                Nav.NavigateTo("/admin/care-programs");
+                return;
+            }
+
+            _form = new SaveCareProgramRequest
+            {
+                Name = _existing.Name,
+                ProgramType = _existing.ProgramType,
+                LinkedClinicalModule = _existing.LinkedClinicalModule,
+                StartDate = _existing.StartDate,
+                EndDate = _existing.EndDate,
+                TargetAudience = _existing.TargetAudience,
+                TargetAgeGroup = _existing.TargetAgeGroup,
+                TargetCommunity = _existing.TargetCommunity,
+                TargetedTreatment = _existing.TargetedTreatment,
+                PatientIdMode = _existing.PatientIdMode,
+                OutreachCode = _existing.OutreachCode,
+                SerialPadding = _existing.SerialPadding,
+                SerialStartNumber = _existing.SerialStartNumber,
+                BatchSize = _existing.BatchSize
+            };
+
+            if (_existing.ProgramType == CareProgramType.Secondary)
+            {
+                _allUsers = await Api.GetUsersAsync();
+                _selectedStaff = _existing.Staff.Select(s => s.UserId).ToHashSet();
+            }
+        }
+
+        _loading = false;
+    }
+
+    private void SetProgramType(CareProgramType type)
+    {
+        if (_isEdit)
+        {
+            return;
+        }
+
+        _form.ProgramType = type;
+        if (type == CareProgramType.Primary)
+        {
+            _form.LinkedClinicalModule = null;
+        }
+    }
+
+    private void SetClinicLink(AppModule? module)
+    {
+        _form.LinkedClinicalModule = module;
+        if (module == AppModule.Dental && string.IsNullOrWhiteSpace(_form.OutreachCode))
+        {
+            _form.OutreachCode = "DENTAL";
+        }
+        else if (module == AppModule.Optometrists && string.IsNullOrWhiteSpace(_form.OutreachCode))
+        {
+            _form.OutreachCode = "EYE";
+        }
+    }
+
+    private void ToggleStaff(Guid userId, bool selected)
+    {
+        if (selected)
+        {
+            _selectedStaff.Add(userId);
+        }
+        else
+        {
+            _selectedStaff.Remove(userId);
+        }
+    }
+
+    private async Task SaveStaffAsync()
+    {
+        if (!Id.HasValue)
+        {
+            return;
+        }
+
+        _savingStaff = true;
+        try
+        {
+            await Api.UpdateCareProgramStaffAsync(Id.Value, new UpdateCareProgramStaffRequest
+            {
+                UserIds = _selectedStaff.ToList()
+            });
+            Notifications.ShowSuccess("Staff assignment saved.");
+            _existing = await Api.GetCareProgramAsync(Id.Value);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _savingStaff = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            if (_isEdit)
+            {
+                await Api.UpdateCareProgramAsync(Id!.Value, _form);
+                Notifications.ShowSuccess("Care program updated.");
+            }
+            else
+            {
+                await Api.CreateCareProgramAsync(_form);
+                Notifications.ShowSuccess("Care program created.");
+            }
+
+            Nav.NavigateTo("/admin/care-programs");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _saving = false;
+        }
+    }
+
+    private async Task GenerateIdsAsync()
+    {
+        if (!Id.HasValue)
+        {
+            return;
+        }
+
+        _generating = true;
+        try
+        {
+            var result = await Api.GenerateProgramIdsAsync(Id.Value, new GenerateProgramIdsRequest { Count = _generateCount });
+            Notifications.ShowSuccess($"Generated {result.Generated} IDs ({result.TotalAvailable} available).");
+            _existing = await Api.GetCareProgramAsync(Id.Value);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _generating = false;
+        }
+    }
+
+    private static string Initials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "?";
+        }
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant()
+            : $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[^1][0])}";
+    }
+}

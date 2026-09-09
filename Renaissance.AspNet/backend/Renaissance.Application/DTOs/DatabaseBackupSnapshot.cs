@@ -7,7 +7,7 @@ public class DatabaseBackupSnapshot
     public int Version { get; set; } = 1;
     public DateTime CreatedAtUtc { get; set; }
     public string? CreatedBy { get; set; }
-    public string Application { get; set; } = "Renaissance";
+    public string Application { get; set; } = "MedReach";
 
     public List<ClientNumberSequence> ClientNumberSequences { get; set; } = [];
     public List<AppRole> Roles { get; set; } = [];

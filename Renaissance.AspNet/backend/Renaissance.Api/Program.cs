@@ -203,6 +203,8 @@ using (var scope = app.Services.CreateScope())
         await SampleDataSeeder.SeedAsync(db, logger);
         await SurveillanceDemoSeeder.EnsureAsync(db, logger);
         await ClinicalModuleDemoSeeder.EnsureAsync(db, logger);
+        await CareProgramModuleSeeder.EnsureAsync(db, logger);
+        await SecondaryOutreachSeeder.EnsureAsync(db, logger);
     }
     catch (Exception ex)
     {

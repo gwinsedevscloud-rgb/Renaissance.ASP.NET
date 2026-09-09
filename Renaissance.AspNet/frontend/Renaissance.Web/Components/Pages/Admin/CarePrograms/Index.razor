@@ -1,0 +1,391 @@
+@page "/admin/care-programs"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+@inject OutreachStateService Outreach
+
+<PageTitle>Care Programs - MedReach</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="Care programs"
+                Subtitle="Configure outreach programs, patient IDs, and activate outreach mode"
+                Icon="bi-megaphone"
+                BackHref="/admin/settings"
+                BackLabel="Settings">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="/admin/field-devices">
+                <i class="bi bi-tablet me-1"></i> Field devices
+            </a>
+            <a class="btn btn-primary" href="/admin/care-programs/create">
+                <i class="bi bi-plus-lg me-1"></i> New program
+            </a>
+        </Actions>
+    </PageHeader>
+
+    <div class="alert alert-light border d-flex align-items-start gap-2 mb-3">
+        <i class="bi bi-info-circle text-primary mt-1"></i>
+        <div class="small mb-0">
+            <strong>Primary</strong> drives full outreach registration and clinical flow.
+            <strong>Secondary</strong> programs (deworming, ITN, dental, eye) can run alongside an active primary.
+        </div>
+    </div>
+
+    <div class="care-program-templates mb-3">
+        <span class="care-program-templates-label">Quick create</span>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="/admin/care-programs/create?type=secondary">
+                <i class="bi bi-droplet me-1"></i> Deworming
+            </a>
+            <a class="btn btn-sm btn-outline-primary" href="/admin/care-programs/create?type=itn">
+                <i class="bi bi-shield-check me-1"></i> ITN
+            </a>
+            <a class="btn btn-sm btn-outline-primary" href="/admin/care-programs/create?type=dental">
+                <i class="bi bi-emoji-smile me-1"></i> Dental clinic
+            </a>
+            <a class="btn btn-sm btn-outline-primary" href="/admin/care-programs/create?type=eye">
+                <i class="bi bi-eye me-1"></i> Eye clinic
+            </a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-octagon me-1"></i>@_error
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading care programs..." />
+    }
+    else if (_programs.Count == 0)
+    {
+        <EmptyPanel Icon="bi-megaphone" Title="No care programs yet" Message="Create a primary or secondary outreach program to get started.">
+            <a class="btn btn-primary" href="/admin/care-programs/create">
+                <i class="bi bi-plus-lg me-1"></i> New program
+            </a>
+        </EmptyPanel>
+    }
+    else
+    {
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="section-card care-program-stat h-100">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="section-icon feature-icon-teal"><i class="bi bi-collection"></i></span>
+                        <div>
+                            <div class="text-muted small text-uppercase fw-semibold">Total</div>
+                            <div class="fs-4 fw-bold lh-1">@_programs.Count</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="section-card care-program-stat h-100">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="section-icon feature-icon-teal"><i class="bi bi-play-circle"></i></span>
+                        <div>
+                            <div class="text-muted small text-uppercase fw-semibold">Active</div>
+                            <div class="fs-4 fw-bold lh-1">@_activeCount</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="section-card care-program-stat h-100">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="section-icon feature-icon-teal"><i class="bi bi-megaphone"></i></span>
+                        <div>
+                            <div class="text-muted small text-uppercase fw-semibold">Primary</div>
+                            <div class="fs-4 fw-bold lh-1">@_primaryCount</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="section-card care-program-stat h-100">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="section-icon feature-icon-teal"><i class="bi bi-capsule-pill"></i></span>
+                        <div>
+                            <div class="text-muted small text-uppercase fw-semibold">Secondary</div>
+                            <div class="fs-4 fw-bold lh-1">@_secondaryCount</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <ul class="nav nav-pills care-program-filter mb-0">
+                <li class="nav-item">
+                    <button type="button"
+                            class="nav-link @(_filter == CareProgramType.Primary ? "active" : null)"
+                            @onclick="() => SetFilter(CareProgramType.Primary)">
+                        <i class="bi bi-megaphone me-1"></i> Primary
+                        <span class="badge rounded-pill ms-1 @(_filter == CareProgramType.Primary ? "text-bg-light text-primary" : "text-bg-light border")">@_primaryCount</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button"
+                            class="nav-link @(_filter == CareProgramType.Secondary ? "active" : null)"
+                            @onclick="() => SetFilter(CareProgramType.Secondary)">
+                        <i class="bi bi-droplet me-1"></i> Secondary
+                        <span class="badge rounded-pill ms-1 @(_filter == CareProgramType.Secondary ? "text-bg-light text-primary" : "text-bg-light border")">@_secondaryCount</span>
+                    </button>
+                </li>
+            </ul>
+            <div class="record-meta mb-0">
+                <strong>@FilteredPrograms.Count()</strong> shown
+            </div>
+        </div>
+
+        @if (!FilteredPrograms.Any())
+        {
+            <EmptyPanel Icon="bi-inbox"
+                        Title="No programs in this category"
+                        Message="Switch tabs or create a program of this type.">
+                <a class="btn btn-primary" href="/admin/care-programs/create@(_filter == CareProgramType.Secondary ? "?type=secondary" : "")">
+                    <i class="bi bi-plus-lg me-1"></i> New @(_filter == CareProgramType.Secondary ? "secondary" : "primary")
+                </a>
+            </EmptyPanel>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var program in FilteredPrograms.OrderByDescending(p => p.Status == CareProgramStatus.Active)
+                                                         .ThenByDescending(p => p.StartDate))
+                {
+                    <div class="col-lg-6">
+                        <div class="section-card care-program-card h-100 @StatusCardClass(program.Status)">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div class="d-flex align-items-start gap-3">
+                                    <span class="section-icon feature-icon-teal care-program-card-icon">
+                                        <i class="bi @ProgramIcon(program)"></i>
+                                    </span>
+                                    <div>
+                                        <h2 class="h5 mb-1">@program.Name</h2>
+                                        <p class="text-muted small mb-0">
+                                            <i class="bi bi-calendar3 me-1"></i>
+                                            @program.StartDate.ToString("d MMM yyyy") – @program.EndDate.ToString("d MMM yyyy")
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column align-items-end gap-1">
+                                    <span class="badge @StatusBadgeClass(program.Status)">
+                                        @if (program.Status == CareProgramStatus.Active)
+                                        {
+                                            <i class="bi bi-circle-fill me-1" style="font-size:0.45rem;vertical-align:middle;"></i>
+                                        }
+                                        @program.Status
+                                    </span>
+                                    <span class="badge text-bg-light border">
+                                        @(program.ProgramType == CareProgramType.Secondary ? "Secondary" : "Primary")
+                                    </span>
+                                    @if (program.LinkedClinicalModule.HasValue)
+                                    {
+                                        <span class="badge text-bg-info">
+                                            <i class="bi bi-hospital me-1"></i>Clinic
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="care-program-meta mb-3">
+                                <div class="care-program-meta-item">
+                                    <span class="label">Code</span>
+                                    <code>@program.OutreachCode</code>
+                                </div>
+                                <div class="care-program-meta-item">
+                                    <span class="label">ID mode</span>
+                                    <span>@(program.PatientIdMode == PatientIdMode.PreGenerated ? "Pre-generated" : "Auto serial")</span>
+                                </div>
+                                <div class="care-program-meta-item">
+                                    <span class="label">@(program.LinkedClinicalModule.HasValue ? "Referrals" : "Registered")</span>
+                                    <strong>
+                                        @program.RegisteredCount
+                                        @if (!program.LinkedClinicalModule.HasValue && program.BatchSize is not null)
+                                        {
+                                            <text> / @program.BatchSize</text>
+                                        }
+                                    </strong>
+                                </div>
+                                @if (program.PatientIdMode == PatientIdMode.PreGenerated)
+                                {
+                                    <div class="care-program-meta-item">
+                                        <span class="label">IDs left</span>
+                                        <strong>@program.AvailableIdCount</strong>
+                                    </div>
+                                }
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(program.TargetCommunity) || !string.IsNullOrWhiteSpace(program.TargetedTreatment))
+                            {
+                                <p class="small text-muted mb-3">
+                                    @if (!string.IsNullOrWhiteSpace(program.TargetCommunity))
+                                    {
+                                        <span><i class="bi bi-geo-alt me-1"></i>@program.TargetCommunity</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(program.TargetCommunity) && !string.IsNullOrWhiteSpace(program.TargetedTreatment))
+                                    {
+                                        <span class="mx-1">·</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(program.TargetedTreatment))
+                                    {
+                                        <span><i class="bi bi-heart-pulse me-1"></i>@program.TargetedTreatment</span>
+                                    }
+                                </p>
+                            }
+
+                            <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+                                <a class="btn btn-sm btn-outline-primary" href="/admin/care-programs/edit/@program.Id">
+                                    <i class="bi bi-pencil me-1"></i> Edit
+                                </a>
+                                @if (program.Status == CareProgramStatus.Draft)
+                                {
+                                    <button class="btn btn-sm btn-success" type="button" disabled="@(_busyId == program.Id)" @onclick="() => ActivateAsync(program.Id)">
+                                        @if (_busyId == program.Id)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-play-fill me-1"></i>
+                                        }
+                                        Activate
+                                    </button>
+                                }
+                                @if (program.Status == CareProgramStatus.Active)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" disabled="@(_busyId == program.Id)" @onclick="() => EndAsync(program.Id)">
+                                        @if (_busyId == program.Id)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-stop-circle me-1"></i>
+                                        }
+                                        End program
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<CareProgramDto> _programs = [];
+    private CareProgramType _filter = CareProgramType.Primary;
+    private bool _loading = true;
+    private Guid? _busyId;
+    private string? _error;
+
+    private IEnumerable<CareProgramDto> FilteredPrograms =>
+        _programs.Where(p => p.ProgramType == _filter);
+
+    private int _activeCount => _programs.Count(p => p.Status == CareProgramStatus.Active);
+    private int _primaryCount => _programs.Count(p => p.ProgramType == CareProgramType.Primary);
+    private int _secondaryCount => _programs.Count(p => p.ProgramType == CareProgramType.Secondary);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private void SetFilter(CareProgramType filter) => _filter = filter;
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _programs = await Api.GetCareProgramsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ActivateAsync(Guid id)
+    {
+        _busyId = id;
+        _error = null;
+        try
+        {
+            await Api.ActivateCareProgramAsync(id);
+            await Outreach.LoadAsync(Api);
+            var program = _programs.FirstOrDefault(p => p.Id == id);
+            Notifications.ShowSuccess(program?.ProgramType == CareProgramType.Secondary
+                ? "Secondary outreach activated. It can run alongside primary outreach."
+                : "Primary care program activated. Outreach mode is now live.");
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busyId = null;
+        }
+    }
+
+    private async Task EndAsync(Guid id)
+    {
+        _busyId = id;
+        _error = null;
+        try
+        {
+            await Api.EndCareProgramAsync(id);
+            await Outreach.LoadAsync(Api);
+            Notifications.ShowSuccess("Care program ended.");
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busyId = null;
+        }
+    }
+
+    private static string StatusBadgeClass(CareProgramStatus status) => status switch
+    {
+        CareProgramStatus.Active => "text-bg-success",
+        CareProgramStatus.Ended => "text-bg-secondary",
+        _ => "text-bg-warning"
+    };
+
+    private static string StatusCardClass(CareProgramStatus status) => status switch
+    {
+        CareProgramStatus.Active => "care-program-card-active",
+        CareProgramStatus.Ended => "care-program-card-ended",
+        _ => "care-program-card-draft"
+    };
+
+    private static string ProgramIcon(CareProgramDto program)
+    {
+        if (program.LinkedClinicalModule == AppModule.Dental) return "bi-emoji-smile";
+        if (program.LinkedClinicalModule == AppModule.Optometrists) return "bi-eye";
+        if (program.ProgramType == CareProgramType.Primary) return "bi-megaphone";
+        if (program.Name.Contains("ITN", StringComparison.OrdinalIgnoreCase)
+            || program.OutreachCode.Contains("ITN", StringComparison.OrdinalIgnoreCase))
+            return "bi-shield-check";
+        if (program.Name.Contains("Deworm", StringComparison.OrdinalIgnoreCase)
+            || program.OutreachCode.Contains("DEWORM", StringComparison.OrdinalIgnoreCase))
+            return "bi-droplet";
+        return "bi-capsule-pill";
+    }
+}

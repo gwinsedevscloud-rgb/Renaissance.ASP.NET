@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Renaissance.Application.Common;
 using Renaissance.Application.Common.Interfaces;
+using Renaissance.Application.DTOs;
 using Renaissance.Domain.Entities;
 
 using Renaissance.Domain.Enums;
@@ -11,11 +12,13 @@ public class LaboratoryService : ILaboratoryService
 {
     private readonly IApplicationDbContext _db;
     private readonly IReferralService _referrals;
+    private readonly IOutreachModeService _outreach;
 
-    public LaboratoryService(IApplicationDbContext db, IReferralService referrals)
+    public LaboratoryService(IApplicationDbContext db, IReferralService referrals, IOutreachModeService outreach)
     {
         _db = db;
         _referrals = referrals;
+        _outreach = outreach;
     }
 
     public async Task<List<Laboratory>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -57,7 +60,40 @@ public class LaboratoryService : ILaboratoryService
         await _db.SaveChangesAsync(cancellationToken);
         await _referrals.CompleteActiveForPatientModuleAsync(
             laboratory.PatientId, AppModule.Laboratory, laboratory.CreatedBy ?? "system", cancellationToken);
+        await EnsureOutreachNextReferralAsync(laboratory, cancellationToken);
         return laboratory;
+    }
+
+    private async Task EnsureOutreachNextReferralAsync(Laboratory laboratory, CancellationToken cancellationToken)
+    {
+        var nextModule = await _outreach.GetNextModuleAfterAsync(AppModule.Laboratory, cancellationToken);
+        if (nextModule is null)
+        {
+            return;
+        }
+
+        var actor = laboratory.CreatedBy ?? "system";
+        var hasActive = await _db.Referrals.AnyAsync(
+            r => !r.Archived
+                 && r.PatientId == laboratory.PatientId
+                 && r.TargetModule == nextModule
+                 && (r.Status == ReferralStatus.Pending || r.Status == ReferralStatus.InProgress),
+            cancellationToken);
+
+        if (hasActive)
+        {
+            return;
+        }
+
+        await _referrals.CreateAsync(new CreateReferralsRequest
+        {
+            PatientId = laboratory.PatientId,
+            SourceModule = AppModule.Laboratory,
+            SourceRecordId = laboratory.Id,
+            TargetModules = [nextModule.Value],
+            Notes = "Auto-referred after laboratory (outreach)",
+            Priority = ReferralPriority.Routine
+        }, actor, cancellationToken);
     }
 
     public async Task<Laboratory?> UpdateAsync(Guid id, Laboratory incoming, CancellationToken cancellationToken = default)

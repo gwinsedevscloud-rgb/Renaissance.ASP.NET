@@ -47,4 +47,18 @@ public class Patient : AuditEntity
     [Display(Name = "Phone Number")]
     [MaxLength(50)]
     public string? PhoneNumber { get; set; }
+
+    public Guid? CareProgramId { get; set; }
+    public string? CareProgramName { get; set; }
+    public string? CareProgramType { get; set; }
+    public string? OutreachCode { get; set; }
+    public DateTime? OutreachRegisteredAt { get; set; }
+    public List<PatientClinicalHistoryItem> ClinicalHistory { get; set; } = [];
+}
+
+public class PatientClinicalHistoryItem
+{
+    public string Module { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public DateTime? LastDate { get; set; }
 }

@@ -12,10 +12,14 @@ namespace Renaissance.Api.Controllers;
 public class StakeholdersDashboardController : ControllerBase
 {
     private readonly IStakeholdersDashboardService _dashboard;
+    private readonly ISecondaryOutreachService _outreach;
 
-    public StakeholdersDashboardController(IStakeholdersDashboardService dashboard)
+    public StakeholdersDashboardController(
+        IStakeholdersDashboardService dashboard,
+        ISecondaryOutreachService outreach)
     {
         _dashboard = dashboard;
+        _outreach = outreach;
     }
 
     [HttpGet]
@@ -23,5 +27,25 @@ public class StakeholdersDashboardController : ControllerBase
     {
         var dto = await _dashboard.GetAsync(cancellationToken);
         return Ok(dto);
+    }
+
+    [HttpGet("outreach-overview")]
+    public async Task<ActionResult<StakeholdersOutreachOverviewDto>> GetOutreachOverview(CancellationToken cancellationToken)
+    {
+        return Ok(new StakeholdersOutreachOverviewDto
+        {
+            GeneratedAt = DateTime.UtcNow,
+            FacilityOverview = await _dashboard.GetAsync(cancellationToken),
+            OutreachDashboards = await _outreach.GetAllOutreachDashboardsAsync(cancellationToken)
+        });
+    }
+
+    [HttpGet("outreach/{programId:guid}")]
+    public async Task<ActionResult<OutreachStakeholdersDashboardDto>> GetOutreachDashboard(
+        Guid programId,
+        CancellationToken cancellationToken)
+    {
+        var dto = await _outreach.GetStakeholdersDashboardAsync(programId, cancellationToken);
+        return dto is null ? NotFound() : Ok(dto);
     }
 }

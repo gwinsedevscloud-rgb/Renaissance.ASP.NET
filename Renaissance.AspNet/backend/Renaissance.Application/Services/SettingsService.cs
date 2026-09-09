@@ -197,6 +197,15 @@ public class SettingsService : ISettingsService
 
         if (settings is not null)
         {
+            if (string.Equals(settings.FacilityName, "Renaissance Hospital", StringComparison.Ordinal)
+                || string.Equals(settings.FacilityName, "MedReach Hospital", StringComparison.Ordinal))
+            {
+                settings.FacilityName = "MedReach";
+                settings.UpdatedAtUtc = DateTime.UtcNow;
+                settings.UpdatedBy = "rebrand";
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+
             await EnsureLanPasswordConfiguredAsync(settings, cancellationToken);
             return settings;
         }
@@ -228,6 +237,58 @@ public class SettingsService : ISettingsService
         {
             throw new InvalidOperationException("LAN access password must be at least 8 characters.");
         }
+    }
+
+    public async Task<OutreachModuleSettingsDto> GetOutreachModuleSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        var settings = await EnsureSettingsAsync(cancellationToken);
+        return new OutreachModuleSettingsDto
+        {
+            OutreachModuleEnabled = settings.OutreachModuleEnabled
+        };
+    }
+
+    public async Task<OutreachModuleSettingsDto> UpdateOutreachModuleSettingsAsync(
+        UpdateOutreachModuleSettingsRequest request,
+        Guid userId,
+        string updatedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _db.Users.AsNoTracking()
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.Archived && u.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException("User not found.");
+
+        if (user.Role?.IsSystem != true)
+        {
+            throw new InvalidOperationException("Only Super Admin can change outreach module availability.");
+        }
+
+        var settings = await EnsureSettingsAsync(cancellationToken);
+        settings.OutreachModuleEnabled = request.OutreachModuleEnabled;
+        settings.UpdatedAtUtc = DateTime.UtcNow;
+        settings.UpdatedBy = updatedBy;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        if (!request.OutreachModuleEnabled)
+        {
+            var activePrograms = await _db.CarePrograms
+                .Where(p => !p.Archived && p.Status == Domain.Enums.CareProgramStatus.Active)
+                .ToListAsync(cancellationToken);
+
+            foreach (var program in activePrograms)
+            {
+                program.Status = Domain.Enums.CareProgramStatus.Ended;
+                AuditHelper.SetUpdated(program, updatedBy);
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        return new OutreachModuleSettingsDto
+        {
+            OutreachModuleEnabled = settings.OutreachModuleEnabled
+        };
     }
 
     private static HospitalSettingsDto ToDto(HospitalSettings settings)

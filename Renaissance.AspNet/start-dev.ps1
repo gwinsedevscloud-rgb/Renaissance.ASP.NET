@@ -1,12 +1,14 @@
-# Launch Renaissance API + Blazor UI for local development.
+# Launch MedReach API + Blazor UI (+ optional Field PWA) for local development.
 # Usage:
 #   .\start-dev.ps1           # open API and Web in new terminal windows
-#   .\start-dev.ps1 -Restart  # stop anything on 5280/5281 first (default)
+#   .\start-dev.ps1 -Field    # also start MedReach.Field PWA on :5121
+#   .\start-dev.ps1 -Restart  # stop anything on 5280/5281/5121 first (default)
 #   .\start-dev.ps1 -Build    # dotnet build before starting
 
 param(
     [switch]$Restart = $true,
-    [switch]$Build
+    [switch]$Build,
+    [switch]$Field
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,6 +16,7 @@ $ErrorActionPreference = "Stop"
 $Root = $PSScriptRoot
 $ApiDir = Join-Path $Root "backend\Renaissance.Api"
 $WebDir = Join-Path $Root "frontend\Renaissance.Web"
+$FieldDir = Join-Path $Root "frontend\MedReach.Field"
 
 function Stop-PortListener {
     param([int]$Port)
@@ -61,25 +64,38 @@ if ($Build) {
 }
 
 if ($Restart) {
-    Write-Host "Stopping existing listeners on ports 5280 and 5281..."
+    Write-Host "Stopping existing listeners on ports 5280, 5281, and 5121..."
     Stop-PortListener 5280
     Stop-PortListener 5281
+    Stop-PortListener 5121
     Start-Sleep -Seconds 1
 }
 
-Write-Host "Starting Renaissance API..."
-Start-DevWindow -Title "Renaissance API" -WorkingDirectory $ApiDir -Command "dotnet run --launch-profile http"
+Write-Host "Starting MedReach API..."
+Start-DevWindow -Title "MedReach API" -WorkingDirectory $ApiDir -Command "dotnet run --launch-profile http"
 
 Write-Host "Waiting for API to start..."
 Start-Sleep -Seconds 4
 
-Write-Host "Starting Renaissance Web UI..."
-Start-DevWindow -Title "Renaissance Web" -WorkingDirectory $WebDir -Command "dotnet run --launch-profile http"
+Write-Host "Starting MedReach Web UI..."
+Start-DevWindow -Title "MedReach Web" -WorkingDirectory $WebDir -Command "dotnet run --launch-profile http"
+
+if ($Field) {
+    if (-not (Test-Path $FieldDir)) {
+        throw "Field PWA project not found: $FieldDir"
+    }
+
+    Write-Host "Starting MedReach Field PWA..."
+    Start-DevWindow -Title "MedReach Field" -WorkingDirectory $FieldDir -Command "dotnet run --launch-profile http"
+}
 
 Write-Host ""
-Write-Host "Renaissance is launching."
+Write-Host "MedReach is launching."
 Write-Host "  API:    http://localhost:5280/swagger"
 Write-Host "  Web UI: http://localhost:5281"
+if ($Field) {
+    Write-Host "  Field:  http://localhost:5121  (PWA - Install / Add to Home Screen on Android)"
+}
 Write-Host ""
 Write-Host "Default login: admin / Admin@123"
 Write-Host "Close the API and Web terminal windows to stop the app."

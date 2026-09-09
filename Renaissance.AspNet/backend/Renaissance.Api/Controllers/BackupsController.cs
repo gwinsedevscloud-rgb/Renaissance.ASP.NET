@@ -78,7 +78,7 @@ public class BackupsController : ControllerBase
 
         if (!file.FileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
         {
-            return BadRequest("Backup files must be .zip archives exported from Renaissance.");
+            return BadRequest("Backup files must be .zip archives exported from MedReach.");
         }
 
         try

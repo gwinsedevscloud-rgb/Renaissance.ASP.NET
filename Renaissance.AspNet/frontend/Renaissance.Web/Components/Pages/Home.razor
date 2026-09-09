@@ -3,9 +3,10 @@
 @inject AuthStateService Auth
 @inject ReferralRealtimeService Referrals
 @inject RenaissanceApiClient Api
+@inject OutreachStateService Outreach
 @implements IDisposable
 
-<PageTitle>Home - Renaissance</PageTitle>
+<PageTitle>Home - MedReach</PageTitle>
 
 <div class="home-dashboard">
     <div class="hero-panel home-hero mb-3">
@@ -17,7 +18,7 @@
                 <div class="home-hero-intro-block">
                     <span class="home-hero-accent" aria-hidden="true"></span>
                     <h1 class="home-hero-title mb-1">
-                        <i class="bi bi-heart-pulse me-2"></i>Renaissance
+                        <i class="bi bi-heart-pulse me-2"></i>MedReach
                     </h1>
                     <p class="lead mb-1">
                         Welcome back, @(Auth.User?.FullName ?? "colleague").
@@ -51,52 +52,135 @@
                         <dt>Modules</dt>
                         <dd>@ModuleCount</dd>
                     </div>
-                    <div class="home-hero-stat @(TotalPending > 0 ? "has-pending" : "")">
-                        <dt>Queue</dt>
-                        <dd>@TotalPending</dd>
-                    </div>
-                </dl>
-
-                @if (PendingModules.Count > 0)
-                {
-                    <div class="home-hero-queue">
-                        <span class="home-hero-queue-label">Waiting for you</span>
-                        <div class="home-hero-queue-list">
-                            @foreach (var item in PendingModules.Take(4))
+                    <div class="home-hero-stat home-hero-stat-queue @(TotalPending > 0 ? "has-pending" : "")">
+                        <dt>
+                            <i class="bi bi-bell@(TotalPending > 0 ? "-fill" : "") home-hero-queue-bell" aria-hidden="true"></i>
+                            Queue
+                        </dt>
+                        <dd class="home-hero-queue-value">
+                            <span>@TotalPending</span>
+                            @if (TotalPending > 0)
                             {
-                                var count = Referrals.GetPendingCount(item.Module);
-                                <a class="home-hero-queue-chip" href="@item.Href">
-                                    <i class="bi @item.Icon"></i>
-                                    @item.Label
-                                    <span class="home-hero-queue-count">@count</span>
-                                </a>
+                                <span class="home-hero-queue-badge" aria-hidden="true">@TotalPending</span>
+                            }
+                        </dd>
+
+                        <div class="home-hero-queue-popover" role="tooltip">
+                            @if (PendingModules.Count == 0)
+                            {
+                                <div class="home-hero-queue-empty">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    No referrals waiting
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="home-hero-queue-popover-title">Waiting for you</div>
+                                <ul class="home-hero-queue-popover-list">
+                                    @foreach (var item in PendingModules)
+                                    {
+                                        var count = Referrals.GetPendingCount(item.Module);
+                                        <li>
+                                            <a href="@item.Href">
+                                                <span class="home-hero-queue-popover-mod">
+                                                    <i class="bi @item.Icon"></i>
+                                                    @item.Label
+                                                </span>
+                                                <span class="home-hero-queue-popover-count">@count</span>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
                             }
                         </div>
                     </div>
-                }
-                else
-                {
-                    <div class="home-hero-status">
-                        <i class="bi bi-check-circle-fill"></i>
-                        No referrals waiting in your queues.
-                    </div>
-                }
+                </dl>
 
                 <div class="home-hero-meta">
                     @if (!string.IsNullOrWhiteSpace(_facilityName))
                     {
-                        <span><i class="bi bi-hospital me-1"></i>@_facilityName</span>
+                        <span class="home-hero-meta-item">
+                            <i class="bi bi-hospital"></i>
+                            <span>@_facilityName</span>
+                        </span>
                     }
-                    <span><i class="bi bi-calendar3 me-1"></i>@DateTime.Now.ToString("dddd, d MMM yyyy")</span>
+                    else
+                    {
+                        <span class="home-hero-meta-item">
+                            <i class="bi bi-hospital"></i>
+                            <span>MedReach</span>
+                        </span>
+                    }
+                    <span class="home-hero-meta-item">
+                        <i class="bi bi-calendar3"></i>
+                        <span>@DateTime.Now.ToString("dddd, d MMM yyyy")</span>
+                    </span>
                 </div>
             </aside>
         </div>
     </div>
 
+    @if (_accessibleSecondary.Count > 0)
+    {
+        <div class="home-modules-section mt-2">
+            <div class="home-modules-header">
+                <div class="home-modules-heading">
+                    <span class="home-modules-eyebrow">Concurrent outreach</span>
+                </div>
+            </div>
+            <div class="home-secondary-grid">
+                @for (var i = 0; i < _accessibleSecondary.Count; i++)
+                {
+                    var program = _accessibleSecondary[i];
+                    var accent = SecondaryAccentClass(program);
+                    var icon = SecondaryIcon(program);
+                    var href = SecondaryHref(program);
+                    var kind = program.IsClinicLinked || program.LinkedClinicalModule.HasValue
+                        ? "Clinic referrals"
+                        : "Registration only";
+                    <a class="home-secondary-card @accent text-decoration-none"
+                       href="@href"
+                       style="--home-stagger: @i">
+                        <span class="home-secondary-shine" aria-hidden="true"></span>
+                        <span class="home-secondary-stripe" aria-hidden="true"></span>
+                        <div class="home-secondary-top">
+                            <span class="home-secondary-icon" aria-hidden="true">
+                                <i class="bi @icon"></i>
+                            </span>
+                            <span class="home-secondary-count">@program.RegisteredCount</span>
+                        </div>
+                        <div class="home-secondary-body">
+                            <h3 class="home-secondary-name">@program.Name</h3>
+                            <p class="home-secondary-meta">@program.RegisteredCount registered · @kind</p>
+                        </div>
+                        <span class="home-secondary-go" aria-hidden="true">
+                            <i class="bi bi-arrow-right"></i>
+                        </span>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
+    @if (Outreach.IsOutreachMode && Outreach.ActiveProgram is not null)
+    {
+        var program = Outreach.ActiveProgram;
+        <div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <div>
+                <strong><i class="bi bi-megaphone me-1"></i> Outreach mode:</strong> @program.Name
+                <span class="text-muted ms-2">@program.StartDate.ToString("d MMM") – @program.EndDate.ToString("d MMM yyyy")</span>
+            </div>
+            <div class="small">
+                Registered <strong>@program.RegisteredCount</strong>@if (program.BatchSize is not null) { <text> / @program.BatchSize</text> }
+                · Flow: Registration → Triage → Lab → Consultation → Pharmacy
+            </div>
+        </div>
+    }
+
     @{
-        var modules = ModuleNav.All
-            .Where(m => Auth.HasModule(m.Module) && m.Module != AppModule.ClientDashboard)
-            .ToList();
+        var allModules = ModuleNav.All
+            .Where(m => Auth.HasModule(m.Module) && m.Module != AppModule.ClientDashboard);
+        var modules = Outreach.FilterModules(allModules).ToList();
     }
 
     @if (modules.Count > 0)
@@ -105,7 +189,6 @@
             <div class="home-modules-header">
                 <div class="home-modules-heading">
                     <span class="home-modules-eyebrow">Clinical workspace</span>
-                    <h2 class="home-modules-title">Your modules</h2>
                 </div>
                 <span class="home-modules-count">@modules.Count module@(modules.Count == 1 ? "" : "s")</span>
             </div>
@@ -157,11 +240,22 @@
 
 @code {
     private string? _facilityName;
+    private List<CareProgramSummaryDto> _accessibleSecondary = [];
 
     protected override async Task OnInitializedAsync()
     {
         Referrals.ModuleCountsChanged += OnCountsChanged;
+        Outreach.Changed += OnOutreachChanged;
         await Referrals.EnsureConnectedAsync();
+
+        try
+        {
+            _accessibleSecondary = await Api.GetAccessibleSecondaryProgramsAsync();
+        }
+        catch
+        {
+            _accessibleSecondary = [];
+        }
 
         try
         {
@@ -176,17 +270,22 @@
 
     private void OnCountsChanged() => InvokeAsync(StateHasChanged);
 
-    public void Dispose() => Referrals.ModuleCountsChanged -= OnCountsChanged;
+    private void OnOutreachChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Referrals.ModuleCountsChanged -= OnCountsChanged;
+        Outreach.Changed -= OnOutreachChanged;
+    }
 
     private int ModuleCount =>
-        ModuleNav.All.Count(m => Auth.HasModule(m.Module) && m.Module != AppModule.ClientDashboard);
+        Outreach.FilterModules(ModuleNav.All.Where(m => Auth.HasModule(m.Module) && m.Module != AppModule.ClientDashboard)).Count();
 
     private int TotalPending =>
         ModuleNav.All.Where(m => Auth.HasModule(m.Module)).Sum(m => Referrals.GetPendingCount(m.Module));
 
     private List<ModuleNavItem> PendingModules =>
-        ModuleNav.All
-            .Where(m => Auth.HasModule(m.Module) && Referrals.GetPendingCount(m.Module) > 0)
+        Outreach.FilterModules(ModuleNav.All.Where(m => Auth.HasModule(m.Module) && Referrals.GetPendingCount(m.Module) > 0))
             .OrderByDescending(m => Referrals.GetPendingCount(m.Module))
             .ToList();
 
@@ -204,5 +303,32 @@
         AppModule.Stakeholders => "home-accent-gold",
         AppModule.Administration => "home-accent-charcoal",
         _ => "home-accent-teal"
+    };
+
+    private static string SecondaryIcon(CareProgramSummaryDto program) => program.LinkedClinicalModule switch
+    {
+        AppModule.Dental => "bi-emoji-smile",
+        AppModule.Optometrists => "bi-eye",
+        _ when program.Name.Contains("ITN", StringComparison.OrdinalIgnoreCase)
+              || program.Name.Contains("Insecticide", StringComparison.OrdinalIgnoreCase)
+            => "bi-shield-check",
+        _ => "bi-droplet"
+    };
+
+    private static string SecondaryAccentClass(CareProgramSummaryDto program) => program.LinkedClinicalModule switch
+    {
+        AppModule.Dental => "home-secondary-dental",
+        AppModule.Optometrists => "home-secondary-eye",
+        _ when program.Name.Contains("ITN", StringComparison.OrdinalIgnoreCase)
+              || program.Name.Contains("Insecticide", StringComparison.OrdinalIgnoreCase)
+            => "home-secondary-itn",
+        _ => "home-secondary-deworm"
+    };
+
+    private static string SecondaryHref(CareProgramSummaryDto program) => program.LinkedClinicalModule switch
+    {
+        AppModule.Dental => "/dental",
+        AppModule.Optometrists => "/optometrists",
+        _ => $"/secondary-outreach/register/{program.Id}"
     };
 }

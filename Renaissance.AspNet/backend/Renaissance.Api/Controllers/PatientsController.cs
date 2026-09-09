@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Renaissance.Api.Authorization;
+using Renaissance.Application.DTOs;
 using Renaissance.Application.Services;
 using Renaissance.Domain.Entities;
 using Renaissance.Domain.Enums;
@@ -18,7 +19,7 @@ public class PatientsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<Patient>>> GetAll([FromQuery] string? q, CancellationToken cancellationToken)
+    public async Task<ActionResult<List<PatientListItemDto>>> GetAll([FromQuery] string? q, CancellationToken cancellationToken)
     {
         var patients = await _patients.GetAllAsync(q, cancellationToken);
         return Ok(patients);

@@ -1,45 +1,241 @@
 @using Renaissance.Web.ViewModels
+@using Renaissance.Web.Helpers
 
-<FormSection Title="Clinical Assessment" Icon="bi-emoji-smile">
-    <div class="row g-3">
-        <div class="col-md-6">
-            <CatalogTextPicker Label="Diagnoses"
-                               Icon="bi-search"
-                               Options="ClinicalCatalog.DentalDiagnoses"
-                               @bind-Value="Model.DiagnosesText" />
-        </div>
-        <div class="col-md-6">
-            <CatalogTextPicker Label="Treatments"
-                               Icon="bi-tools"
-                               Options="ClinicalCatalog.DentalTreatments"
-                               @bind-Value="Model.TreatmentsText" />
-        </div>
-        <div class="col-md-6"><FormLabel Text="Other Diagnoses" /><InputTextArea class="form-control" rows="2" @bind-Value="Model.OthersDiagnosisText" /></div>
-        <div class="col-md-6"><FormLabel Text="Other Treatments" /><InputTextArea class="form-control" rows="2" @bind-Value="Model.OthersTreatmentText" /></div>
-    </div>
-</FormSection>
+<div class="dental-form-layout">
+    <section class="dental-panel dental-panel-services">
+        <header class="dental-panel-head">
+            <span class="dental-panel-icon dental-panel-icon-tools"><i class="bi bi-list-check"></i></span>
+            <div>
+                <h3>Services provided</h3>
+                <p>Choose under each service category — tap all that apply</p>
+            </div>
+        </header>
 
-<FormSection Title="Dispensing & Referrals" Icon="bi-box-seam" IconBgClass="feature-icon-blue">
-    <div class="row g-3">
-        <div class="col-md-6">
-            <CatalogTextPicker Label="Dispensed Items"
-                               Icon="bi-bag-check"
-                               Options="ClinicalCatalog.DentalDispensedItems"
-                               Rows="2"
-                               @bind-Value="Model.DispensedItemsText" />
+        <div class="dental-service-groups">
+            @{
+                var roman = new[] { "I", "II", "III", "IV", "V" };
+                var index = 0;
+            }
+            @foreach (var group in ClinicalCatalog.DentalServiceGroups)
+            {
+                var numeral = index < roman.Length ? roman[index] : $"{index + 1}";
+                var categoryOn = IsOn(Model.DiagnosesText, group.Category);
+                var tone = $"tone-{index + 1}";
+                index++;
+                <div class="dental-service-group @tone @(categoryOn ? "is-active" : null)">
+                    <div class="dental-service-group-head">
+                        <button type="button"
+                                class="dental-service-group-title @(categoryOn ? "is-on" : null)"
+                                @onclick="() => ToggleCategory(group.Category)">
+                            <span class="dental-service-numeral">@numeral</span>
+                            <span class="dental-service-cat-icon" aria-hidden="true"><i class="bi @group.Icon"></i></span>
+                            <span class="dental-service-cat-name">@group.Category</span>
+                        </button>
+                    </div>
+                    <div class="dental-chip-grid dental-chip-grid-dense">
+                        @foreach (var option in group.Services)
+                        {
+                            <button type="button"
+                                    class="dental-chip dental-chip-service @(IsOn(Model.TreatmentsText, option) ? "is-on" : null)"
+                                    @onclick="() => ToggleService(group.Category, option)">
+                                <i class="bi @ServiceIcon(option)" aria-hidden="true"></i>
+                                <span>@option</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
         </div>
-        <div class="col-md-6">
-            <CatalogTextPicker Label="Services Referred"
-                               Icon="bi-send"
-                               Options="ClinicalCatalog.ReferralServices"
-                               Rows="2"
-                               @bind-Value="Model.ServicesReferredText" />
+    </section>
+
+    <section class="dental-panel">
+        <header class="dental-panel-head">
+            <span class="dental-panel-icon dental-panel-icon-dx"><i class="bi bi-clipboard2-pulse"></i></span>
+            <div>
+                <h3>Other diagnoses</h3>
+                <p>Detailed clinical findings for this patient</p>
+            </div>
+        </header>
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <CatalogTextPicker Label="Diagnosis list"
+                                   Icon="bi-clipboard2-pulse"
+                                   Placeholder="Add from diagnosis list…"
+                                   Hint="Pick from the list. Selected items appear below."
+                                   Options="ClinicalCatalog.DentalOtherDiagnoses"
+                                   Rows="4"
+                                   Value="@Model.OthersDiagnosisText"
+                                   ValueChanged="OnOthersDiagnosisChanged" />
+            </div>
+            <div class="col-lg-5">
+                <FormLabel Text="Other treatments" Icon="bi-journal-medical" />
+                <InputTextArea class="form-control dental-notes" rows="4" @bind-Value="Model.OthersTreatmentText" @bind-Value:after="NotifyChanged" placeholder="Additional treatment notes…" />
+            </div>
         </div>
-        <div class="col-12"><div class="checkbox-card d-inline-block"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="Model.Referred" /><label class="form-check-label"><i class="bi bi-box-arrow-up-right me-1"></i> Referred</label></div></div></div>
-    </div>
-</FormSection>
+    </section>
+
+    <section class="dental-panel dental-panel-followup">
+        <header class="dental-panel-head">
+            <span class="dental-panel-icon dental-panel-icon-box"><i class="bi bi-box-seam"></i></span>
+            <div>
+                <h3>Dispensing &amp; referrals</h3>
+                <p>Items given and any onward referral</p>
+            </div>
+        </header>
+
+        <div class="dental-followup-grid">
+            <div class="dental-followup-card">
+                <div class="dental-followup-card-head">
+                    <span class="dental-followup-icon" aria-hidden="true"><i class="bi bi-gift"></i></span>
+                    <div>
+                        <h4>Dispensed items</h4>
+                        <p>Supplies or medicines given today</p>
+                    </div>
+                </div>
+                <CheckboxMultiSelect Placeholder="Select dispensed items…"
+                                     Hint="Open the list and tick all items given."
+                                     Options="ClinicalCatalog.DentalDispensedItems"
+                                     Selected="_dispensedSelected"
+                                     SelectedChanged="OnDispensedChanged" />
+            </div>
+
+            <div class="dental-followup-card">
+                <div class="dental-followup-card-head">
+                    <span class="dental-followup-icon dental-followup-icon-refer" aria-hidden="true"><i class="bi bi-signpost-split"></i></span>
+                    <div>
+                        <h4>Services referred</h4>
+                        <p>Send the patient to another station</p>
+                    </div>
+                </div>
+                <CheckboxMultiSelect Placeholder="Select referral services…"
+                                     Hint="Open the list and tick all stations to refer to."
+                                     Options="ClinicalCatalog.ReferralServices"
+                                     Selected="_referredSelected"
+                                     SelectedChanged="OnReferredServicesChanged" />
+            </div>
+        </div>
+
+        <label class="dental-refer-card @(Model.Referred ? "is-on" : null)">
+            <span class="dental-refer-check">
+                <InputCheckbox class="form-check-input" @bind-Value="Model.Referred" @bind-Value:after="NotifyChanged" />
+            </span>
+            <span class="dental-refer-copy">
+                <strong>Mark as referred</strong>
+                <small>Patient needs care in another module after this dental visit</small>
+            </span>
+            <span class="dental-refer-badge" aria-hidden="true"><i class="bi bi-box-arrow-up-right"></i></span>
+        </label>
+    </section>
+</div>
 
 @code {
     [Parameter, EditorRequired]
     public DentalFormViewModel Model { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback Changed { get; set; }
+
+    private List<string> _dispensedSelected = [];
+    private List<string> _referredSelected = [];
+
+    protected override void OnParametersSet()
+    {
+        _dispensedSelected = ListTextHelper.FromMultiline(Model.DispensedItemsText);
+        _referredSelected = ListTextHelper.FromMultiline(Model.ServicesReferredText);
+    }
+
+    private static bool IsOn(string? text, string option) =>
+        ListTextHelper.FromMultiline(text)
+            .Any(x => string.Equals(x, option, StringComparison.OrdinalIgnoreCase));
+
+    private static string ServiceIcon(string service) => service switch
+    {
+        "Comprehensive oral examination" => "bi-search",
+        "Professional cleaning" => "bi-stars",
+        "Scaling and Polishing" => "bi-brush",
+        "Fluoride treatments" => "bi-droplet-half",
+        "Sealants" => "bi-shield",
+        "Oral hygiene education" => "bi-book",
+        "Fillings" => "bi-circle-half",
+        "Extractions" => "bi-scissors",
+        "Giving of toothbrushes" => "bi-gift",
+        _ => "bi-check2-circle"
+    };
+
+    private Task NotifyChanged() => Changed.InvokeAsync();
+
+    private async Task OnDispensedChanged(List<string> values)
+    {
+        _dispensedSelected = values;
+        Model.DispensedItemsText = ListTextHelper.ToMultiline(values);
+        await Changed.InvokeAsync();
+    }
+
+    private async Task OnReferredServicesChanged(List<string> values)
+    {
+        _referredSelected = values;
+        Model.ServicesReferredText = ListTextHelper.ToMultiline(values);
+        if (values.Count > 0)
+        {
+            Model.Referred = true;
+        }
+
+        await Changed.InvokeAsync();
+    }
+
+    private async Task OnOthersDiagnosisChanged(string? value)
+    {
+        Model.OthersDiagnosisText = value;
+        await Changed.InvokeAsync();
+    }
+
+    private async Task ToggleCategory(string category)
+    {
+        await Toggle(nameof(Model.DiagnosesText), category);
+    }
+
+    private async Task ToggleService(string category, string service)
+    {
+        var turningOn = !IsOn(Model.TreatmentsText, service);
+        await Toggle(nameof(Model.TreatmentsText), service);
+
+        if (turningOn && !IsOn(Model.DiagnosesText, category))
+        {
+            await Toggle(nameof(Model.DiagnosesText), category);
+        }
+    }
+
+    private async Task Toggle(string field, string option)
+    {
+        var current = field switch
+        {
+            nameof(Model.DiagnosesText) => Model.DiagnosesText,
+            nameof(Model.TreatmentsText) => Model.TreatmentsText,
+            nameof(Model.DispensedItemsText) => Model.DispensedItemsText,
+            nameof(Model.ServicesReferredText) => Model.ServicesReferredText,
+            _ => null
+        };
+
+        var items = ListTextHelper.FromMultiline(current);
+        var existing = items.FirstOrDefault(x => string.Equals(x, option, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            items.Remove(existing);
+        }
+        else
+        {
+            items.Add(option);
+        }
+
+        var next = ListTextHelper.ToMultiline(items);
+        switch (field)
+        {
+            case nameof(Model.DiagnosesText): Model.DiagnosesText = next; break;
+            case nameof(Model.TreatmentsText): Model.TreatmentsText = next; break;
+            case nameof(Model.DispensedItemsText): Model.DispensedItemsText = next; break;
+            case nameof(Model.ServicesReferredText): Model.ServicesReferredText = next; break;
+        }
+
+        await Changed.InvokeAsync();
+    }
 }

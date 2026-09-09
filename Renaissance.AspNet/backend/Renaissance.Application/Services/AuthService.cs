@@ -51,9 +51,39 @@ public class AuthService : IAuthService
         }
 
         var profile = await ToCurrentUserAsync(user, cancellationToken);
+        var token = _jwt.CreateToken(user.Id, user.UserName, user.FullName, profile.RoleName);
         return new LoginResponse
         {
-            Token = _jwt.CreateToken(user.Id, user.UserName, user.FullName, profile.RoleName),
+            Token = token,
+            ExpiresAtUtc = _jwt.ReadTokenExpiryUtc(token),
+            User = profile
+        };
+    }
+
+    public async Task<LoginResponse> RefreshAsync(string token, CancellationToken cancellationToken = default)
+    {
+        if (!_jwt.TryValidateExpiredTokenForRefresh(token, out var userId, out _))
+        {
+            throw new InvalidOperationException("Session expired. Sign in again.");
+        }
+
+        var user = await _db.Users
+            .Include(u => u.Role)
+            .ThenInclude(r => r!.ModuleAccess)
+            .Include(u => u.ModuleAccess)
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.Archived, cancellationToken);
+
+        if (user is null || !user.IsActive)
+        {
+            throw new InvalidOperationException("This account is disabled. Contact an administrator.");
+        }
+
+        var profile = await ToCurrentUserAsync(user, cancellationToken);
+        var fresh = _jwt.CreateToken(user.Id, user.UserName, user.FullName, profile.RoleName);
+        return new LoginResponse
+        {
+            Token = fresh,
+            ExpiresAtUtc = _jwt.ReadTokenExpiryUtc(fresh),
             User = profile
         };
     }

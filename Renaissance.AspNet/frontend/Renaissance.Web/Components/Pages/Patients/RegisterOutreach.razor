@@ -1,0 +1,315 @@
+@page "/patients/register-outreach"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+@inject OutreachStateService Outreach
+
+<PageTitle>Outreach Registration - MedReach</PageTitle>
+
+<div class="module-page outreach-register-page">
+    @if (!Outreach.IsOutreachMode)
+    {
+        <PageHeader Title="Outreach registration"
+                    Subtitle="Activate a primary care program to begin"
+                    BackHref="/patients"
+                    BackLabel="Patients" />
+
+        <EmptyPanel Icon="bi-megaphone"
+                    Title="Outreach mode is not active"
+                    Message="Activate a primary care program under Admin → Care Programs to register outreach patients.">
+            <a class="btn btn-primary" href="/admin/care-programs">
+                <i class="bi bi-megaphone me-1"></i> Care programs
+            </a>
+        </EmptyPanel>
+    }
+    else
+    {
+        <PageHeader Title="Outreach registration"
+                    Subtitle="@OutreachSubtitle"
+                    BackHref="/patients"
+                    BackLabel="Patients"
+                    CssClass="outreach-register-header">
+            <Actions>
+                <span class="outreach-register-chip align-self-center">
+                    <i class="bi @(_requiresPreGeneratedId ? "bi-upc-scan" : "bi-arrow-repeat") me-1"></i>
+                    @(_requiresPreGeneratedId ? "Pre-printed IDs" : "Auto serial")
+                </span>
+                <a class="btn btn-sm btn-outline-secondary" href="/patients">
+                    <i class="bi bi-people me-1"></i> All patients
+                </a>
+            </Actions>
+        </PageHeader>
+
+        <div class="client-form-layout outreach-register-layout">
+            <aside class="client-form-aside">
+                @if (_requiresPreGeneratedId)
+                {
+                    <div class="client-number-card @(_validated ? "is-verified" : "")">
+                        <div class="client-number-card-icon">
+                            <i class="bi @(_validated ? "bi-check-circle-fill" : "bi-upc-scan")"></i>
+                        </div>
+                        <div class="client-number-label">Pre-printed patient ID</div>
+                        <div class="client-number-value">
+                            @(string.IsNullOrWhiteSpace(_request.ProgramPatientIdCode) ? "Enter card ID" : _request.ProgramPatientIdCode)
+                        </div>
+                        <p class="client-number-hint">
+                            @if (_validated)
+                            {
+                                <span><i class="bi bi-check-circle-fill me-1"></i>ID verified</span>
+                            }
+                            else
+                            {
+                                <span>Verify the card ID before registering</span>
+                            }
+                        </p>
+                    </div>
+                }
+                else
+                {
+                    <div class="client-number-card">
+                        <div class="client-number-card-icon"><i class="bi bi-arrow-repeat"></i></div>
+                        <div class="client-number-label">Patient ID mode</div>
+                        <div class="client-number-value">Auto serial</div>
+                        <p class="client-number-hint">A new ID is assigned automatically when you save</p>
+                    </div>
+                }
+
+                <div class="form-tips-card outreach-flow-card">
+                    <h4><i class="bi bi-signpost-2 me-1"></i> Outreach flow</h4>
+                    <ol class="outreach-flow-steps">
+                        <li class="is-current"><span>1</span> Registration</li>
+                        <li><span>2</span> Triage</li>
+                        <li><span>3</span> Laboratory</li>
+                        <li><span>4</span> Consultation</li>
+                        <li><span>5</span> Pharmacy</li>
+                    </ol>
+                </div>
+
+                <div class="form-help-card">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <p>Capture demographics for community outreach. Clinical steps continue after registration.</p>
+                </div>
+            </aside>
+
+            <div class="client-form-main">
+                <EditForm Model="_request" OnValidSubmit="SaveAsync" class="form-card form-card-create outreach-register-form">
+                    <DataAnnotationsValidator />
+
+                    @if (_requiresPreGeneratedId)
+                    {
+                        <FormSection Title="Verify patient card" Subtitle="Scan or type the pre-printed ID" Icon="bi-upc-scan">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-8">
+                                    <FormLabel Text="Card ID" Icon="bi-upc" Required="true" />
+                                    <div class="form-input-group">
+                                        <span class="form-input-icon"><i class="bi bi-upc-scan"></i></span>
+                                        <InputText class="form-control text-uppercase" @bind-Value="_request.ProgramPatientIdCode" placeholder="e.g. CHO-0001" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-outline-primary w-100" type="button" disabled="@_validating" @onclick="ValidateIdAsync">
+                                        @if (_validating)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-shield-check me-1"></i>
+                                        }
+                                        Verify ID
+                                    </button>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(_idMessage))
+                            {
+                                <div class="outreach-id-message @(_validated ? "is-ok" : "is-bad") mt-2">
+                                    <i class="bi @(_validated ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill")"></i>
+                                    @_idMessage
+                                </div>
+                            }
+                        </FormSection>
+                    }
+
+                    <FormSection Title="Demographics" Subtitle="Sex, age, and phone" Icon="bi-person">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <FormLabel Text="Sex" Icon="bi-gender-ambiguous" Required="true" />
+                                <InputSelect class="form-select" @bind-Value="_request.Sex">
+                                    <option value="">Select</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-3">
+                                <FormLabel Text="Age" Icon="bi-calendar3" Required="true" />
+                                <InputNumber class="form-control" @bind-Value="_request.Age" min="0" />
+                            </div>
+                            <div class="col-md-3">
+                                <FormLabel Text="Age unit" Required="true" />
+                                <InputSelect class="form-select" @bind-Value="_request.AgeUnit">
+                                    <option value="Years">Years</option>
+                                    <option value="Months">Months</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-3">
+                                <FormLabel Text="Phone number" Icon="bi-phone" />
+                                <div class="form-input-group">
+                                    <span class="form-input-icon"><i class="bi bi-phone"></i></span>
+                                    <InputText class="form-control" @bind-Value="_request.PhoneNumber" placeholder="Phone number" />
+                                </div>
+                            </div>
+                        </div>
+                    </FormSection>
+
+                    <FormSection Title="Background" Subtitle="Social and cultural details" Icon="bi-journal-text" IconBgClass="feature-icon-blue">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <FormLabel Text="Marital status" />
+                                <InputSelect class="form-select" @bind-Value="_request.MaritalStatus">
+                                    <option value="">Select</option>
+                                    <option value="Single">Single</option>
+                                    <option value="Married">Married</option>
+                                    <option value="Cohabiting">Cohabiting</option>
+                                    <option value="Divorced/Separated">Divorced/Separated</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="Tribe" />
+                                <InputText class="form-control" @bind-Value="_request.Tribe" placeholder="e.g. Hausa, Yoruba, Igbo, Fulani, Ijaw, Kanuri, Ibibio, Tiv, Edo, Nupe…" />
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="Religion" />
+                                <InputSelect class="form-select" @bind-Value="_request.Religion">
+                                    <option value="">Select</option>
+                                    <option value="Christian">Christian</option>
+                                    <option value="Islam">Islam</option>
+                                    <option value="Trad">Trad</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="Occupation" Icon="bi-briefcase" />
+                                <InputSelect class="form-select" @bind-Value="_request.Occupation">
+                                    <option value="">Select</option>
+                                    <option value="Employed">Employed</option>
+                                    <option value="Self-employed">Self-employed</option>
+                                    <option value="Unemployed">Unemployed</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </FormSection>
+
+                    <FormSection Title="Address" Subtitle="Where the patient can be reached" Icon="bi-geo-alt" IconBgClass="feature-icon-violet">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <FormLabel Text="Address" Icon="bi-geo-alt" />
+                                <div class="form-input-group form-input-group-top">
+                                    <span class="form-input-icon align-top"><i class="bi bi-geo-alt"></i></span>
+                                    <InputTextArea class="form-control" rows="2" @bind-Value="_request.Address" placeholder="Community, street, landmark…" />
+                                </div>
+                            </div>
+                        </div>
+                    </FormSection>
+
+                    @if (!string.IsNullOrWhiteSpace(_error))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-octagon me-1"></i>@_error
+                            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _error = null"></button>
+                        </div>
+                    }
+
+                    <FormActions SaveLabel="Register patient" SaveIcon="bi-person-check" CancelHref="/patients" Saving="_saving" />
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private RegisterOutreachPatientRequest _request = new() { AgeUnit = "Years", Age = 1 };
+    private bool _requiresPreGeneratedId;
+    private string? _programName;
+    private string? _outreachCode;
+    private bool _validated;
+    private bool _validating;
+    private bool _saving;
+    private string? _idMessage;
+    private string? _error;
+
+    private string OutreachSubtitle
+    {
+        get
+        {
+            var name = _programName ?? "Active program";
+            return string.IsNullOrWhiteSpace(_outreachCode) ? name : $"{name} · {_outreachCode}";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        var program = Outreach.ActiveProgram;
+        _programName = program?.Name;
+        _outreachCode = program?.OutreachCode;
+        _requiresPreGeneratedId = program?.PatientIdMode == PatientIdMode.PreGenerated;
+        _validated = !_requiresPreGeneratedId;
+    }
+
+    private async Task ValidateIdAsync()
+    {
+        _validating = true;
+        _idMessage = null;
+        try
+        {
+            var result = await Api.ValidateProgramPatientIdAsync(_request.ProgramPatientIdCode ?? string.Empty);
+            _validated = result.IsValid;
+            _idMessage = result.IsValid
+                ? $"Valid ID for {result.ProgramName}"
+                : result.Message;
+            if (result.CareProgramId.HasValue)
+            {
+                _request.CareProgramId = result.CareProgramId;
+            }
+        }
+        catch (Exception ex)
+        {
+            _validated = false;
+            _idMessage = ex.Message;
+        }
+        finally
+        {
+            _validating = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_requiresPreGeneratedId && !_validated)
+        {
+            _error = "Verify the pre-printed patient ID before registering.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_request.Sex) || _request.Age <= 0)
+        {
+            _error = "Sex and age are required.";
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        try
+        {
+            // Name is assigned server-side as "Patient {Patient ID}".
+            _request.FullName = string.Empty;
+            var patient = await Api.RegisterOutreachPatientAsync(_request);
+            Notifications.ShowSuccess($"{patient.FullName} registered.");
+            Nav.NavigateTo("/patients");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _saving = false;
+        }
+    }
+}

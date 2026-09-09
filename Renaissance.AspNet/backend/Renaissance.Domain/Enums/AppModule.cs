@@ -13,7 +13,9 @@ public enum AppModule
     Ophthalmologists = 9,
     ClientDashboard = 10,
     Stakeholders = 11,
-    Administration = 12
+    Administration = 12,
+    CarePrograms = 13,
+    SecondaryOutreach = 14
 }
 
 public static class AppModuleCatalog
@@ -34,6 +36,8 @@ public static class AppModuleCatalog
         AppModule.ClientDashboard => "Patient Dashboard",
         AppModule.Stakeholders => "Stakeholders",
         AppModule.Administration => "Administration",
+        AppModule.CarePrograms => "Care Programs",
+        AppModule.SecondaryOutreach => "Secondary Outreach",
         _ => module.ToString()
     };
 
@@ -51,6 +55,8 @@ public static class AppModuleCatalog
         AppModule.ClientDashboard => "Full clinical history for a single patient.",
         AppModule.Stakeholders => "Operational KPIs and analytics.",
         AppModule.Administration => "Manage users, roles, and module access.",
+        AppModule.CarePrograms => "Configure outreach care programs and patient ID batches.",
+        AppModule.SecondaryOutreach => "Registration-only secondary outreach programs such as deworming.",
         _ => string.Empty
     };
 }

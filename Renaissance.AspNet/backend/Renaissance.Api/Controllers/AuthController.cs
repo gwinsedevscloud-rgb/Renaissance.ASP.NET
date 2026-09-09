@@ -33,6 +33,24 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Issue a new access token from an expired-but-recent JWT (field tablet grace window).
+    /// </summary>
+    [AllowAnonymous]
+    [EnableRateLimiting("auth-login")]
+    [HttpPost("refresh")]
+    public async Task<ActionResult<LoginResponse>> Refresh([FromBody] RefreshTokenRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _auth.RefreshAsync(request.Token, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Unauthorized(ex.Message);
+        }
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<ActionResult<CurrentUserDto>> Me(CancellationToken cancellationToken)

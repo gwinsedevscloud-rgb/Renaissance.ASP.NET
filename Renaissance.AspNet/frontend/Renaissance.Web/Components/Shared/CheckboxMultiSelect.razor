@@ -1,0 +1,121 @@
+<div class="checkbox-multiselect @(IsOpen ? "is-open" : null)" @onfocusout="OnFocusOut">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <FormLabel Text="@Label" Icon="@Icon" />
+    }
+
+    <button type="button"
+            class="form-select checkbox-multiselect-trigger text-start"
+            aria-expanded="@IsOpen"
+            aria-haspopup="listbox"
+            @onclick="ToggleOpen"
+            @onclick:preventDefault="true">
+        <span class="checkbox-multiselect-trigger-text @(Selected.Count == 0 ? "is-placeholder" : null)">
+            @SummaryText
+        </span>
+        <i class="bi @(IsOpen ? "bi-chevron-up" : "bi-chevron-down") checkbox-multiselect-caret" aria-hidden="true"></i>
+    </button>
+
+    @if (IsOpen)
+    {
+        <div class="checkbox-multiselect-menu" role="listbox" aria-multiselectable="true" @onmousedown:preventDefault="true">
+            @foreach (var option in Options)
+            {
+                var on = IsSelected(option);
+                <label class="checkbox-multiselect-item @(on ? "is-on" : null)" role="option" aria-selected="@on">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           checked="@on"
+                           @onchange="e => OnCheckChanged(option, e.Value)" />
+                    <span>@option</span>
+                </label>
+            }
+        </div>
+    }
+
+    @if (Selected.Count > 0)
+    {
+        <div class="checkbox-multiselect-tags">
+            @foreach (var item in Selected)
+            {
+                <button type="button"
+                        class="checkbox-multiselect-tag"
+                        title="Remove"
+                        @onclick="() => Remove(item)">
+                    <span>@item</span>
+                    <i class="bi bi-x" aria-hidden="true"></i>
+                </button>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Hint))
+    {
+        <div class="form-hint">@Hint</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string Icon { get; set; } = "bi-list-check";
+    [Parameter] public string Placeholder { get; set; } = "Select…";
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public IReadOnlyList<string> Options { get; set; } = Array.Empty<string>();
+
+    [Parameter]
+    public List<string> Selected { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<string>> SelectedChanged { get; set; }
+
+    private bool IsOpen { get; set; }
+
+    private string SummaryText =>
+        Selected.Count == 0
+            ? Placeholder
+            : Selected.Count == 1
+                ? Selected[0]
+                : $"{Selected.Count} selected";
+
+    private bool IsSelected(string option) =>
+        Selected.Any(x => string.Equals(x, option, StringComparison.OrdinalIgnoreCase));
+
+    private void ToggleOpen() => IsOpen = !IsOpen;
+
+    private void OnFocusOut()
+    {
+        // Close when focus leaves the control (menu uses mousedown preventDefault so checks don't blur first).
+        IsOpen = false;
+    }
+
+    private async Task OnCheckChanged(string option, object? value)
+    {
+        var on = value is bool b && b;
+        var next = Selected.ToList();
+        var existing = next.FirstOrDefault(x => string.Equals(x, option, StringComparison.OrdinalIgnoreCase));
+
+        if (on)
+        {
+            if (existing is null)
+            {
+                next.Add(option);
+            }
+        }
+        else if (existing is not null)
+        {
+            next.Remove(existing);
+        }
+
+        Selected = next;
+        await SelectedChanged.InvokeAsync(next);
+    }
+
+    private async Task Remove(string option)
+    {
+        var next = Selected
+            .Where(x => !string.Equals(x, option, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        Selected = next;
+        await SelectedChanged.InvokeAsync(next);
+    }
+}

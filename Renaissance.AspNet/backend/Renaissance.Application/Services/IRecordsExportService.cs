@@ -6,6 +6,8 @@ public interface IRecordsExportService
 {
     IReadOnlyList<ExportModuleInfoDto> GetModules();
 
+    Task<IReadOnlyList<ExportOutreachOptionDto>> GetOutreachOptionsAsync(CancellationToken cancellationToken = default);
+
     Task<ExportPreviewDto> PreviewAsync(ExportRecordsRequest request, CancellationToken cancellationToken = default);
 
     Task<ExportFileResult> ExportAsync(ExportRecordsRequest request, string exportedBy, CancellationToken cancellationToken = default);

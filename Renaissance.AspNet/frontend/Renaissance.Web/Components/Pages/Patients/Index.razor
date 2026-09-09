@@ -1,215 +1,585 @@
 @page "/patients"
+
 @rendermode InteractiveServer
+
 @inject RenaissanceApiClient Api
+
 @inject NavigationManager Nav
+
+@inject OutreachStateService Outreach
+
 @implements IDisposable
 
-<PageTitle>Patients - Renaissance</PageTitle>
+
+
+<PageTitle>Patients - MedReach</PageTitle>
+
+
 
 <div class="clients-page">
+
     <PageHeader Title="Patients" Subtitle="Manage registered outpatient patients" Icon="bi-people-fill">
+
         <Actions>
-            <a class="btn btn-primary" href="/patients/create">
-                <i class="bi bi-plus-lg me-1"></i> New Patient
-            </a>
+
+            @if (Outreach.IsOutreachMode)
+
+            {
+
+                <a class="btn btn-primary" href="/patients/register-outreach">
+
+                    <i class="bi bi-person-vcard me-1"></i> Register (Outreach)
+
+                </a>
+
+            }
+
+            else
+
+            {
+
+                <a class="btn btn-primary" href="/patients/create">
+
+                    <i class="bi bi-plus-lg me-1"></i> New Patient
+
+                </a>
+
+            }
+
         </Actions>
+
     </PageHeader>
 
+
+
     <div class="clients-toolbar">
+
         <form class="search-bar clients-search" @onsubmit="Search" @onsubmit:preventDefault="true">
+
             <span class="input-group-text bg-transparent border-0 ps-2">
+
                 <i class="bi bi-search text-muted"></i>
+
             </span>
+
             <input class="form-control"
+
                    @bind="_search"
+
                    @bind:event="oninput"
+
                    @bind:after="OnSearchInputAsync"
-                   placeholder="Search by patient number, phone, or name..." />
+
+                   placeholder="Search by patient number, phone, name, or outreach program..." />
+
             @if (_loading && !string.IsNullOrWhiteSpace(_search))
+
             {
+
                 <span class="input-group-text bg-transparent border-0 pe-2">
+
                     <span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Searching"></span>
+
                 </span>
+
             }
+
             @if (!string.IsNullOrWhiteSpace(_search))
+
             {
+
                 <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">Clear</button>
+
             }
+
         </form>
+
         @if (!_loading)
+
         {
+
             <div class="clients-count">
+
                 <strong>@_patients.Count</strong>
+
                 @(string.IsNullOrWhiteSpace(_search) ? "recent patients" : "matching patients")
+
             </div>
+
         }
+
     </div>
 
+
+
     @if (_loading)
+
     {
+
         <LoadingState Message="Loading patients..." />
+
     }
+
     else if (_patients.Count == 0)
+
     {
+
         <div class="section-card clients-empty">
+
             <i class="bi bi-people"></i>
+
             <h2>No patients found</h2>
-            <p>@(string.IsNullOrWhiteSpace(_search) ? "Register the first outpatient patient to get started." : "Try a different patient number, phone, or name.")</p>
+
+            <p>@(string.IsNullOrWhiteSpace(_search) ? "Register the first outpatient patient to get started." : "Try a different patient number, phone, name, or outreach program.")</p>
+
             <a class="btn btn-primary" href="/patients/create">
+
                 <i class="bi bi-plus-lg me-1"></i> New Patient
+
             </a>
+
         </div>
+
     }
+
     else
+
     {
+
         <div class="clients-list d-md-none">
+
             @foreach (var p in _patients)
+
             {
+
                 var name = ClientDisplayHelper.DisplayName(p);
+
                 <article class="client-card">
+
                     <div class="client-avatar">@ClientDisplayHelper.Initials(p)</div>
+
                     <div class="client-card-body">
+
                         <div class="client-card-top">
+
                             <span class="client-number">@p.ClientNumber</span>
+
                             <span class="sex-pill @(p.Sex == "Male" ? "sex-male" : p.Sex == "Female" ? "sex-female" : "sex-other")">@p.Sex</span>
+
                         </div>
+
                         <h2>@name</h2>
+
                         <p>
+
                             <span>@p.Age @p.AgeUnit</span>
+
                             <span>@(p.PhoneNumber ?? "No phone")</span>
+
                         </p>
+
+                        <div class="client-card-outreach">
+                            <PatientOutreachCell Patient="p" />
+
+                            @if (p.ClinicalHistory.Count > 0)
+
+                            {
+
+                                <div class="patient-history-chips mt-1">
+
+                                    @foreach (var item in p.ClinicalHistory.Take(3))
+
+                                    {
+
+                                        <span class="patient-history-chip">@item.Module <strong>@item.Count</strong></span>
+
+                                    }
+
+                                </div>
+
+                            }
+
+                        </div>
+
                     </div>
+
                     <div class="client-card-actions">
+
                         <a class="btn btn-sm btn-primary" href="/patient-dashboard/@p.Id">Dashboard</a>
+
                         <a class="btn btn-sm btn-outline-primary" href="/patients/edit/@p.Id">Edit</a>
+
                         <a class="btn btn-sm btn-outline-secondary" href="/patients/details/@p.Id">View</a>
+
                     </div>
+
                 </article>
+
             }
+
         </div>
+
+
 
         <div class="section-card table-card p-0 d-none d-md-block">
+
             <div class="table-responsive">
+
                 <table class="table table-hover mb-0 clients-table">
-                    <ModuleRecordColGroup Widths="@(new[] { "30%", "12%", "12%", "22%", "16%", "5rem" })" />
+
+                    <ModuleRecordColGroup Widths="@(new[] { "148rem", "118rem", "132rem", "78rem", "80rem", "118rem", "130rem", "130rem" })" />
+
                     <thead>
+
                         <tr>
+
                             <th>Patient</th>
+
+                            <th>Outreach</th>
+
+                            <th>Visit history</th>
+
                             <th>Age</th>
+
                             <th>Sex</th>
+
                             <th>Phone</th>
+
                             <th class="d-none d-lg-table-cell">Registered</th>
+
                             <ModuleTableActionTh />
+
                         </tr>
+
                     </thead>
+
                     <tbody>
+
                     @foreach (var p in _patients)
+
                     {
+
                         var name = ClientDisplayHelper.DisplayName(p);
+
+                        var expanded = _expandedPatientId == p.Id;
+
                         <tr>
+
                             <td>
+
                                 <div class="client-cell">
+
                                     <span class="client-avatar">@ClientDisplayHelper.Initials(p)</span>
+
                                     <span>
+
                                         <strong>@name</strong>
+
                                         <span class="client-number d-block">@p.ClientNumber</span>
+
                                     </span>
+
                                 </div>
+
                             </td>
-                            <td>@p.Age @p.AgeUnit</td>
+
+                            <td><PatientOutreachCell Patient="p" /></td>
+
                             <td>
-                                <span class="sex-pill @(p.Sex == "Male" ? "sex-male" : p.Sex == "Female" ? "sex-female" : "sex-other")">
-                                    <i class="bi @(p.Sex == "Male" ? "bi-gender-male" : p.Sex == "Female" ? "bi-gender-female" : "bi-gender-ambiguous")"></i>
-                                    @p.Sex
-                                </span>
-                            </td>
-                            <td>
-                                @if (string.IsNullOrWhiteSpace(p.PhoneNumber))
+
+                                @if (p.ClinicalHistory.Count == 0)
+
                                 {
-                                    <span class="text-muted">—</span>
+
+                                    <span class="patient-history-empty">No visits yet</span>
+
                                 }
+
                                 else
+
                                 {
-                                    <span class="client-phone"><i class="bi bi-telephone"></i> @p.PhoneNumber</span>
+
+                                    <div class="patient-history-chips">
+
+                                        @foreach (var item in p.ClinicalHistory.Take(3))
+
+                                        {
+
+                                            <span class="patient-history-chip" title="@FormatHistoryTooltip(item)">
+
+                                                @item.Module <strong>@item.Count</strong>
+
+                                            </span>
+
+                                        }
+
+                                    </div>
+
+                                    @if (p.ClinicalHistory.Count > 0)
+
+                                    {
+
+                                        <button type="button" class="patient-history-toggle mt-1" @onclick="() => ToggleHistory(p.Id)">
+
+                                            @(expanded ? "Hide history" : "Show full history")
+
+                                        </button>
+
+                                    }
+
                                 }
+
                             </td>
+
+                            <td>@p.Age @p.AgeUnit</td>
+
+                            <td>
+
+                                <span class="sex-pill @(p.Sex == "Male" ? "sex-male" : p.Sex == "Female" ? "sex-female" : "sex-other")">
+
+                                    <i class="bi @(p.Sex == "Male" ? "bi-gender-male" : p.Sex == "Female" ? "bi-gender-female" : "bi-gender-ambiguous")"></i>
+
+                                    @p.Sex
+
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                @if (string.IsNullOrWhiteSpace(p.PhoneNumber))
+
+                                {
+
+                                    <span class="text-muted">—</span>
+
+                                }
+
+                                else
+
+                                {
+
+                                    <span class="client-phone"><i class="bi bi-telephone"></i> @p.PhoneNumber</span>
+
+                                }
+
+                            </td>
+
                             <td class="d-none d-lg-table-cell">
+
                                 <small class="text-muted">@(p.CreatedDate?.ToLocalTime().ToString("g") ?? "—")</small>
+
                             </td>
+
                             <td class="text-end module-table-actions">
+
                                 <div class="client-actions">
+
                                     <a class="btn btn-sm btn-primary" href="/patient-dashboard/@p.Id" title="Dashboard">
+
                                         <i class="bi bi-grid-1x2"></i><span>Dashboard</span>
+
                                     </a>
+
                                     <a class="btn btn-sm btn-outline-primary" href="/patients/edit/@p.Id" title="Edit">
+
                                         <i class="bi bi-pencil"></i>
+
                                     </a>
+
                                     <a class="btn btn-sm btn-outline-secondary" href="/patients/details/@p.Id" title="View">
+
                                         <i class="bi bi-eye"></i>
+
                                     </a>
+
                                 </div>
+
                             </td>
+
                         </tr>
+
+                        @if (expanded && p.ClinicalHistory.Count > 0)
+
+                        {
+
+                            <tr class="patient-history-row">
+
+                                <td colspan="8">
+
+                                    <div class="patient-history-panel">
+
+                                        <strong class="d-block mb-2">Clinical visit history</strong>
+
+                                        <ul>
+
+                                            @foreach (var item in p.ClinicalHistory)
+
+                                            {
+
+                                                <li>
+
+                                                    <span>@item.Module · @item.Count record@(item.Count == 1 ? "" : "s")</span>
+
+                                                    <span class="text-muted">@(item.LastDate?.ToLocalTime().ToString("g") ?? "—")</span>
+
+                                                </li>
+
+                                            }
+
+                                        </ul>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                        }
+
                     }
+
                     </tbody>
+
                 </table>
+
             </div>
+
         </div>
+
     }
+
 </div>
 
+
+
 @code {
+
     private List<Patient> _patients = [];
+
     private string? _search;
+
     private bool _loading = true;
+
+    private Guid? _expandedPatientId;
+
     private CancellationTokenSource? _debounceCts;
 
+
+
     [SupplyParameterFromQuery]
+
     public string? Q { get; set; }
 
+
+
     protected override async Task OnParametersSetAsync()
+
     {
+
         _search = Q;
+
         await LoadAsync();
+
     }
+
+
 
     private async Task OnSearchInputAsync()
+
     {
+
         _debounceCts?.Cancel();
+
         _debounceCts?.Dispose();
+
         _debounceCts = new CancellationTokenSource();
+
         var token = _debounceCts.Token;
 
+
+
         try
+
         {
+
             await Task.Delay(300, token);
+
             await LoadAsync();
+
         }
+
         catch (TaskCanceledException)
+
         {
+
         }
+
     }
 
+
+
     private async Task LoadAsync()
+
     {
+
         _loading = true;
+
         var all = await Api.GetPatientsAsync(_search);
+
         _patients = all.Take(50).ToList();
+
         _loading = false;
+
     }
+
+
 
     private Task Search() => LoadAsync();
 
+
+
     private async Task ClearSearch()
+
     {
+
         _search = null;
+
         Nav.NavigateTo("/patients");
+
         await LoadAsync();
+
+    }
+
+
+
+    private void ToggleHistory(Guid patientId)
+
+    {
+
+        _expandedPatientId = _expandedPatientId == patientId ? null : patientId;
+
+    }
+
+
+
+    private static string FormatHistoryTooltip(PatientClinicalHistoryItem item)
+    {
+        var last = item.LastDate?.ToLocalTime().ToString("g") ?? "—";
+        var plural = item.Count == 1 ? "" : "s";
+        return $"{item.Module}: {item.Count} record{plural} · last {last}";
     }
 
     public void Dispose()
+
     {
+
         _debounceCts?.Cancel();
+
         _debounceCts?.Dispose();
+
     }
+
 }
+
+

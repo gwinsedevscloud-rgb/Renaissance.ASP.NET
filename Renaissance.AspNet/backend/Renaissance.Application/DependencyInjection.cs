@@ -25,6 +25,10 @@ public static class DependencyInjection
         services.AddScoped<ISettingsService, SettingsService>();
         services.AddScoped<IHospitalModuleService, HospitalModuleService>();
         services.AddScoped<IUserModuleAccessService, UserModuleAccessService>();
+        services.AddScoped<ICareProgramService, CareProgramService>();
+        services.AddScoped<IOutreachModeService, OutreachModeService>();
+        services.AddScoped<ISecondaryOutreachService, SecondaryOutreachService>();
+        services.AddScoped<IFieldSyncService, FieldSyncService>();
 
         return services;
     }

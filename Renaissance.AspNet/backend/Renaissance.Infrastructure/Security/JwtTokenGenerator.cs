@@ -54,6 +54,61 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    public DateTime ReadTokenExpiryUtc(string token)
+    {
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        return jwt.ValidTo.ToUniversalTime();
+    }
+
+    public bool TryValidateExpiredTokenForRefresh(string token, out Guid userId, out DateTime originalExpiresAtUtc)
+    {
+        userId = default;
+        originalExpiresAtUtc = default;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        try
+        {
+            var refreshParams = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = false,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = _options.Issuer,
+                ValidAudience = _options.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key)),
+                ClockSkew = TimeSpan.FromMinutes(1)
+            };
+
+            var handler = new JwtSecurityTokenHandler();
+            var principal = handler.ValidateToken(token, refreshParams, out var validatedToken);
+            if (validatedToken is not JwtSecurityToken jwt
+                || !string.Equals(jwt.Header.Alg, SecurityAlgorithms.HmacSha256, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            originalExpiresAtUtc = jwt.ValidTo.ToUniversalTime();
+            var grace = TimeSpan.FromDays(Math.Max(1, _options.RefreshGraceDays));
+            if (originalExpiresAtUtc + grace < DateTime.UtcNow)
+            {
+                return false;
+            }
+
+            var sub = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                      ?? principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            return Guid.TryParse(sub, out userId);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public string CreateLanAccessToken(Guid userId, string userName)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));

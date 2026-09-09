@@ -3,15 +3,16 @@
 @inject AuthStateService Auth
 @inject RenaissanceApiClient Api
 @inject HospitalModuleStateService ModuleState
+@inject OutreachStateService Outreach
 @inject NavigationManager Nav
 
-<PageTitle>Sign in - Renaissance</PageTitle>
+<PageTitle>Sign in - MedReach</PageTitle>
 
 <div class="login-wrap">
     <div class="login-card">
         <div class="login-brand">
             <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
-            <h1>@(_facilityName ?? "Renaissance")</h1>
+            <h1>@(_facilityName ?? "MedReach")</h1>
             <p>Sign in to access clinical modules assigned to your role.</p>
         </div>
 
@@ -20,7 +21,7 @@
             <div class="alert alert-danger">@_error</div>
         }
 
-        <EditForm Model="_model" OnValidSubmit="SignInAsync">
+        <EditForm Model="_model" FormName="login" OnValidSubmit="SignInAsync">
             <DataAnnotationsValidator />
             <div class="mb-3">
                 <label class="form-label" for="username">Username</label>
@@ -78,6 +79,7 @@
             var result = await Api.LoginAsync(_model.UserName, _model.Password);
             await Auth.SignInAsync(result.Token, result.User);
             await ModuleState.LoadAsync(Api);
+            await Outreach.LoadAsync(Api);
             Nav.NavigateTo("/");
         }
         catch (Exception ex)

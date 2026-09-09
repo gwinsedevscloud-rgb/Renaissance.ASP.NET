@@ -122,6 +122,28 @@ public class SettingsController : ControllerBase
         }
     }
 
+    [HttpGet("outreach-module")]
+    [RequireModule(AppModule.Administration)]
+    public async Task<ActionResult<OutreachModuleSettingsDto>> GetOutreachModule(CancellationToken cancellationToken)
+        => Ok(await _settings.GetOutreachModuleSettingsAsync(cancellationToken));
+
+    [HttpPut("outreach-module")]
+    [RequireModule(AppModule.Administration)]
+    public async Task<ActionResult<OutreachModuleSettingsDto>> UpdateOutreachModule(
+        [FromBody] UpdateOutreachModuleSettingsRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var updatedBy = User.Identity?.Name ?? "admin";
+            return Ok(await _settings.UpdateOutreachModuleSettingsAsync(request, GetCurrentUserId(), updatedBy, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpGet("modules")]
     [RequireModule(AppModule.Administration)]
     public async Task<ActionResult<HospitalModulesConfigDto>> GetModules(CancellationToken cancellationToken)

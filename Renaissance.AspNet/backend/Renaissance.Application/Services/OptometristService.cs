@@ -71,6 +71,10 @@ public class OptometristService : IOptometristService
         optometrist.PatientId = incoming.PatientId;
         optometrist.VisualAcuityRight = incoming.VisualAcuityRight;
         optometrist.VisualAcuityLeft = incoming.VisualAcuityLeft;
+        optometrist.Diagnoses = incoming.Diagnoses ?? [];
+        optometrist.Treatments = incoming.Treatments ?? [];
+        optometrist.Services = incoming.Services ?? [];
+        optometrist.Medications = incoming.Medications ?? [];
         optometrist.GlassesDispensed = incoming.GlassesDispensed;
         optometrist.Referred = incoming.Referred;
         AuditHelper.SetUpdated(optometrist);

@@ -153,6 +153,112 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.ToTable("app_user", (string)null);
                 });
 
+            modelBuilder.Entity("Renaissance.Domain.Entities.CareProgram", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Archived")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("BatchSize")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LinkedClinicalModule")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("NextSerialNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OutreachCode")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)");
+
+                    b.Property<string>("PatientIdMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ProgramType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("SerialPadding")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SerialStartNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TargetAgeGroup")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("TargetAudience")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("TargetCommunity")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("TargetedTreatment")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("care_program", (string)null);
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.CareProgramStaff", b =>
+                {
+                    b.Property<Guid>("CareProgramId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("CareProgramId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("care_program_staff", (string)null);
+                });
+
             modelBuilder.Entity("Renaissance.Domain.Entities.ClientNumberSequence", b =>
                 {
                     b.Property<long>("Id")
@@ -299,6 +405,70 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.ToTable("dental_consultation", (string)null);
                 });
 
+            modelBuilder.Entity("Renaissance.Domain.Entities.FieldDevice", b =>
+                {
+                    b.Property<string>("DeviceId")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("DeviceLabel")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("FirstSeenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastActor")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime?>("LastPullUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LastPushUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastSeenUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("DeviceId");
+
+                    b.ToTable("field_device", (string)null);
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.FieldSyncReceipt", b =>
+                {
+                    b.Property<Guid>("ClientRecordId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ClientNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("DeviceId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("RecordType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("ServerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("SyncedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("ClientRecordId");
+
+                    b.HasIndex("DeviceId", "RecordType");
+
+                    b.ToTable("field_sync_receipt", (string)null);
+                });
+
             modelBuilder.Entity("Renaissance.Domain.Entities.HospitalModuleConfig", b =>
                 {
                     b.Property<string>("Module")
@@ -346,6 +516,9 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<bool>("OutreachModuleEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<string>("TimeZoneId")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -373,7 +546,8 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                             Id = 1,
                             ApiAccessUrl = "",
                             ClientNumberPrefix = "ACH",
-                            FacilityName = "Renaissance Hospital",
+                            FacilityName = "MedReach",
+                            OutreachModuleEnabled = true,
                             TimeZoneId = "UTC",
                             WebAccessUrl = ""
                         });
@@ -516,14 +690,30 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("CreatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Diagnoses")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool?>("GlassesDispensed")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Medications")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool?>("Referred")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Services")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Treatments")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -551,8 +741,7 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Age")
                         .HasColumnType("int");
@@ -564,6 +753,9 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("Archived")
                         .HasColumnType("bit");
+
+                    b.Property<Guid?>("CareProgramId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ClientNumber")
                         .IsRequired()
@@ -591,7 +783,8 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Religion")
                         .HasColumnType("nvarchar(max)");
@@ -611,6 +804,8 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CareProgramId");
 
                     b.HasIndex("ClientNumber")
                         .IsUnique();
@@ -678,6 +873,61 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.HasIndex("PatientId");
 
                     b.ToTable("ren_pharmacy_prescription", (string)null);
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.ProgramPatientId", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Archived")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("CareProgramId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("PatientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("RegisteredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SerialNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("CareProgramId", "Code")
+                        .IsUnique();
+
+                    b.HasIndex("CareProgramId", "Status");
+
+                    b.ToTable("program_patient_id", (string)null);
                 });
 
             modelBuilder.Entity("Renaissance.Domain.Entities.Referral", b =>
@@ -788,6 +1038,64 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.ToTable("role_module_access", (string)null);
                 });
 
+            modelBuilder.Entity("Renaissance.Domain.Entities.SecondaryOutreachRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Age")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Archived")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("CareProgramId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<Guid?>("ProgramPatientIdId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RegistrationCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Sex")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CareProgramId");
+
+                    b.HasIndex("ProgramPatientIdId");
+
+                    b.ToTable("secondary_outreach_registration", (string)null);
+                });
+
             modelBuilder.Entity("Renaissance.Domain.Entities.Triage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -888,6 +1196,25 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("Renaissance.Domain.Entities.CareProgramStaff", b =>
+                {
+                    b.HasOne("Renaissance.Domain.Entities.CareProgram", "CareProgram")
+                        .WithMany()
+                        .HasForeignKey("CareProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Renaissance.Domain.Entities.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CareProgram");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Renaissance.Domain.Entities.Consultation", b =>
                 {
                     b.HasOne("Renaissance.Domain.Entities.Patient", "Patient")
@@ -943,6 +1270,16 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.Navigation("Patient");
                 });
 
+            modelBuilder.Entity("Renaissance.Domain.Entities.Patient", b =>
+                {
+                    b.HasOne("Renaissance.Domain.Entities.CareProgram", "CareProgram")
+                        .WithMany()
+                        .HasForeignKey("CareProgramId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CareProgram");
+                });
+
             modelBuilder.Entity("Renaissance.Domain.Entities.PharmacyPrescription", b =>
                 {
                     b.HasOne("Renaissance.Domain.Entities.Patient", "Patient")
@@ -950,6 +1287,24 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                         .HasForeignKey("PatientId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.ProgramPatientId", b =>
+                {
+                    b.HasOne("Renaissance.Domain.Entities.CareProgram", "CareProgram")
+                        .WithMany("PatientIds")
+                        .HasForeignKey("CareProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Renaissance.Domain.Entities.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CareProgram");
 
                     b.Navigation("Patient");
                 });
@@ -974,6 +1329,24 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.SecondaryOutreachRegistration", b =>
+                {
+                    b.HasOne("Renaissance.Domain.Entities.CareProgram", "CareProgram")
+                        .WithMany()
+                        .HasForeignKey("CareProgramId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Renaissance.Domain.Entities.ProgramPatientId", "ProgramPatientId")
+                        .WithMany()
+                        .HasForeignKey("ProgramPatientIdId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CareProgram");
+
+                    b.Navigation("ProgramPatientId");
                 });
 
             modelBuilder.Entity("Renaissance.Domain.Entities.Triage", b =>
@@ -1008,6 +1381,11 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Renaissance.Domain.Entities.AppUser", b =>
                 {
                     b.Navigation("ModuleAccess");
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.CareProgram", b =>
+                {
+                    b.Navigation("PatientIds");
                 });
 #pragma warning restore 612, 618
         }

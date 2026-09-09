@@ -1,6 +1,7 @@
 @inject AuthStateService Auth
 @inject RenaissanceApiClient Api
 @inject HospitalModuleStateService ModuleState
+@inject OutreachStateService Outreach
 
 @if (!Auth.IsReady)
 {
@@ -45,6 +46,7 @@ else
                 {
                     Auth.SetSession(token, me);
                     await ModuleState.LoadAsync(Api, cts.Token);
+                    await Outreach.LoadAsync(Api, cts.Token);
                 }
             }
             catch

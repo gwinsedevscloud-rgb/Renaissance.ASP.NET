@@ -24,6 +24,12 @@ public interface IApplicationDbContext
     DbSet<HospitalSettings> HospitalSettings { get; }
     DbSet<HospitalModuleConfig> HospitalModuleConfigs { get; }
     DbSet<ModuleReferralLink> ModuleReferralLinks { get; }
+    DbSet<CareProgram> CarePrograms { get; }
+    DbSet<ProgramPatientId> ProgramPatientIds { get; }
+    DbSet<CareProgramStaff> CareProgramStaff { get; }
+    DbSet<SecondaryOutreachRegistration> SecondaryOutreachRegistrations { get; }
+    DbSet<FieldSyncReceipt> FieldSyncReceipts { get; }
+    DbSet<FieldDevice> FieldDevices { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -11,11 +11,13 @@ public class TriageService : ITriageService
 {
     private readonly IApplicationDbContext _db;
     private readonly IReferralService _referrals;
+    private readonly IOutreachModeService _outreach;
 
-    public TriageService(IApplicationDbContext db, IReferralService referrals)
+    public TriageService(IApplicationDbContext db, IReferralService referrals, IOutreachModeService outreach)
     {
         _db = db;
         _referrals = referrals;
+        _outreach = outreach;
     }
 
     public async Task<List<Triage>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -63,10 +65,13 @@ public class TriageService : ITriageService
     private async Task EnsureConsultationReferralAsync(Triage triage, CancellationToken cancellationToken)
     {
         var actor = triage.CreatedBy ?? "system";
+        var targetModule = await _outreach.GetNextModuleAfterAsync(AppModule.Triage, cancellationToken)
+            ?? AppModule.Consultations;
+
         var hasActive = await _db.Referrals.AnyAsync(
             r => !r.Archived
                  && r.PatientId == triage.PatientId
-                 && r.TargetModule == AppModule.Consultations
+                 && r.TargetModule == targetModule
                  && (r.Status == ReferralStatus.Pending || r.Status == ReferralStatus.InProgress),
             cancellationToken);
 
@@ -80,8 +85,10 @@ public class TriageService : ITriageService
             PatientId = triage.PatientId,
             SourceModule = AppModule.Triage,
             SourceRecordId = triage.Id,
-            TargetModules = [AppModule.Consultations],
-            Notes = "Auto-referred after triage",
+            TargetModules = [targetModule],
+            Notes = targetModule == AppModule.Laboratory
+                ? "Auto-referred to laboratory after triage (outreach)"
+                : "Auto-referred after triage",
             Priority = ReferralPriority.Routine
         }, actor, cancellationToken);
     }

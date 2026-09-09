@@ -22,6 +22,10 @@ public class ExportsController : ControllerBase
     public ActionResult<IReadOnlyList<ExportModuleInfoDto>> Modules()
         => Ok(_exports.GetModules());
 
+    [HttpGet("outreach-options")]
+    public async Task<ActionResult<IReadOnlyList<ExportOutreachOptionDto>>> OutreachOptions(CancellationToken cancellationToken)
+        => Ok(await _exports.GetOutreachOptionsAsync(cancellationToken));
+
     [HttpPost("preview")]
     public async Task<ActionResult<ExportPreviewDto>> Preview([FromBody] ExportRecordsRequest request, CancellationToken cancellationToken)
         => Ok(await _exports.PreviewAsync(request, cancellationToken));

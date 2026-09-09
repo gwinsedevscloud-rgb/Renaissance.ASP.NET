@@ -10,7 +10,11 @@
             <option value="@option">@option</option>
         }
     </InputSelect>
-    <InputTextArea class="form-control mt-2" rows="@Rows" @bind-Value="Value" />
+    <InputTextArea class="form-control mt-2"
+                   rows="@Rows"
+                   Value="@Value"
+                   ValueChanged="OnTextChanged"
+                   ValueExpression="() => Value" />
     @if (!string.IsNullOrWhiteSpace(Hint))
     {
         <div class="form-hint">@Hint</div>
@@ -32,6 +36,12 @@
     public EventCallback<string?> ValueChanged { get; set; }
 
     private string _selected = string.Empty;
+
+    private Task OnTextChanged(string? value)
+    {
+        Value = value;
+        return ValueChanged.InvokeAsync(value);
+    }
 
     private async Task AppendSelectionAsync()
     {

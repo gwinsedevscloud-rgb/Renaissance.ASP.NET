@@ -5,7 +5,7 @@
 @inject RenaissanceApiClient Api
 @inject IJSRuntime Js
 
-<PageTitle>Export records - Renaissance</PageTitle>
+<PageTitle>Export records - MedReach</PageTitle>
 
 <div class="module-page">
     <PageHeader Title="Export records"
@@ -49,6 +49,35 @@
                                 <label class="form-label" for="toDate">To date</label>
                                 <InputDate id="toDate" class="form-control" @bind-Value="_toDate" @bind-Value:after="SchedulePreviewAsync" />
                             </div>
+                            <div class="col-12">
+                                <label class="form-label" for="outreachScope">Outreach filter</label>
+                                <InputSelect id="outreachScope"
+                                             class="form-select"
+                                             TValue="ExportOutreachScope"
+                                             @bind-Value="_outreachScope"
+                                             @bind-Value:after="OnOutreachScopeChangedAsync">
+                                    <option value="@ExportOutreachScope.All">All records</option>
+                                    <option value="@ExportOutreachScope.FacilityOnly">Facility only (non-outreach patients)</option>
+                                    <option value="@ExportOutreachScope.CareProgram">Specific outreach program</option>
+                                </InputSelect>
+                            </div>
+                            @if (_outreachScope == ExportOutreachScope.CareProgram)
+                            {
+                                <div class="col-12">
+                                    <label class="form-label" for="careProgram">Care program</label>
+                                    <InputSelect id="careProgram"
+                                                 class="form-select"
+                                                 TValue="Guid?"
+                                                 @bind-Value="_careProgramId"
+                                                 @bind-Value:after="OnCareProgramChangedAsync">
+                                        <option value="">Select a program...</option>
+                                        @foreach (var program in _outreachPrograms)
+                                        {
+                                            <option value="@program.Id">@program.Name (@program.ProgramType — @program.Status)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                            }
                             <div class="col-12">
                                 <label class="form-label" for="clientSearch">Patient filter</label>
                                 <InputText id="clientSearch"
@@ -183,11 +212,14 @@
 
 @code {
     private List<ExportModuleInfoDto> _catalog = [];
+    private List<ExportOutreachOptionDto> _outreachPrograms = [];
     private HashSet<ExportRecordModule> _selectedModules = [];
     private ExportPreviewDto? _preview;
     private DateTime? _fromDate;
     private DateTime? _toDate;
     private string? _clientSearch;
+    private ExportOutreachScope _outreachScope = ExportOutreachScope.All;
+    private Guid? _careProgramId;
     private bool _includeArchived;
     private bool _loading = true;
     private bool _previewing;
@@ -200,6 +232,7 @@
         try
         {
             _catalog = await Api.GetExportModulesAsync();
+            _outreachPrograms = await Api.GetExportOutreachOptionsAsync();
             _selectedModules = _catalog.Select(m => m.Module).ToHashSet();
             await RefreshPreviewAsync();
         }
@@ -219,8 +252,34 @@
         FromDate = _fromDate,
         ToDate = _toDate,
         IncludeArchived = _includeArchived,
-        ClientSearch = string.IsNullOrWhiteSpace(_clientSearch) ? null : _clientSearch.Trim()
+        ClientSearch = string.IsNullOrWhiteSpace(_clientSearch) ? null : _clientSearch.Trim(),
+        OutreachScope = _outreachScope,
+        CareProgramId = _outreachScope == ExportOutreachScope.CareProgram ? _careProgramId : null
     };
+
+    private async Task OnOutreachScopeChangedAsync()
+    {
+        if (_outreachScope != ExportOutreachScope.CareProgram)
+        {
+            _careProgramId = null;
+        }
+
+        await SchedulePreviewAsync();
+    }
+
+    private async Task OnCareProgramChangedAsync()
+    {
+        if (_careProgramId.HasValue)
+        {
+            var program = _outreachPrograms.FirstOrDefault(p => p.Id == _careProgramId.Value);
+            if (program?.ProgramType == "Secondary")
+            {
+                _selectedModules.Add(ExportRecordModule.SecondaryOutreach);
+            }
+        }
+
+        await SchedulePreviewAsync();
+    }
 
     private async Task SchedulePreviewAsync()
     {
@@ -322,6 +381,7 @@
         ExportRecordModule.Optometrists => "bi-eye",
         ExportRecordModule.Ophthalmologists => "bi-eye-fill",
         ExportRecordModule.Referrals => "bi-arrow-left-right",
+        ExportRecordModule.SecondaryOutreach => "bi-megaphone",
         _ => "bi-grid"
     };
 }

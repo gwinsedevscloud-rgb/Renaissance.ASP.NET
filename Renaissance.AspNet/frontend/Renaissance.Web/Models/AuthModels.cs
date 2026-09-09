@@ -13,7 +13,9 @@ public enum AppModule
     Ophthalmologists = 9,
     ClientDashboard = 10,
     Stakeholders = 11,
-    Administration = 12
+    Administration = 12,
+    CarePrograms = 13,
+    SecondaryOutreach = 14
 }
 
 public class LoginRequest
@@ -112,6 +114,8 @@ public static class ModuleNav
         new(AppModule.Ophthalmologists, "Ophthalmologists", "/ophthalmologists", "bi-eye-fill", "Ophthalmology care"),
         new(AppModule.ClientDashboard, "Patient Dashboard", "/patients", "bi-grid-1x2", "Per-patient clinical hub"),
         new(AppModule.Stakeholders, "Stakeholders", "/stakeholders", "bi-graph-up-arrow", "KPIs and analytics"),
+        new(AppModule.CarePrograms, "Care Programs", "/admin/care-programs", "bi-megaphone", "Outreach programs and patient ID batches"),
+        new(AppModule.SecondaryOutreach, "Secondary Outreach", "/secondary-outreach", "bi-droplet", "Registration-only outreach e.g. deworming"),
         new(AppModule.Administration, "Administration", "/admin/users", "bi-shield-lock", "Users, roles, settings, backups, and module access")
     ];
 
@@ -146,6 +150,8 @@ public static class ModuleNav
         if (path.StartsWith("optometrists", StringComparison.OrdinalIgnoreCase)) return AppModule.Optometrists;
         if (path.StartsWith("ophthalmologists", StringComparison.OrdinalIgnoreCase)) return AppModule.Ophthalmologists;
         if (path.StartsWith("stakeholders", StringComparison.OrdinalIgnoreCase)) return AppModule.Stakeholders;
+        if (path.StartsWith("admin/care-programs", StringComparison.OrdinalIgnoreCase)) return AppModule.CarePrograms;
+        if (path.StartsWith("secondary-outreach", StringComparison.OrdinalIgnoreCase)) return AppModule.SecondaryOutreach;
         if (path.StartsWith("admin", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("users", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("roles", StringComparison.OrdinalIgnoreCase))

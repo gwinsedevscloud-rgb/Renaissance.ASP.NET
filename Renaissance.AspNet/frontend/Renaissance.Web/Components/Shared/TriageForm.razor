@@ -2,13 +2,91 @@
 @using Renaissance.Web.Helpers
 
 <div class="triage-form triage-form-station">
-    <aside class="triage-monitor @(_hasVitals ? "is-live" : "")" aria-label="Live vitals monitor">
-        <div class="triage-monitor-head">
-            <i class="bi bi-activity"></i>
-            <span>Vitals monitor</span>
+    <aside class="triage-monitor @(_hasVitals ? "is-live" : "") @(Bmi.HasValue ? "has-bmi" : "")" aria-label="Live vitals and BMI">
+        <div class="bmi-gauge @BmiCssClass @(Bmi.HasValue ? "has-value" : "")" aria-live="polite">
+            <div class="bmi-gauge-top">
+                <div class="bmi-gauge-title-block">
+                    <span class="bmi-gauge-title">Body mass index (WHO)</span>
+                    <strong class="bmi-gauge-value">@(Bmi?.ToString("0.0") ?? "—")</strong>
+                </div>
+                @if (Bmi.HasValue)
+                {
+                    <span class="bmi-gauge-badge is-active">
+                        <i class="bmi-gauge-badge-dot" aria-hidden="true"></i>
+                        <span class="bmi-gauge-badge-text">
+                            <strong>@BmiCategory</strong>
+                            <small>@((MarkupString)BmiRangeLabel)</small>
+                        </span>
+                    </span>
+                }
+                else
+                {
+                    <span class="bmi-gauge-badge">
+                        <i class="bmi-gauge-badge-dot" aria-hidden="true"></i>
+                        Enter weight &amp; height
+                    </span>
+                }
+            </div>
+
+            <div class="bmi-gauge-legend" aria-hidden="true">
+                <span class="@(BmiCssClass == "bmi-underweight" ? "is-active" : null)"><i class="bmi-dot bmi-dot-under"></i> Underweight (&lt;18.5)</span>
+                <span class="@(BmiCssClass == "bmi-normal" ? "is-active" : null)"><i class="bmi-dot bmi-dot-normal"></i> Normal (18.5–24.9)</span>
+                <span class="@(BmiCssClass == "bmi-overweight" ? "is-active" : null)"><i class="bmi-dot bmi-dot-over"></i> Overweight (25–29.9)</span>
+                <span class="@(BmiCssClass == "bmi-obese" ? "is-active" : null)"><i class="bmi-dot bmi-dot-obese"></i> Obese (≥30)</span>
+            </div>
+
+            <div class="bmi-gauge-chart">
+                <svg viewBox="0 0 240 148" class="bmi-gauge-svg" role="img" aria-label="@(Bmi.HasValue ? $"BMI {Bmi:0.0}, {BmiCategory}" : "BMI gauge waiting for measurements")">
+                    @* Track *@
+                    <path class="bmi-arc-track" d="@DescribeArc(15, 40)" />
+
+                    @* Colored segments — active category is highlighted via CSS *@
+                    <path class="bmi-arc bmi-arc-under @(BmiCssClass == "bmi-underweight" ? "is-active" : null)" d="@DescribeArc(15, 18.5)" />
+                    <path class="bmi-arc bmi-arc-normal @(BmiCssClass == "bmi-normal" ? "is-active" : null)" d="@DescribeArc(18.5, 25)" />
+                    <path class="bmi-arc bmi-arc-over @(BmiCssClass == "bmi-overweight" ? "is-active" : null)" d="@DescribeArc(25, 30)" />
+                    <path class="bmi-arc bmi-arc-obese @(BmiCssClass == "bmi-obese" ? "is-active" : null)" d="@DescribeArc(30, 40)" />
+
+                    @* Tick marks + labels *@
+                    @foreach (var tick in BmiTicks)
+                    {
+                        var a = BmiToAngle(tick);
+                        var outer = Polar(GaugeCx, GaugeCy, GaugeR + 2, a);
+                        var inner = Polar(GaugeCx, GaugeCy, GaugeR - 8, a);
+                        var label = Polar(GaugeCx, GaugeCy, GaugeR + 16, a);
+                        <line class="bmi-tick" x1="@Svg(outer.X)" y1="@Svg(outer.Y)" x2="@Svg(inner.X)" y2="@Svg(inner.Y)" />
+                        @((MarkupString)TickLabelMarkup(label.X, label.Y, FormatTick(tick)))
+                    }
+
+                    @* Needle tip computed in polar coords (no rotate — reliable across locales) *@
+                    @{
+                        var tip = Polar(GaugeCx, GaugeCy, GaugeR - 12, NeedleAngle);
+                    }
+                    <g class="bmi-needle @(Bmi.HasValue ? "is-ready" : null)">
+                        <line x1="@Svg(GaugeCx)" y1="@Svg(GaugeCy)" x2="@Svg(tip.X)" y2="@Svg(tip.Y)" />
+                        <circle class="bmi-needle-tip" cx="@Svg(tip.X)" cy="@Svg(tip.Y)" r="3.5" />
+                        <circle class="bmi-needle-hub" cx="@Svg(GaugeCx)" cy="@Svg(GaugeCy)" r="6" />
+                        <circle class="bmi-needle-hub-inner" cx="@Svg(GaugeCx)" cy="@Svg(GaugeCy)" r="2.4" />
+                    </g>
+                </svg>
+            </div>
+
+            <div class="bmi-category-row" role="list" aria-label="BMI classification">
+                <div class="bmi-category-chip bmi-chip-under @(BmiCssClass == "bmi-underweight" ? "is-active" : null)" role="listitem">Underweight</div>
+                <div class="bmi-category-chip bmi-chip-normal @(BmiCssClass == "bmi-normal" ? "is-active" : null)" role="listitem">Normal</div>
+                <div class="bmi-category-chip bmi-chip-over @(BmiCssClass == "bmi-overweight" ? "is-active" : null)" role="listitem">Overweight</div>
+                <div class="bmi-category-chip bmi-chip-obese @(BmiCssClass == "bmi-obese" ? "is-active" : null)" role="listitem">Obese</div>
+            </div>
+
+            @if (Bmi.HasValue)
+            {
+                <div class="bmi-gauge-result">
+                    <span class="bmi-gauge-result-label">Classification</span>
+                    <strong class="bmi-gauge-result-value">@BmiCategory</strong>
+                </div>
+            }
         </div>
 
-        <div class="triage-monitor-grid">
+        <div class="triage-monitor-grid triage-monitor-grid-compact">
             <div class="triage-monitor-card @TriageVitalsHelper.BpCssClass(Model.SystolicBp, Model.DiastolicBp)">
                 <span class="triage-monitor-label">Blood pressure</span>
                 <strong class="triage-monitor-value">@(Model.SystolicBp is not null && Model.DiastolicBp is not null ? $"{Model.SystolicBp}/{Model.DiastolicBp}" : "—")</strong>
@@ -24,49 +102,16 @@
                 <strong class="triage-monitor-value">@(Model.PulseRate?.ToString() ?? "—")</strong>
                 <small>bpm</small>
             </div>
-            <div class="triage-monitor-card triage-monitor-bmi @BmiCssClass">
-                <span class="triage-monitor-label">BMI</span>
-                <strong class="triage-monitor-value">@(Bmi?.ToString("0.0") ?? "—")</strong>
-                <small>@(Bmi.HasValue ? BmiCategory : "Auto-calculated")</small>
-            </div>
         </div>
     </aside>
 
     <div class="triage-form-panels">
         <section class="triage-panel">
             <div class="triage-panel-head">
-                <span class="triage-panel-icon"><i class="bi bi-clipboard2-pulse"></i></span>
-                <div>
-                    <h3>Medical history</h3>
-                    <p>Flag conditions relevant to this encounter</p>
-                </div>
-            </div>
-            <div class="triage-history-grid">
-                <label class="triage-history-toggle @(Diabetes ? "is-on" : "")">
-                    <InputCheckbox class="form-check-input" @bind-Value="Diabetes" />
-                    <span><i class="bi bi-droplet"></i> Diabetes</span>
-                </label>
-                <label class="triage-history-toggle @(Asthma ? "is-on" : "")">
-                    <InputCheckbox class="form-check-input" @bind-Value="Asthma" />
-                    <span><i class="bi bi-wind"></i> Asthma</span>
-                </label>
-                <label class="triage-history-toggle @(SickleCell ? "is-on" : "")">
-                    <InputCheckbox class="form-check-input" @bind-Value="SickleCell" />
-                    <span><i class="bi bi-heart"></i> Sickle cell</span>
-                </label>
-                <label class="triage-history-toggle @(Smoking ? "is-on" : "")">
-                    <InputCheckbox class="form-check-input" @bind-Value="Smoking" />
-                    <span><i class="bi bi-cloud"></i> Smoking</span>
-                </label>
-            </div>
-        </section>
-
-        <section class="triage-panel">
-            <div class="triage-panel-head">
                 <span class="triage-panel-icon"><i class="bi bi-person-lines-fill"></i></span>
                 <div>
                     <h3>Body measurements</h3>
-                    <p>Weight and height for BMI calculation</p>
+                    <p>WHO adult BMI updates live from weight and height</p>
                 </div>
             </div>
             <div class="triage-input-row">
@@ -128,21 +173,52 @@
 </div>
 
 @code {
+    private const double GaugeCx = 120;
+    private const double GaugeCy = 118;
+    private const double GaugeR = 78;
+    private static readonly double[] BmiTicks = [15, 18.5, 25, 30, 40];
+    private static readonly System.Globalization.CultureInfo Inv = System.Globalization.CultureInfo.InvariantCulture;
+
     [Parameter, EditorRequired]
     public Triage Model { get; set; } = null!;
 
-    private bool Diabetes { get => Model.Diabetes == true; set => Model.Diabetes = value; }
-    private bool Asthma { get => Model.Asthma == true; set => Model.Asthma = value; }
-    private bool SickleCell { get => Model.SickleCell == true; set => Model.SickleCell = value; }
-    private bool Smoking { get => Model.Smoking == true; set => Model.Smoking = value; }
-
     private double? Bmi => TriageVitalsHelper.CalculateBmi(Model.Weight, Model.Height);
     private string BmiCategory => TriageVitalsHelper.BmiCategory(Bmi);
+    private string BmiRangeLabel => TriageVitalsHelper.BmiRangeLabel(Bmi);
     private string BmiCssClass => TriageVitalsHelper.BmiCssClass(Bmi);
+    private double NeedleAngle => TriageVitalsHelper.BmiNeedleAngle(Bmi);
 
     private bool _hasVitals =>
         Model.Weight is > 0 || Model.Height is > 0 || Model.Temperature is not null
         || Model.PulseRate is not null || Model.SystolicBp is not null || Model.DiastolicBp is not null;
 
     private void OnVitalsChanged() => StateHasChanged();
+
+    private static string Svg(double value) => value.ToString("0.##", Inv);
+
+    private static double BmiToAngle(double bmi) =>
+        180d - ((Math.Clamp(bmi, TriageVitalsHelper.BmiGaugeMin, TriageVitalsHelper.BmiGaugeMax)
+                 - TriageVitalsHelper.BmiGaugeMin)
+                / (TriageVitalsHelper.BmiGaugeMax - TriageVitalsHelper.BmiGaugeMin)) * 180d;
+
+    private static string FormatTick(double tick) =>
+        tick % 1 == 0 ? tick.ToString("0", Inv) : tick.ToString("0.0", Inv);
+
+    private static string TickLabelMarkup(double x, double y, string label) =>
+        $"<text class=\"bmi-tick-label\" x=\"{Svg(x)}\" y=\"{Svg(y)}\" text-anchor=\"middle\" dominant-baseline=\"middle\">{System.Net.WebUtility.HtmlEncode(label)}</text>";
+
+    private static (double X, double Y) Polar(double cx, double cy, double r, double angleDeg)
+    {
+        var rad = angleDeg * Math.PI / 180d;
+        return (cx + r * Math.Cos(rad), cy - r * Math.Sin(rad));
+    }
+
+    private static string DescribeArc(double bmiFrom, double bmiTo)
+    {
+        var start = Polar(GaugeCx, GaugeCy, GaugeR, BmiToAngle(bmiFrom));
+        var end = Polar(GaugeCx, GaugeCy, GaugeR, BmiToAngle(bmiTo));
+        var largeArc = Math.Abs(BmiToAngle(bmiFrom) - BmiToAngle(bmiTo)) > 180 ? 1 : 0;
+        // Sweep 0 = counterclockwise → top semicircle (y grows downward in SVG)
+        return $"M {Svg(start.X)} {Svg(start.Y)} A {Svg(GaugeR)} {Svg(GaugeR)} 0 {largeArc} 0 {Svg(end.X)} {Svg(end.Y)}";
+    }
 }

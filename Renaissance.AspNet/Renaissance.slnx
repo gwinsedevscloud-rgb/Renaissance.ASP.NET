@@ -7,5 +7,6 @@
   </Folder>
   <Folder Name="/frontend/">
     <Project Path="frontend/Renaissance.Web/Renaissance.Web.csproj" />
+    <Project Path="frontend/MedReach.Field/MedReach.Field.csproj" />
   </Folder>
 </Solution>

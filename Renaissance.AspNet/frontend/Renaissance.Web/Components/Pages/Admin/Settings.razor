@@ -3,8 +3,10 @@
 @rendermode InteractiveServer
 
 @inject RenaissanceApiClient Api
+@inject AuthStateService Auth
+@inject OutreachStateService Outreach
 
-<PageTitle>Settings - Renaissance</PageTitle>
+<PageTitle>Settings - MedReach</PageTitle>
 
 <div class="module-page admin-settings-page">
     <PageHeader Title="Hospital settings"
@@ -113,6 +115,25 @@
             </div>
         </EditForm>
 
+        @if (Auth.User?.IsAdministrator == true)
+        {
+            <div class="form-card admin-settings-card mt-3">
+                <FormSection Title="Outreach module (Super Admin)"
+                             Subtitle="Disable outreach globally to fall back to full facility mode"
+                             Icon="bi-megaphone"
+                             IconBgClass="feature-icon-violet">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="outreachEnabled"
+                               checked="@_outreachEnabled" @onchange="OnOutreachToggle" disabled="@_outreachSaving" />
+                        <label class="form-check-label" for="outreachEnabled">
+                            Care Programs / Outreach module enabled
+                        </label>
+                    </div>
+                    <div class="form-text">When disabled, active programs are ended and the app uses flexible facility workflows.</div>
+                </FormSection>
+            </div>
+        }
+
         <ModuleServicesSettings OnMessage="msg => _message = msg" OnError="err => _error = err" />
     }
 </div>
@@ -121,6 +142,8 @@
     private UpdateHospitalSettingsRequest _form = new();
     private bool _loading = true;
     private bool _saving;
+    private bool _outreachEnabled = true;
+    private bool _outreachSaving;
     private string? _message;
     private string? _error;
 
@@ -142,6 +165,12 @@
                 ClientNumberPrefix = settings.ClientNumberPrefix,
                 TimeZoneId = settings.TimeZoneId
             };
+
+            if (Auth.User?.IsAdministrator == true)
+            {
+                var outreach = await Api.GetOutreachModuleSettingsAsync();
+                _outreachEnabled = outreach.OutreachModuleEnabled;
+            }
         }
         catch (Exception ex)
         {
@@ -170,6 +199,32 @@
         finally
         {
             _saving = false;
+        }
+    }
+
+    private async Task OnOutreachToggle(ChangeEventArgs e)
+    {
+        _outreachSaving = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            var enabled = e.Value is bool b && b;
+            await Api.UpdateOutreachModuleSettingsAsync(new UpdateOutreachModuleSettingsRequest
+            {
+                OutreachModuleEnabled = enabled
+            });
+            _outreachEnabled = enabled;
+            await Outreach.LoadAsync(Api);
+            _message = enabled ? "Outreach module enabled." : "Outreach module disabled.";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _outreachSaving = false;
         }
     }
 }

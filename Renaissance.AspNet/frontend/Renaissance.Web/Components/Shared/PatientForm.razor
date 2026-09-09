@@ -32,7 +32,6 @@
             <InputSelect class="form-select" @bind-Value="Model.AgeUnit">
                 <option>Years</option>
                 <option>Months</option>
-                <option>Days</option>
             </InputSelect>
         </div>
         <div class="@(ShowClientNumber ? "col-md-4" : "col-md-6")">
@@ -51,23 +50,35 @@
     <div class="row g-3">
         <div class="col-md-4">
             <FormLabel Text="Marital Status" />
-            <InputText class="form-control" @bind-Value="Model.MaritalStatus" placeholder="e.g. Single, Married" />
+            <InputSelect class="form-select" @bind-Value="Model.MaritalStatus">
+                <option value="">Select</option>
+                <option value="Single">Single</option>
+                <option value="Married">Married</option>
+                <option value="Cohabiting">Cohabiting</option>
+                <option value="Divorced/Separated">Divorced/Separated</option>
+            </InputSelect>
         </div>
         <div class="col-md-4">
             <FormLabel Text="Tribe" />
-            <InputText class="form-control" @bind-Value="Model.Tribe" />
+            <InputText class="form-control" @bind-Value="Model.Tribe" placeholder="e.g. Hausa, Yoruba, Igbo, Fulani, Ijaw, Kanuri, Ibibio, Tiv, Edo, Nupe…" />
         </div>
         <div class="col-md-4">
             <FormLabel Text="Religion" />
-            <InputText class="form-control" @bind-Value="Model.Religion" />
+            <InputSelect class="form-select" @bind-Value="Model.Religion">
+                <option value="">Select</option>
+                <option value="Christian">Christian</option>
+                <option value="Islam">Islam</option>
+                <option value="Trad">Trad</option>
+            </InputSelect>
         </div>
         <div class="col-md-4">
             <FormLabel Text="Occupation" Icon="bi-briefcase" />
-            <InputText class="form-control" @bind-Value="Model.Occupation" placeholder="Current occupation" />
-        </div>
-        <div class="col-md-4">
-            <FormLabel Text="Education" Icon="bi-mortarboard" />
-            <InputText class="form-control" @bind-Value="Model.Education" placeholder="Highest level" />
+            <InputSelect class="form-select" @bind-Value="Model.Occupation">
+                <option value="">Select</option>
+                <option value="Employed">Employed</option>
+                <option value="Self-employed">Self-employed</option>
+                <option value="Unemployed">Unemployed</option>
+            </InputSelect>
         </div>
     </div>
 </FormSection>

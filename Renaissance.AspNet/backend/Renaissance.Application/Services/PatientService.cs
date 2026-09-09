@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Renaissance.Application.Common;
 using Renaissance.Application.Common.Interfaces;
+using Renaissance.Application.DTOs;
 using Renaissance.Domain.Entities;
 
 namespace Renaissance.Application.Services;
@@ -16,7 +17,7 @@ public class PatientService : IPatientService
         _clientNumberGenerator = clientNumberGenerator;
     }
 
-    public async Task<List<Patient>> GetAllAsync(string? q, CancellationToken cancellationToken = default)
+    public async Task<List<PatientListItemDto>> GetAllAsync(string? q, CancellationToken cancellationToken = default)
     {
         var query = _db.Patients.AsNoTracking().Where(p => !p.Archived);
 
@@ -27,17 +28,67 @@ public class PatientService : IPatientService
                 p.ClientNumber.Contains(term) ||
                 p.FullName.Contains(term) ||
                 (p.PhoneNumber != null && p.PhoneNumber.Contains(term)) ||
-                (p.Address != null && p.Address.Contains(term)));
+                (p.Address != null && p.Address.Contains(term)) ||
+                (p.CareProgram != null && p.CareProgram.Name.Contains(term)) ||
+                (p.CareProgram != null && p.CareProgram.OutreachCode.Contains(term)));
         }
 
-        return await query
+        var patients = await query
+            .Include(p => p.CareProgram)
             .OrderByDescending(p => p.CreatedDate)
             .ToListAsync(cancellationToken);
+
+        if (patients.Count == 0)
+        {
+            return [];
+        }
+
+        var patientIds = patients.Select(p => p.Id).ToList();
+
+        var programIdRows = await _db.ProgramPatientIds.AsNoTracking()
+            .Where(x => x.PatientId != null && patientIds.Contains(x.PatientId.Value) && !x.Archived)
+            .Select(x => new { PatientId = x.PatientId!.Value, x.RegisteredAtUtc })
+            .ToListAsync(cancellationToken);
+
+        var programIdByPatient = programIdRows
+            .GroupBy(x => x.PatientId)
+            .ToDictionary(g => g.Key, g => g.First().RegisteredAtUtc);
+
+        var history = await BuildClinicalHistoryAsync(patientIds, cancellationToken);
+
+        return patients.Select(p => new PatientListItemDto
+        {
+            Id = p.Id,
+            ClientNumber = p.ClientNumber,
+            FullName = p.FullName,
+            Age = p.Age,
+            AgeUnit = p.AgeUnit,
+            Sex = p.Sex,
+            MaritalStatus = p.MaritalStatus,
+            Tribe = p.Tribe,
+            Religion = p.Religion,
+            Occupation = p.Occupation,
+            Education = p.Education,
+            Address = p.Address,
+            PhoneNumber = p.PhoneNumber,
+            CreatedBy = p.CreatedBy,
+            CreatedDate = p.CreatedDate,
+            UpdatedBy = p.UpdatedBy,
+            UpdatedDate = p.UpdatedDate,
+            Archived = p.Archived,
+            CareProgramId = p.CareProgramId,
+            CareProgramName = p.CareProgram?.Name,
+            CareProgramType = p.CareProgram?.ProgramType.ToString(),
+            OutreachCode = p.CareProgram?.OutreachCode,
+            OutreachRegisteredAt = programIdByPatient.GetValueOrDefault(p.Id) ?? p.CreatedDate,
+            ClinicalHistory = history.GetValueOrDefault(p.Id, [])
+        }).ToList();
     }
 
     public async Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _db.Patients.AsNoTracking()
+            .Include(p => p.CareProgram)
             .FirstOrDefaultAsync(p => p.Id == id && !p.Archived, cancellationToken);
     }
 
@@ -105,5 +156,60 @@ public class PatientService : IPatientService
         AuditHelper.SoftDelete(patient);
         await _db.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private async Task<Dictionary<Guid, List<PatientClinicalHistoryItemDto>>> BuildClinicalHistoryAsync(
+        List<Guid> patientIds,
+        CancellationToken cancellationToken)
+    {
+        var result = patientIds.ToDictionary(id => id, _ => new List<PatientClinicalHistoryItemDto>());
+
+        await AddModuleStatsAsync(result, "Triage", _db.Triages.AsNoTracking(), patientIds, cancellationToken);
+        await AddModuleStatsAsync(result, "Consultation", _db.Consultations.AsNoTracking(), patientIds, cancellationToken);
+        await AddModuleStatsAsync(result, "Pharmacy", _db.PharmacyPrescriptions.AsNoTracking(), patientIds, cancellationToken);
+        await AddModuleStatsAsync(result, "Laboratory", _db.Laboratories.AsNoTracking(), patientIds, cancellationToken);
+        await AddModuleStatsAsync(result, "Dental", _db.DentalConsultations.AsNoTracking(), patientIds, cancellationToken);
+        await AddModuleStatsAsync(result, "Ancillary", _db.Ancillaries.AsNoTracking(), patientIds, cancellationToken);
+        await AddModuleStatsAsync(result, "Optometry", _db.Optometrists.AsNoTracking(), patientIds, cancellationToken);
+        await AddModuleStatsAsync(result, "Ophthalmology", _db.Ophthalmologists.AsNoTracking(), patientIds, cancellationToken);
+
+        foreach (var list in result.Values)
+        {
+            list.Sort((a, b) => Nullable.Compare(b.LastDate, a.LastDate));
+        }
+
+        return result;
+    }
+
+    private static async Task AddModuleStatsAsync<T>(
+        Dictionary<Guid, List<PatientClinicalHistoryItemDto>> result,
+        string moduleName,
+        IQueryable<T> query,
+        List<Guid> patientIds,
+        CancellationToken cancellationToken) where T : AuditEntity
+    {
+        var stats = await query
+            .Where(e => patientIds.Contains(EF.Property<Guid>(e, "PatientId")) && !e.Archived)
+            .GroupBy(e => EF.Property<Guid>(e, "PatientId"))
+            .Select(g => new
+            {
+                PatientId = g.Key,
+                Count = g.Count(),
+                LastDate = g.Max(e => e.CreatedDate)
+            })
+            .ToListAsync(cancellationToken);
+
+        foreach (var stat in stats)
+        {
+            if (result.TryGetValue(stat.PatientId, out var list))
+            {
+                list.Add(new PatientClinicalHistoryItemDto
+                {
+                    Module = moduleName,
+                    Count = stat.Count,
+                    LastDate = stat.LastDate
+                });
+            }
+        }
     }
 }

@@ -41,30 +41,82 @@ public static class ClinicalCatalog
         "Triage"
     ];
 
-    public static IReadOnlyList<string> DentalDiagnoses { get; } =
+    public static IReadOnlyList<DentalServiceGroup> DentalServiceGroups { get; } =
     [
-        "Dental caries — lower molar",
-        "Gingivitis",
-        "Pericoronitis",
-        "Acute apical periodontitis",
-        "Partially erupted third molar",
-        "Dental abscess"
+        new("Routine Check Up", "bi-clipboard2-check",
+        [
+            "Comprehensive oral examination",
+            "Professional cleaning"
+        ]),
+        new("Preventive Care", "bi-shield-check",
+        [
+            "Scaling and Polishing",
+            "Fluoride treatments",
+            "Sealants",
+            "Oral hygiene education"
+        ]),
+        new("Restorative Services", "bi-wrench-adjustable",
+        [
+            "Fillings"
+        ]),
+        new("Oral Surgery", "bi-bandaid",
+        [
+            "Extractions"
+        ]),
+        new("Others", "bi-grid",
+        [
+            "Giving of toothbrushes"
+        ])
     ];
 
+    public static IReadOnlyList<string> DentalDiagnoses { get; } =
+        DentalServiceGroups.Select(g => g.Category).ToArray();
+
     public static IReadOnlyList<string> DentalTreatments { get; } =
+        DentalServiceGroups.SelectMany(g => g.Services).ToArray();
+
+    public sealed record DentalServiceGroup(string Category, string Icon, IReadOnlyList<string> Services);
+
+    public static IReadOnlyList<string> DentalOtherDiagnoses { get; } =
     [
-        "Extraction planned",
-        "Scaling and polishing",
-        "Temporary filling",
-        "Incision and drainage",
-        "Analgesia and review",
-        "Operculectomy"
+        "ACUTE PERIODONTITIS",
+        "Acute pericoronitis",
+        "BLEEDING GUM",
+        "CHRONIC PERIODONTITIS",
+        "Clinically healthy mouth",
+        "Collapsed filling",
+        "Cracked tooth syndrome",
+        "DENTAL CARIES",
+        "DENTAL PLAQUE",
+        "Dentoalveolar abscess on lower right 1st premolar",
+        "Denture",
+        "Enamel hypoplasi",
+        "Erupting incisors",
+        "Erupting molars",
+        "Erupting upper left 3",
+        "FETOR ORIS",
+        "Fractured tooth",
+        "GINGIVAL POCKET",
+        "GINGIVAL RECESSION",
+        "Missing tooth",
+        "Mobile tooth",
+        "Pericoronitis 2° imparted third molar",
+        "Periodontal abscess",
+        "Recurrent Pericoronitis left last molar",
+        "Retain destinies tooth; Lingual emptying incisor",
+        "Stains",
+        "Supernumerary teeth",
+        "TOOTH SENSITIVITY",
+        "Toothwear lesion",
+        "Others"
     ];
 
     public static IReadOnlyList<string> DentalDispensedItems { get; } =
     [
-        "Tooth extraction",
+        "Toothbrush",
         "Dental filling material",
+        "Fluoride varnish",
+        "Sealant material",
         "Chlorhexidine mouthwash",
         "Ibuprofen 400 mg",
         "Amoxicillin 500 mg"
@@ -97,25 +149,57 @@ public static class ClinicalCatalog
         "6/6", "6/9", "6/12", "6/18", "6/24", "6/36", "6/60", "3/60", "CF", "HM", "LP", "NLP"
     ];
 
-    public static IReadOnlyList<string> OphthalmologyDiagnoses { get; } =
+    public static IReadOnlyList<string> EyeClinicDiagnoses { get; } =
     [
-        "Immature cataract — OS",
-        "Primary open-angle glaucoma",
-        "Allergic conjunctivitis",
-        "Diabetic retinopathy — NPDR",
-        "Pterygium",
-        "Refractive error — high myopia"
+        "ALLERGIC CONJUNCTIVITIS",
+        "ASTIGMATISM",
+        "BACTERIAL CONJUNCTIVITIS",
+        "CORNEA OPACITY",
+        "DRY EYE",
+        "FOREIGN BODY",
+        "GLAUCOMA",
+        "HYPEROPIA",
+        "IMMATURE CATARACT",
+        "MATURE CATARACT",
+        "MYOPIA",
+        "PRESBYOPIA",
+        "PTERYGIUM",
+        "Vernal conjunctivitis"
     ];
 
-    public static IReadOnlyList<string> OphthalmologyTreatments { get; } =
+    public static IReadOnlyList<string> EyeClinicTreatments { get; } =
     [
-        "Phacoemulsification recommended",
-        "Timolol eye drops",
-        "Artificial tears",
-        "Laser peripheral iridotomy",
-        "Refer for low vision aids",
-        "Observation and review"
+        "MEDICATION",
+        "REFRACTION",
+        "SURGERY"
     ];
+
+    public static IReadOnlyList<string> EyeClinicServices { get; } =
+    [
+        "Eye Health Education",
+        "Visual Acuity testing",
+        "Ophthalmoscopy",
+        "Refraction and dispensing of reading glasses",
+        "Glaucoma screening and management",
+        "Cataract screening and referral",
+        "Management of minor ocular conditions"
+    ];
+
+    public static IReadOnlyList<string> EyeClinicMedications { get; } =
+    [
+        "Chloramphenicol eye drop",
+        "Antallerg eye drop",
+        "Timolol eye drop",
+        "Hypromellose eyedrop",
+        "Bet-N eyedrop",
+        "Ivyflur eye drop"
+    ];
+
+    public static IReadOnlyList<string> OphthalmologyDiagnoses { get; } =
+        EyeClinicDiagnoses;
+
+    public static IReadOnlyList<string> OphthalmologyTreatments { get; } =
+        EyeClinicTreatments;
 
     public static IReadOnlyList<string> OphthalmologySurgeries { get; } =
     [

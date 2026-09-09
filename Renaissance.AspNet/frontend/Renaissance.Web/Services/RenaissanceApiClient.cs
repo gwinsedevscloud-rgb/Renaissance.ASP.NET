@@ -527,6 +527,9 @@ public class RenaissanceApiClient
     public Task<PublicHospitalSettingsDto?> GetPublicSettingsAsync(CancellationToken ct = default)
         => GetOrDefaultAsync<PublicHospitalSettingsDto>("api/settings/public", ct);
 
+    public Task<List<FieldDeviceDto>?> GetFieldDevicesAsync(CancellationToken ct = default)
+        => GetOrDefaultAsync<List<FieldDeviceDto>>("api/field-sync/devices", ct);
+
     public Task<HospitalSettingsDto> GetHospitalSettingsAsync(CancellationToken ct = default)
         => GetRequiredAsync<HospitalSettingsDto>("api/settings", ct);
 
@@ -587,6 +590,9 @@ public class RenaissanceApiClient
     public Task<List<ExportModuleInfoDto>> GetExportModulesAsync(CancellationToken ct = default)
         => GetRequiredAsync<List<ExportModuleInfoDto>>("api/exports/modules", ct);
 
+    public Task<List<ExportOutreachOptionDto>> GetExportOutreachOptionsAsync(CancellationToken ct = default)
+        => GetRequiredAsync<List<ExportOutreachOptionDto>>("api/exports/outreach-options", ct);
+
     public async Task<ExportPreviewDto> PreviewExportAsync(ExportRecordsRequest request, CancellationToken ct = default)
     {
         var response = await _http.PostAsJsonAsync("api/exports/preview", request, JsonOptions, ct);
@@ -602,6 +608,112 @@ public class RenaissanceApiClient
             ?? $"renaissance-export-{DateTime.UtcNow:yyyyMMdd-HHmm}.xlsx";
         return (await response.Content.ReadAsByteArrayAsync(ct), fileName);
     }
+
+    // ----- Care Programs -----
+
+    public Task<OutreachStatusDto> GetOutreachStatusAsync(CancellationToken ct = default)
+        => GetRequiredAsync<OutreachStatusDto>("api/care-programs/outreach-status", ct);
+
+    public Task<List<CareProgramDto>> GetCareProgramsAsync(CancellationToken ct = default)
+        => GetRequiredAsync<List<CareProgramDto>>("api/care-programs", ct);
+
+    public Task<CareProgramDto?> GetCareProgramAsync(Guid id, CancellationToken ct = default)
+        => GetOrDefaultAsync<CareProgramDto>($"api/care-programs/{id}", ct);
+
+    public async Task<CareProgramDto> CreateCareProgramAsync(SaveCareProgramRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/care-programs", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<CareProgramDto>(JsonOptions, ct))!;
+    }
+
+    public async Task<CareProgramDto> UpdateCareProgramAsync(Guid id, SaveCareProgramRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PutAsJsonAsync($"api/care-programs/{id}", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<CareProgramDto>(JsonOptions, ct))!;
+    }
+
+    public async Task DeleteCareProgramAsync(Guid id, CancellationToken ct = default)
+    {
+        var response = await _http.DeleteAsync($"api/care-programs/{id}", ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+    }
+
+    public async Task<CareProgramDto> ActivateCareProgramAsync(Guid id, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsync($"api/care-programs/{id}/activate", null, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<CareProgramDto>(JsonOptions, ct))!;
+    }
+
+    public async Task<CareProgramDto> EndCareProgramAsync(Guid id, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsync($"api/care-programs/{id}/end", null, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<CareProgramDto>(JsonOptions, ct))!;
+    }
+
+    public async Task<GenerateProgramIdsResult> GenerateProgramIdsAsync(Guid id, GenerateProgramIdsRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync($"api/care-programs/{id}/generate-ids", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<GenerateProgramIdsResult>(JsonOptions, ct))!;
+    }
+
+    public Task<List<ProgramPatientIdDto>> GetProgramPatientIdsAsync(Guid id, ProgramPatientIdStatus? status = null, CancellationToken ct = default)
+    {
+        var url = status.HasValue
+            ? $"api/care-programs/{id}/patient-ids?status={status.Value}"
+            : $"api/care-programs/{id}/patient-ids";
+        return GetRequiredAsync<List<ProgramPatientIdDto>>(url, ct);
+    }
+
+    public async Task<ValidateProgramIdResult> ValidateProgramPatientIdAsync(string code, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/care-programs/validate-id", new ValidateProgramIdRequest { Code = code }, JsonOptions, ct);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<ValidateProgramIdResult>(JsonOptions, ct))!;
+    }
+
+    public async Task<Patient> RegisterOutreachPatientAsync(RegisterOutreachPatientRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/care-programs/register-patient", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<Patient>(JsonOptions, ct))!;
+    }
+
+    public Task<OutreachModuleSettingsDto> GetOutreachModuleSettingsAsync(CancellationToken ct = default)
+        => GetRequiredAsync<OutreachModuleSettingsDto>("api/settings/outreach-module", ct);
+
+    public async Task<OutreachModuleSettingsDto> UpdateOutreachModuleSettingsAsync(UpdateOutreachModuleSettingsRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PutAsJsonAsync("api/settings/outreach-module", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<OutreachModuleSettingsDto>(JsonOptions, ct))!;
+    }
+
+    public Task<List<CareProgramSummaryDto>> GetAccessibleSecondaryProgramsAsync(CancellationToken ct = default)
+        => GetRequiredAsync<List<CareProgramSummaryDto>>("api/secondary-outreach/accessible", ct);
+
+    public async Task<SecondaryOutreachRegistrationDto> RegisterSecondaryOutreachAsync(RegisterSecondaryOutreachRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/secondary-outreach/register", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<SecondaryOutreachRegistrationDto>(JsonOptions, ct))!;
+    }
+
+    public Task<List<SecondaryOutreachRegistrationDto>> GetSecondaryRegistrationsAsync(Guid programId, CancellationToken ct = default)
+        => GetRequiredAsync<List<SecondaryOutreachRegistrationDto>>($"api/secondary-outreach/{programId}/registrations", ct);
+
+    public async Task UpdateCareProgramStaffAsync(Guid programId, UpdateCareProgramStaffRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PutAsJsonAsync($"api/secondary-outreach/{programId}/staff", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+    }
+
+    public Task<StakeholdersOutreachOverviewDto> GetStakeholdersOutreachOverviewAsync(CancellationToken ct = default)
+        => GetRequiredAsync<StakeholdersOutreachOverviewDto>("api/stakeholders-dashboard/outreach-overview", ct);
 
     // ----- Helpers -----
 

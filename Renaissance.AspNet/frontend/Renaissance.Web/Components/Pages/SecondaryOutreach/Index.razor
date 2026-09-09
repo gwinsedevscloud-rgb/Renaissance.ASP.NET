@@ -1,0 +1,218 @@
+@page "/secondary-outreach"
+@page "/secondary-outreach/register/{ProgramId:guid}"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+@inject OutreachStateService Outreach
+
+<PageTitle>Secondary Outreach - MedReach</PageTitle>
+
+<div class="module-page">
+    <PageHeader Title="@(_selected?.Name ?? "Secondary Outreach")"
+                Subtitle="@(_selected?.IsClinicLinked == true
+                    ? "Clinic linked to primary outreach — patients arrive via Triage referral"
+                    : "Registration-only outreach — name, age, gender, and status")"
+                Icon="bi-droplet" />
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading programs..." />
+    }
+    else if (_programs.Count == 0)
+    {
+        <EmptyPanel Icon="bi-droplet" Title="No secondary outreach available"
+                    Message="Ask an administrator to activate a secondary program and assign you to it." />
+    }
+    else if (_selected is null)
+    {
+        <div class="row g-3">
+            @foreach (var program in _programs)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="section-card h-100">
+                        <h2 class="h5">
+                            <i class="bi @ProgramIcon(program) me-1"></i>@program.Name
+                        </h2>
+                        <p class="text-muted small mb-2">@program.StartDate.ToString("d MMM") – @program.EndDate.ToString("d MMM yyyy")</p>
+                        @if (program.IsClinicLinked || program.LinkedClinicalModule.HasValue)
+                        {
+                            <p class="small mb-3">
+                                Clinic referrals: <strong>@program.RegisteredCount</strong>
+                                <span class="badge text-bg-info ms-1">From Triage</span>
+                            </p>
+                            <a class="btn btn-primary btn-sm" href="@ClinicHref(program)">Open clinic queue</a>
+                        }
+                        else
+                        {
+                            <p class="small mb-3">Registered: <strong>@program.RegisteredCount</strong>@if (program.BatchSize is not null) { <text> / @program.BatchSize</text> }</p>
+                            <a class="btn btn-primary btn-sm" href="/secondary-outreach/register/@program.Id">Open registration</a>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (_selected.IsClinicLinked || _selected.LinkedClinicalModule.HasValue)
+    {
+        <div class="section-card">
+            <p class="mb-3">
+                <strong>@_selected.Name</strong> is linked to primary outreach.
+                Register patients under the primary program, complete Triage, then refer them here.
+            </p>
+            <a class="btn btn-primary" href="@ClinicHref(_selected)">Open clinic queue</a>
+            <a class="btn btn-outline-secondary ms-2" href="/secondary-outreach">Back</a>
+        </div>
+    }
+    else
+    {
+        <div class="client-form-layout">
+            <aside class="client-form-aside">
+                <div class="form-help-card">
+                    <i class="bi bi-info-circle"></i>
+                    <p><strong>@_selected.Name</strong> — registration only. Primary outreach can run at the same time.</p>
+                </div>
+            </aside>
+            <div class="client-form-main">
+                <EditForm Model="_form" OnValidSubmit="SaveAsync" class="form-card">
+                    <FormSection Title="Participant" Icon="bi-person">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <FormLabel Text="Name" Required="true" />
+                                <InputText class="form-control" @bind-Value="_form.FullName" />
+                            </div>
+                            <div class="col-md-4">
+                                <FormLabel Text="Age" />
+                                <InputNumber class="form-control" @bind-Value="_form.Age" />
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="Gender" Required="true" />
+                                <InputSelect class="form-select" @bind-Value="_form.Sex">
+                                    <option value="">Select</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <FormLabel Text="Status" Required="true" />
+                                <InputSelect class="form-select" @bind-Value="_form.Status">
+                                    @foreach (var option in StatusOptions)
+                                    {
+                                        <option value="@option">@option</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </FormSection>
+
+                    @if (_selected.PatientIdMode == PatientIdMode.PreGenerated)
+                    {
+                        <FormSection Title="Card ID" Icon="bi-upc-scan">
+                            <FormLabel Text="Pre-printed ID" />
+                            <InputText class="form-control text-uppercase" @bind-Value="_form.ProgramPatientIdCode" />
+                        </FormSection>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(_error))
+                    {
+                        <div class="alert alert-danger">@_error</div>
+                    }
+
+                    <FormActions SaveLabel="Save registration" CancelHref="/secondary-outreach" Saving="_saving" />
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid? ProgramId { get; set; }
+
+    private List<CareProgramSummaryDto> _programs = [];
+    private CareProgramSummaryDto? _selected;
+    private RegisterSecondaryOutreachRequest _form = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _error;
+
+    private IReadOnlyList<string> StatusOptions => GetStatusOptions(_selected?.Name);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _programs = await Api.GetAccessibleSecondaryProgramsAsync();
+        if (ProgramId.HasValue)
+        {
+            _selected = _programs.FirstOrDefault(p => p.Id == ProgramId.Value)
+                ?? Outreach.Status.ActiveSecondaryPrograms.FirstOrDefault(p => p.Id == ProgramId.Value);
+            if (_selected is not null)
+            {
+                _form.CareProgramId = _selected.Id;
+                _form.Status = DefaultStatus(_selected.Name);
+            }
+        }
+        else if (_programs.Count == 1)
+        {
+            _form.Status = DefaultStatus(_programs[0].Name);
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            var result = await Api.RegisterSecondaryOutreachAsync(_form);
+            Notifications.ShowSuccess($"{result.FullName} registered ({result.RegistrationCode ?? "no ID"}).");
+            var defaultStatus = DefaultStatus(_selected?.Name);
+            _form = new RegisterSecondaryOutreachRequest
+            {
+                CareProgramId = _form.CareProgramId,
+                Status = defaultStatus
+            };
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static IReadOnlyList<string> GetStatusOptions(string? programName)
+    {
+        if (programName?.Contains("ITN", StringComparison.OrdinalIgnoreCase) == true
+            || programName?.Contains("Insecticide", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return ["Net Issued", "Pending", "Referred", "Not Eligible"];
+        }
+
+        return ["Dewormed", "Pending", "Referred", "Not Eligible"];
+    }
+
+    private static string DefaultStatus(string? programName)
+        => GetStatusOptions(programName)[0];
+
+    private static string ProgramIcon(CareProgramSummaryDto program)
+        => program.LinkedClinicalModule switch
+        {
+            AppModule.Dental => "bi-emoji-smile",
+            AppModule.Optometrists => "bi-eye",
+            _ when program.Name.Contains("ITN", StringComparison.OrdinalIgnoreCase)
+                  || program.Name.Contains("Insecticide", StringComparison.OrdinalIgnoreCase)
+                => "bi-shield-check",
+            _ => "bi-droplet"
+        };
+
+    private static string ClinicHref(CareProgramSummaryDto program)
+        => program.LinkedClinicalModule switch
+        {
+            AppModule.Dental => "/dental",
+            AppModule.Optometrists => "/optometrists",
+            _ => "/secondary-outreach"
+        };
+}

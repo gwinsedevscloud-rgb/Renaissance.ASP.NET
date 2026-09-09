@@ -3,8 +3,9 @@
 @inject RenaissanceApiClient Api
 @inject NavigationManager Nav
 @inject NotificationService Notifications
+@inject OutreachStateService Outreach
 
-<PageTitle>New Triage - Renaissance</PageTitle>
+<PageTitle>New Triage - MedReach</PageTitle>
 
 @if (!_exists)
 {
@@ -23,7 +24,7 @@ else
                 <span class="triage-station-icon" aria-hidden="true"><i class="bi bi-activity"></i></span>
                 <div>
                     <h1>New triage</h1>
-                    <p>Record vitals and medical history</p>
+                    <p>Record vitals for this encounter</p>
                 </div>
             </div>
         </header>
@@ -38,7 +39,22 @@ else
 
         <div class="pharmacy-catalog-hint mb-3">
             <i class="bi bi-arrow-right-circle"></i>
-            After saving, this patient is <strong>automatically referred to Consultations</strong> for clinician review.
+            @if (Outreach.IsOutreachMode && ClinicReferralTargets.Count > 0)
+            {
+                <span>
+                    After saving, the patient continues on the primary outreach path
+                    (<strong>Laboratory → Consultation → Pharmacy</strong>)
+                    and you can refer them to <strong>Dental Clinic</strong> and/or <strong>Eye Clinic</strong>.
+                </span>
+            }
+            else if (Outreach.IsOutreachMode)
+            {
+                <span>After saving, this patient is <strong>automatically referred to Laboratory</strong> (outreach flow).</span>
+            }
+            else
+            {
+                <span>After saving, this patient is <strong>automatically referred to Consultations</strong> for clinician review.</span>
+            }
         </div>
 
         <EditForm Model="_model" OnValidSubmit="SaveAsync" class="triage-form-shell">
@@ -46,6 +62,19 @@ else
             <FormActions SaveLabel="Save triage" SaveIcon="bi-activity" CancelHref="@($"/patient-dashboard/{PatientId}")" Saving="_saving" />
         </EditForm>
     </div>
+
+    <ReferralPromptModal Visible="_showClinicReferral"
+                         PatientId="PatientId"
+                         PatientName="@(_patient?.FullName ?? "the patient")"
+                         SourceModule="AppModule.Triage"
+                         SourceRecordId="_savedTriageId"
+                         Title="Refer to outreach clinics"
+                         Subtitle="Send this patient to Dental Clinic and/or Eye Clinic after triage."
+                         SkipLabel="Continue without clinic referral"
+                         AllowedTargetModules="ClinicReferralTargets"
+                         TargetLabels="ClinicLabels"
+                         OnSkipped="FinishAsync"
+                         OnCompleted="FinishAsync" />
 }
 
 @code {
@@ -54,9 +83,28 @@ else
     private Patient? _patient;
     private bool _exists;
     private bool _saving;
+    private bool _showClinicReferral;
+    private Guid? _savedTriageId;
+
+    private List<AppModule> ClinicReferralTargets => Outreach.ActiveSecondaryPrograms
+        .Where(p => p.LinkedClinicalModule is AppModule.Dental or AppModule.Optometrists)
+        .Select(p => p.LinkedClinicalModule!.Value)
+        .Distinct()
+        .ToList();
+
+    private Dictionary<AppModule, string> ClinicLabels =>
+        Outreach.ActiveSecondaryPrograms
+            .Where(p => p.LinkedClinicalModule.HasValue)
+            .GroupBy(p => p.LinkedClinicalModule!.Value)
+            .ToDictionary(g => g.Key, g => g.First().Name);
 
     protected override async Task OnInitializedAsync()
     {
+        if (!Outreach.IsLoaded)
+        {
+            await Outreach.LoadAsync(Api);
+        }
+
         _patient = await Api.GetPatientAsync(PatientId);
         _exists = _patient is not null;
         _model.PatientId = PatientId;
@@ -68,13 +116,32 @@ else
         if (_model.Id == Guid.Empty) _model.Id = Guid.NewGuid();
         try
         {
-            await Api.CreateTriageAsync(_model);
-            Notifications.ShowSuccess("Triage saved. Patient referred to Consultations.");
-            Nav.NavigateTo($"/patient-dashboard/{PatientId}");
+            var saved = await Api.CreateTriageAsync(_model);
+            _savedTriageId = saved.Id;
+
+            if (Outreach.IsOutreachMode && ClinicReferralTargets.Count > 0)
+            {
+                Notifications.ShowSuccess("Triage saved. Choose clinic referrals if needed.");
+                _showClinicReferral = true;
+            }
+            else
+            {
+                Notifications.ShowSuccess(Outreach.IsOutreachMode
+                    ? "Triage saved. Patient referred to Laboratory."
+                    : "Triage saved. Patient referred to Consultations.");
+                await FinishAsync();
+            }
         }
         finally
         {
             _saving = false;
         }
+    }
+
+    private Task FinishAsync()
+    {
+        _showClinicReferral = false;
+        Nav.NavigateTo($"/patient-dashboard/{PatientId}");
+        return Task.CompletedTask;
     }
 }

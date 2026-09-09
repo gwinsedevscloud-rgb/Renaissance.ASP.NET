@@ -24,7 +24,8 @@ public sealed class RecordsExportService : IRecordsExportService
         new() { Module = ExportRecordModule.Ancillary, Name = "Ancillary", Description = "Ancillary services" },
         new() { Module = ExportRecordModule.Optometrists, Name = "Optometrists", Description = "Optometry exams" },
         new() { Module = ExportRecordModule.Ophthalmologists, Name = "Ophthalmologists", Description = "Ophthalmology care" },
-        new() { Module = ExportRecordModule.Referrals, Name = "Referrals", Description = "Cross-module referral queue history" }
+        new() { Module = ExportRecordModule.Referrals, Name = "Referrals", Description = "Cross-module referral queue history" },
+        new() { Module = ExportRecordModule.SecondaryOutreach, Name = "Secondary outreach", Description = "Secondary program registrations (deworming, ITN, etc.)" }
     ];
 
     private readonly IApplicationDbContext _db;
@@ -35,6 +36,21 @@ public sealed class RecordsExportService : IRecordsExportService
     }
 
     public IReadOnlyList<ExportModuleInfoDto> GetModules() => ModuleCatalog;
+
+    public async Task<IReadOnlyList<ExportOutreachOptionDto>> GetOutreachOptionsAsync(CancellationToken cancellationToken = default)
+    {
+        return await _db.CarePrograms.AsNoTracking()
+            .OrderBy(p => p.ProgramType)
+            .ThenBy(p => p.Name)
+            .Select(p => new ExportOutreachOptionDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                ProgramType = p.ProgramType.ToString(),
+                Status = p.Status.ToString()
+            })
+            .ToListAsync(cancellationToken);
+    }
 
     public async Task<ExportPreviewDto> PreviewAsync(ExportRecordsRequest request, CancellationToken cancellationToken = default)
     {
@@ -68,11 +84,11 @@ public sealed class RecordsExportService : IRecordsExportService
 
         using var workbook = new XLWorkbook();
         workbook.Properties.Author = exportedBy;
-        workbook.Properties.Title = "Renaissance Clinical Export";
+        workbook.Properties.Title = "MedReach Clinical Export";
         workbook.Properties.Subject = "Filtered module records export";
 
         var summary = workbook.Worksheets.Add("Summary");
-        WriteSummarySheet(summary, request, exportedBy, modules);
+        WriteSummarySheet(summary, request, exportedBy, modules, context);
 
         foreach (var module in modules)
         {
@@ -95,7 +111,7 @@ public sealed class RecordsExportService : IRecordsExportService
             .FirstOrDefaultAsync(cancellationToken);
 
         var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmm");
-        var prefix = string.IsNullOrWhiteSpace(facility) ? "renaissance" : Slugify(facility);
+        var prefix = string.IsNullOrWhiteSpace(facility) ? "medreach" : Slugify(facility);
         var fileName = $"{prefix}-export-{stamp}.xlsx";
 
         return new ExportFileResult(
@@ -111,6 +127,13 @@ public sealed class RecordsExportService : IRecordsExportService
 
     private async Task<ExportContext> BuildContextAsync(ExportRecordsRequest request, CancellationToken cancellationToken)
     {
+        CareProgram? selectedProgram = null;
+        if (request.OutreachScope == ExportOutreachScope.CareProgram && request.CareProgramId.HasValue)
+        {
+            selectedProgram = await _db.CarePrograms.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == request.CareProgramId.Value, cancellationToken);
+        }
+
         var patientQuery = _db.Patients.AsNoTracking();
         if (!request.IncludeArchived)
         {
@@ -125,11 +148,32 @@ public sealed class RecordsExportService : IRecordsExportService
                 p.FullName.Contains(term));
         }
 
+        patientQuery = ApplyOutreachPatientFilter(patientQuery, request, selectedProgram);
+
         var patients = await patientQuery.ToDictionaryAsync(p => p.Id, cancellationToken);
         var patientIds = patients.Keys.ToList();
         var toDate = request.ToDate?.Date.AddDays(1).AddTicks(-1);
 
-        return new ExportContext(request, patients, patientIds, toDate);
+        var programNames = await _db.CarePrograms.AsNoTracking()
+            .ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken);
+
+        return new ExportContext(request, patients, patientIds, toDate, selectedProgram, programNames);
+    }
+
+    private static IQueryable<Patient> ApplyOutreachPatientFilter(
+        IQueryable<Patient> query,
+        ExportRecordsRequest request,
+        CareProgram? selectedProgram)
+    {
+        return request.OutreachScope switch
+        {
+            ExportOutreachScope.FacilityOnly => query.Where(p => p.CareProgramId == null),
+            ExportOutreachScope.CareProgram when request.CareProgramId.HasValue =>
+                selectedProgram?.ProgramType == CareProgramType.Secondary
+                    ? query.Where(p => false)
+                    : query.Where(p => p.CareProgramId == request.CareProgramId),
+            _ => query
+        };
     }
 
     private async Task<int> CountModuleAsync(ExportRecordModule module, ExportContext context, CancellationToken cancellationToken)
@@ -145,6 +189,7 @@ public sealed class RecordsExportService : IRecordsExportService
             ExportRecordModule.Optometrists => await FilterClinical(_db.Optometrists.AsNoTracking(), context).CountAsync(cancellationToken),
             ExportRecordModule.Ophthalmologists => await FilterClinical(_db.Ophthalmologists.AsNoTracking(), context).CountAsync(cancellationToken),
             ExportRecordModule.Referrals => await FilterClinical(_db.Referrals.AsNoTracking(), context).CountAsync(cancellationToken),
+            ExportRecordModule.SecondaryOutreach => await FilterSecondaryOutreach(context).CountAsync(cancellationToken),
             _ => 0
         };
 
@@ -161,6 +206,7 @@ public sealed class RecordsExportService : IRecordsExportService
             ExportRecordModule.Optometrists => await WriteOptometristsSheetAsync(workbook, context, cancellationToken),
             ExportRecordModule.Ophthalmologists => await WriteOphthalmologistsSheetAsync(workbook, context, cancellationToken),
             ExportRecordModule.Referrals => await WriteReferralsSheetAsync(workbook, context, cancellationToken),
+            ExportRecordModule.SecondaryOutreach => await WriteSecondaryOutreachSheetAsync(workbook, context, cancellationToken),
             _ => 0
         };
 
@@ -189,7 +235,49 @@ public sealed class RecordsExportService : IRecordsExportService
             query = query.Where(p => p.CreatedDate <= context.ToDate);
         }
 
+        query = ApplyOutreachPatientFilter(query, context.Request, context.SelectedProgram);
+
         return query.OrderBy(p => p.ClientNumber);
+    }
+
+    private IQueryable<SecondaryOutreachRegistration> FilterSecondaryOutreach(ExportContext context)
+    {
+        var query = _db.SecondaryOutreachRegistrations.AsNoTracking();
+
+        if (!context.Request.IncludeArchived)
+        {
+            query = query.Where(r => !r.Archived);
+        }
+
+        if (context.Request.FromDate.HasValue)
+        {
+            query = query.Where(r => r.CreatedDate >= context.Request.FromDate);
+        }
+
+        if (context.ToDate.HasValue)
+        {
+            query = query.Where(r => r.CreatedDate <= context.ToDate);
+        }
+
+        if (!string.IsNullOrWhiteSpace(context.Request.ClientSearch))
+        {
+            var term = context.Request.ClientSearch.Trim();
+            query = query.Where(r =>
+                r.FullName.Contains(term) ||
+                (r.RegistrationCode != null && r.RegistrationCode.Contains(term)));
+        }
+
+        if (context.Request.OutreachScope == ExportOutreachScope.FacilityOnly)
+        {
+            return query.Where(r => false);
+        }
+
+        if (context.Request.OutreachScope == ExportOutreachScope.CareProgram && context.Request.CareProgramId.HasValue)
+        {
+            query = query.Where(r => r.CareProgramId == context.Request.CareProgramId);
+        }
+
+        return query;
     }
 
     private IQueryable<T> FilterClinical<T>(IQueryable<T> query, ExportContext context) where T : AuditEntity
@@ -225,7 +313,7 @@ public sealed class RecordsExportService : IRecordsExportService
     {
         var headers = new[]
         {
-            "Patient Number", "Full Name", "Age", "Age Unit", "Sex", "Marital Status", "Tribe", "Religion",
+            "Patient Number", "Full Name", "Care Program", "Age", "Age Unit", "Sex", "Marital Status", "Tribe", "Religion",
             "Occupation", "Education", "Address", "Phone", "Created By", "Created Date", "Updated By", "Updated Date", "Archived"
         };
 
@@ -238,6 +326,9 @@ public sealed class RecordsExportService : IRecordsExportService
             var c = 1;
             ws.Cell(row, c++).Value = p.ClientNumber;
             ws.Cell(row, c++).Value = p.FullName;
+            ws.Cell(row, c++).Value = p.CareProgramId.HasValue && context.ProgramNames.TryGetValue(p.CareProgramId.Value, out var programName)
+                ? programName
+                : "";
             ws.Cell(row, c++).Value = p.Age;
             ws.Cell(row, c++).Value = p.AgeUnit;
             ws.Cell(row, c++).Value = p.Sex;
@@ -471,7 +562,8 @@ public sealed class RecordsExportService : IRecordsExportService
     {
         var headers = new[]
         {
-            "Patient Number", "Patient Name", "VA Right", "VA Left", "Glasses Dispensed", "Referred",
+            "Patient Number", "Patient Name", "VA Right", "VA Left", "Diagnoses", "Treatments", "Services", "Medications",
+            "Glasses Dispensed", "Referred",
             "Created By", "Created Date", "Updated By", "Updated Date", "Archived"
         };
 
@@ -489,6 +581,10 @@ public sealed class RecordsExportService : IRecordsExportService
             ws.Cell(row, c++).Value = patient?.FullName ?? "";
             ws.Cell(row, c++).Value = item.VisualAcuityRight ?? "";
             ws.Cell(row, c++).Value = item.VisualAcuityLeft ?? "";
+            ws.Cell(row, c++).Value = JoinList(item.Diagnoses);
+            ws.Cell(row, c++).Value = JoinList(item.Treatments);
+            ws.Cell(row, c++).Value = JoinList(item.Services);
+            ws.Cell(row, c++).Value = JoinList(item.Medications);
             ws.Cell(row, c++).Value = FormatBool(item.GlassesDispensed);
             ws.Cell(row, c++).Value = FormatBool(item.Referred);
             WriteAuditCells(ws, row, ref c, item);
@@ -577,6 +673,38 @@ public sealed class RecordsExportService : IRecordsExportService
         return rows.Count;
     }
 
+    private async Task<int> WriteSecondaryOutreachSheetAsync(XLWorkbook workbook, ExportContext context, CancellationToken cancellationToken)
+    {
+        var headers = new[]
+        {
+            "Program", "Registration Code", "Full Name", "Age", "Sex", "Status",
+            "Created By", "Created Date", "Updated By", "Updated Date", "Archived"
+        };
+
+        var ws = CreateSheet(workbook, "Secondary Outreach", headers);
+        var rows = await FilterSecondaryOutreach(context)
+            .OrderByDescending(r => r.CreatedDate)
+            .ToListAsync(cancellationToken);
+
+        var row = 2;
+        foreach (var item in rows)
+        {
+            var programName = context.ProgramNames.GetValueOrDefault(item.CareProgramId, "");
+            var c = 1;
+            ws.Cell(row, c++).Value = programName;
+            ws.Cell(row, c++).Value = item.RegistrationCode ?? "";
+            ws.Cell(row, c++).Value = item.FullName;
+            ws.Cell(row, c++).Value = item.Age;
+            ws.Cell(row, c++).Value = item.Sex;
+            ws.Cell(row, c++).Value = item.Status;
+            WriteAuditCells(ws, row, ref c, item);
+            row++;
+        }
+
+        FinalizeSheet(ws, row - 1, headers.Length);
+        return rows.Count;
+    }
+
     private static IXLWorksheet CreateSheet(XLWorkbook workbook, string name, IReadOnlyList<string> headers)
     {
         var ws = workbook.Worksheets.Add(name);
@@ -634,9 +762,14 @@ public sealed class RecordsExportService : IRecordsExportService
         ws.Cell(row, column++).Value = entity.Archived ? "Yes" : "No";
     }
 
-    private static void WriteSummarySheet(IXLWorksheet ws, ExportRecordsRequest request, string exportedBy, IReadOnlyList<ExportRecordModule> modules)
+    private static void WriteSummarySheet(
+        IXLWorksheet ws,
+        ExportRecordsRequest request,
+        string exportedBy,
+        IReadOnlyList<ExportRecordModule> modules,
+        ExportContext context)
     {
-        ws.Cell(1, 1).Value = "Renaissance Clinical Records Export";
+        ws.Cell(1, 1).Value = "MedReach Clinical Records Export";
         ws.Range(1, 1, 1, 3).Merge();
         ws.Cell(1, 1).Style.Font.Bold = true;
         ws.Cell(1, 1).Style.Font.FontSize = 16;
@@ -656,21 +789,33 @@ public sealed class RecordsExportService : IRecordsExportService
         ws.Cell(8, 2).Value = request.IncludeArchived ? "Yes" : "No";
         ws.Cell(9, 1).Value = "Patient filter";
         ws.Cell(9, 2).Value = string.IsNullOrWhiteSpace(request.ClientSearch) ? "All patients" : request.ClientSearch.Trim();
+        ws.Cell(10, 1).Value = "Outreach filter";
+        ws.Cell(10, 2).Value = FormatOutreachFilter(request, context.SelectedProgram);
 
-        ws.Cell(11, 1).Value = "Modules";
-        ws.Cell(11, 2).Value = string.Join(", ", modules.Select(m => ModuleCatalog.First(c => c.Module == m).Name));
+        ws.Cell(12, 1).Value = "Modules";
+        ws.Cell(12, 2).Value = string.Join(", ", modules.Select(m => ModuleCatalog.First(c => c.Module == m).Name));
 
-        ws.Cell(13, 1).Value = "Module";
-        ws.Cell(13, 2).Value = "Rows exported";
-        StyleHeaderRow(ws, 13, 2);
+        ws.Cell(14, 1).Value = "Module";
+        ws.Cell(14, 2).Value = "Rows exported";
+        StyleHeaderRow(ws, 14, 2);
 
         ws.Column(1).Width = 28;
         ws.Column(2).Width = 40;
     }
 
+    private static string FormatOutreachFilter(ExportRecordsRequest request, CareProgram? selectedProgram)
+        => request.OutreachScope switch
+        {
+            ExportOutreachScope.FacilityOnly => "Facility only (non-outreach patients)",
+            ExportOutreachScope.CareProgram when selectedProgram != null =>
+                $"{selectedProgram.Name} ({selectedProgram.ProgramType}, {selectedProgram.Status})",
+            ExportOutreachScope.CareProgram => "Specific outreach program (not found)",
+            _ => "All records"
+        };
+
     private static void WriteSummaryCounts(IXLWorksheet ws, IReadOnlyList<ExportModuleCountDto> counts)
     {
-        var row = 14;
+        var row = 15;
         foreach (var item in counts)
         {
             ws.Cell(row, 1).Value = item.Name;
@@ -701,18 +846,22 @@ public sealed class RecordsExportService : IRecordsExportService
             .Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')
             .ToArray();
         var slug = new string(chars);
-        return string.IsNullOrWhiteSpace(slug) ? "renaissance" : slug[..Math.Min(slug.Length, 24)];
+        return string.IsNullOrWhiteSpace(slug) ? "medreach" : slug[..Math.Min(slug.Length, 24)];
     }
 
     private sealed class ExportContext(
         ExportRecordsRequest request,
         Dictionary<Guid, Patient> patients,
         List<Guid> patientIds,
-        DateTime? toDate)
+        DateTime? toDate,
+        CareProgram? selectedProgram,
+        Dictionary<Guid, string> programNames)
     {
         public ExportRecordsRequest Request { get; } = request;
         public Dictionary<Guid, Patient> Patients { get; } = patients;
         public List<Guid> PatientIds { get; } = patientIds;
         public DateTime? ToDate { get; } = toDate;
+        public CareProgram? SelectedProgram { get; } = selectedProgram;
+        public Dictionary<Guid, string> ProgramNames { get; } = programNames;
     }
 }

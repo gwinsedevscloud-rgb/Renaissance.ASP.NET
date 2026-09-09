@@ -8,7 +8,9 @@ public static class HospitalModuleCatalog
     [
         AppModule.Clients,
         AppModule.ClientDashboard,
-        AppModule.Administration
+        AppModule.Administration,
+        AppModule.CarePrograms,
+        AppModule.SecondaryOutreach
     ];
 
     public static readonly AppModule[] ServiceModules =

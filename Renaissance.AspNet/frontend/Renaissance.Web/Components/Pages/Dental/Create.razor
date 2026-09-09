@@ -4,29 +4,105 @@
 @inject NavigationManager Nav
 @inject NotificationService Notifications
 
-<PageTitle>New Dental Consultation - Renaissance</PageTitle>
+<PageTitle>New Dental Consultation - MedReach</PageTitle>
 
-@if (!_exists) { <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Patient not found.</div> }
+@if (!string.IsNullOrEmpty(_loadError))
+{
+    <div class="module-page module-dental">
+        <div class="alert alert-danger">@_loadError</div>
+    </div>
+}
+else if (!_ready)
+{
+    <div class="module-page module-dental">
+        <LoadingState Message="Loading dental visit…" />
+    </div>
+}
+else if (!_exists)
+{
+    <div class="module-page module-dental">
+        <div class="empty-state"><i class="bi bi-exclamation-circle d-block"></i> Patient not found.</div>
+    </div>
+}
 else
 {
-    <PageHeader Title="New Dental Consultation" Icon="bi-emoji-smile" />
-    <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="form-card">
-        <DentalForm Model="_vm" />
-        <FormActions SaveLabel="Save dental record"
-                     SaveIcon="bi-emoji-smile"
-                     CancelHref="@($"/patient-dashboard/{PatientId}")"
-                     Saving="_saving"
-                     ShowReferAfterSave="true"
-                     OnReferAfterSave="SaveAndReferAsync" />
-    </EditForm>
+    <div class="module-page module-dental">
+        <div class="dental-create-top">
+            <a class="dental-back-link" href="@($"/patient-dashboard/{PatientId}")">
+                <i class="bi bi-arrow-left"></i> Patient dashboard
+            </a>
 
-    <ReferralPromptModal Visible="_showReferral"
-                         PatientId="PatientId"
-                         PatientName="@(_patient?.FullName ?? "the patient")"
-                         SourceModule="AppModule.Dental"
-                         SourceRecordId="_savedId"
-                         OnSkipped="FinishAsync"
-                         OnCompleted="FinishAsync" />
+            <div class="dental-create-hero">
+                <div class="dental-create-hero-main">
+                    <span class="dental-station-icon" aria-hidden="true"><i class="bi bi-emoji-smile"></i></span>
+                    <div class="min-w-0">
+                        <p class="dental-create-eyebrow">Dental clinic</p>
+                        <h1>New consultation</h1>
+                        <p class="dental-create-sub">Record category, diagnoses, treatments, and items dispensed for this visit.</p>
+                    </div>
+                </div>
+                @if (_patient is not null)
+                {
+                    <div class="dental-create-patient">
+                        <ClientIdentity Patient="_patient" />
+                        <span class="dental-patient-tag"><i class="bi bi-plus-circle"></i> New visit</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <EditForm Model="_vm" OnValidSubmit="SaveAsync" class="dental-board">
+            <aside class="dental-board-aside" aria-label="Visit checklist">
+                <div class="dental-aside-card">
+                    <h2>Visit checklist</h2>
+                            <ol class="dental-aside-steps">
+                                <li class="@StepClass(HasServices)"><span>1</span> Services provided</li>
+                                <li class="@StepClass(HasFindings)"><span>2</span> Other diagnoses</li>
+                                <li class="@StepClass(HasDispense)"><span>3</span> Dispense / refer</li>
+                            </ol>
+                </div>
+
+                <div class="dental-aside-card dental-aside-summary">
+                    <h2>Selected</h2>
+                    @if (!HasAnySelection)
+                    {
+                        <p class="dental-aside-empty">Nothing selected yet. Tap chips to build the visit record.</p>
+                    }
+                    else
+                    {
+                        <ul class="dental-aside-pills">
+                            @foreach (var item in SummaryItems.Take(8))
+                            {
+                                <li>@item</li>
+                            }
+                            @if (SummaryItems.Count > 8)
+                            {
+                                <li class="is-more">+@(SummaryItems.Count - 8) more</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </aside>
+
+            <div class="dental-board-main">
+                <DentalForm Model="_vm" Changed="OnFormChanged" />
+                <FormActions SaveLabel="Save dental record"
+                             SaveIcon="bi-emoji-smile"
+                             CancelHref="@($"/patient-dashboard/{PatientId}")"
+                             Saving="_saving"
+                             ShowReferAfterSave="true"
+                             OnReferAfterSave="SaveAndReferAsync" />
+            </div>
+        </EditForm>
+
+        <ReferralPromptModal Visible="_showReferral"
+                             PatientId="PatientId"
+                             PatientName="@(_patient?.FullName ?? "the patient")"
+                             SourceModule="AppModule.Dental"
+                             SourceRecordId="_savedId"
+                             OnSkipped="FinishAsync"
+                             OnCompleted="FinishAsync" />
+    </div>
 }
 
 @code {
@@ -34,16 +110,58 @@ else
     private DentalFormViewModel _vm = new();
     private Patient? _patient;
     private bool _exists;
+    private bool _ready;
     private bool _saving;
     private bool _showReferral;
     private Guid? _savedId;
+    private string? _loadError;
 
-    protected override async Task OnInitializedAsync()
+    private bool HasServices => HasLines(_vm.TreatmentsText) || HasLines(_vm.DiagnosesText);
+    private bool HasFindings => HasLines(_vm.OthersDiagnosisText) || HasLines(_vm.OthersTreatmentText);
+    private bool HasDispense => HasLines(_vm.DispensedItemsText) || HasLines(_vm.ServicesReferredText) || _vm.Referred;
+    private bool HasAnySelection => HasServices || HasFindings || HasDispense;
+
+    private List<string> SummaryItems =>
+        ListTextHelper.FromMultiline(_vm.DiagnosesText)
+            .Concat(ListTextHelper.FromMultiline(_vm.TreatmentsText))
+            .Concat(ListTextHelper.FromMultiline(_vm.OthersDiagnosisText))
+            .Concat(ListTextHelper.FromMultiline(_vm.DispensedItemsText))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    protected override async Task OnParametersSetAsync()
     {
-        _patient = await Api.GetPatientAsync(PatientId);
-        _exists = _patient is not null;
-        _vm.PatientId = PatientId;
+        if (PatientId == Guid.Empty)
+        {
+            _ready = true;
+            _exists = false;
+            return;
+        }
+
+        try
+        {
+            _patient = await Api.GetPatientAsync(PatientId);
+            _exists = _patient is not null;
+            _vm.PatientId = PatientId;
+            _loadError = null;
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"{ex.GetType().Name}: {ex.Message} (PatientId={PatientId})";
+            _exists = false;
+        }
+        finally
+        {
+            _ready = true;
+        }
     }
+
+    private static bool HasLines(string? text) => ListTextHelper.FromMultiline(text).Count > 0;
+
+    private static string StepClass(bool done) => done ? "is-done" : "";
+
+    private void OnFormChanged() => StateHasChanged();
 
     private async Task SaveAsync()
     {
@@ -78,7 +196,12 @@ else
         _savedId = entity.Id;
     }
 
-    private Task FinishAsync() { _showReferral = false; Nav.NavigateTo($"/patient-dashboard/{PatientId}"); return Task.CompletedTask; }
+    private Task FinishAsync()
+    {
+        _showReferral = false;
+        Nav.NavigateTo($"/patient-dashboard/{PatientId}");
+        return Task.CompletedTask;
+    }
 
     private static DentalConsultation Map(DentalFormViewModel vm) => new()
     {

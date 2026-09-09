@@ -3,26 +3,17 @@
 @inject NavigationManager Nav
 @inject AuthStateService Auth
 @inject RenaissanceApiClient Api
+@inject HospitalModuleStateService ModuleState
+@inject OutreachStateService Outreach
 @implements IDisposable
 
 <div class="ren-app-shell">
-    @if (_successMessage is not null)
-    {
-        <div class="container pt-3">
-            <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
-                <i class="bi bi-check-circle-fill"></i>
-                <span class="flex-grow-1">@_successMessage</span>
-                <button type="button" class="btn-close" @onclick="DismissAlert"></button>
-            </div>
-        </div>
-    }
-
     <header class="ren-header">
         <nav class="navbar navbar-expand-lg navbar-dark ren-navbar">
             <div class="container">
                 <a class="navbar-brand" href="/">
                     <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
-                    <span class="brand-text">@(_facilityName ?? "Renaissance")</span>
+                    <span class="brand-text">@(_facilityName ?? "MedReach")</span>
                 </a>
                 <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -78,9 +69,14 @@
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="/admin/users"><i class="bi bi-people me-2"></i>Users</a></li>
                                     <li><a class="dropdown-item" href="/admin/roles"><i class="bi bi-key me-2"></i>Roles &amp; modules</a></li>
+                                    @if (Auth.HasModule(AppModule.CarePrograms))
+                                    {
+                                        <li><a class="dropdown-item" href="/admin/care-programs"><i class="bi bi-megaphone me-2"></i>Care programs</a></li>
+                                    }
                                     <li><a class="dropdown-item" href="/admin/settings"><i class="bi bi-gear me-2"></i>Settings</a></li>
                                     <li><a class="dropdown-item" href="/admin/backup"><i class="bi bi-cloud-arrow-down me-2"></i>Backup</a></li>
                                     <li><a class="dropdown-item" href="/admin/export"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export records</a></li>
+                                    <li><a class="dropdown-item" href="/admin/field-devices"><i class="bi bi-tablet me-2"></i>Field devices</a></li>
                                 </ul>
                             </li>
                         }
@@ -113,6 +109,15 @@
     </header>
 
     <main class="ren-main container">
+        @if (_successMessage is not null)
+        {
+            <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+                <i class="bi bi-check-circle-fill"></i>
+                <span class="flex-grow-1">@_successMessage</span>
+                <button type="button" class="btn-close" @onclick="DismissAlert"></button>
+            </div>
+        }
+
         @if (_denied)
         {
             <div class="empty-state py-5">
@@ -130,7 +135,7 @@
 
     <footer class="ren-footer">
         <div class="container ren-footer-inner">
-            <span class="ren-footer-copy"><i class="bi bi-shield-check me-1"></i> &copy; @DateTime.Now.Year Renaissance Clinical Data Collection</span>
+            <span class="ren-footer-copy"><i class="bi bi-shield-check me-1"></i> &copy; @DateTime.Now.Year MedReach Clinical Data Collection</span>
             <span class="ren-footer-tagline"><i class="bi bi-hospital me-1"></i> Outpatient Care Platform</span>
         </div>
     </footer>
@@ -158,6 +163,7 @@
     protected override async Task OnInitializedAsync()
     {
         Auth.Changed += OnAuthChanged;
+        Outreach.Changed += OnOutreachChanged;
         _successMessage = Notifications.TakeMessage();
         ApplyRouteState();
         await LoadFacilityNameAsync();
@@ -178,6 +184,8 @@
 
     private void OnAuthChanged() => InvokeAsync(StateHasChanged);
 
+    private void OnOutreachChanged() => InvokeAsync(ApplyRouteState);
+
     private void ApplyRouteState()
     {
         var path = Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/');
@@ -190,7 +198,8 @@
         }
 
         _denied = required is not null && !Auth.HasModule(required.Value);
-        _clinical = ModuleNav.Clinical.Where(m => Auth.HasModule(m.Module)).ToList();
+        var clinical = ModuleNav.Clinical.Where(m => Auth.HasModule(m.Module));
+        _clinical = Outreach.FilterModules(clinical).ToList();
         _homeActive = string.IsNullOrEmpty(path);
         _clientsActive = path.StartsWith("patients", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("patient-dashboard", StringComparison.OrdinalIgnoreCase)
@@ -208,5 +217,9 @@
 
     private void DismissAlert() => _successMessage = null;
 
-    public void Dispose() => Auth.Changed -= OnAuthChanged;
+    public void Dispose()
+    {
+        Auth.Changed -= OnAuthChanged;
+        Outreach.Changed -= OnOutreachChanged;
+    }
 }
