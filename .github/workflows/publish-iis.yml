@@ -1,0 +1,70 @@
+name: Publish IIS package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "Renaissance.AspNet/**"
+      - ".github/workflows/publish-iis.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish API
+        run: |
+          dotnet publish Renaissance.AspNet/backend/Renaissance.Api/Renaissance.Api.csproj `
+            -c Release -r win-x64 --self-contained false `
+            -o "${{ github.workspace }}/artifacts/api"
+
+      - name: Publish Web
+        run: |
+          dotnet publish Renaissance.AspNet/frontend/Renaissance.Web/Renaissance.Web.csproj `
+            -c Release -r win-x64 --self-contained false `
+            -o "${{ github.workspace }}/artifacts/web"
+
+      - name: Copy server install script
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/artifacts/deploy" | Out-Null
+          Copy-Item "Renaissance.AspNet/deploy/Install-MedReachFromGitHub.ps1" "${{ github.workspace }}/artifacts/deploy/" -Force
+          Copy-Item "Renaissance.AspNet/deploy/README-IIS.md" "${{ github.workspace }}/artifacts/deploy/" -Force
+
+      - name: Zip package
+        shell: pwsh
+        run: |
+          $out = "${{ github.workspace }}/MedReach-IIS.zip"
+          if (Test-Path $out) { Remove-Item $out -Force }
+          Compress-Archive -Path "${{ github.workspace }}/artifacts/*" -DestinationPath $out -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MedReach-IIS
+          path: MedReach-IIS.zip
+          retention-days: 30
+
+      - name: Publish GitHub Release (iis-latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: iis-latest
+          name: MedReach IIS package (latest)
+          body: |
+            Automated IIS publish from `${{ github.sha }}`.
+            Database is not included — use the existing server SQL database.
+            On the IIS server, run `deploy/Install-MedReachFromGitHub.ps1` (or extract this zip under `C:\inetpub\MedReach`).
+          files: MedReach-IIS.zip
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
