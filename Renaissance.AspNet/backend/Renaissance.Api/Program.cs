@@ -25,6 +25,7 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -226,6 +227,7 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
+    // Requires AddProblemDetails() above — bare UseExceptionHandler() crashes on .NET 10.
     app.UseExceptionHandler();
     app.UseHsts();
 }

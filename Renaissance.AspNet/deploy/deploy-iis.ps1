@@ -80,37 +80,27 @@ Write-Host "Site: $SiteName / host $HostName"
 Ensure-AppPool $WebAppPool
 Ensure-AppPool $ApiAppPool
 
-# Ensure site
-$sites = Invoke-AppCmd @("list", "site", "/text:name")
-if ($sites.Text -notmatch "(?m)^$([regex]::Escape($SiteName))$") {
+Import-Module WebAdministration -ErrorAction Stop
+
+# Ensure site + pools (WebAdministration — same as Install-MedReachFromGitHub.ps1)
+if (-not (Get-Website -Name $SiteName -ErrorAction SilentlyContinue)) {
     Write-Host "Creating IIS site $SiteName"
     New-Item -ItemType Directory -Path $WebDest -Force | Out-Null
-    # HTTP :80 with host header; HTTPS binding can be added manually with cert
-    Invoke-AppCmd @(
-        "add", "site",
-        "/name:$SiteName",
-        "/physicalPath:$WebDest",
-        "/bindings:http/*:80:$HostName"
-    ) | Out-Null
-    Invoke-AppCmd @("set", "site", $SiteName, "/applicationPool:$WebAppPool") | Out-Null
+    New-Website -Name $SiteName -PhysicalPath $WebDest -ApplicationPool $WebAppPool -Port 80 -HostHeader $HostName | Out-Null
 } else {
-    Invoke-AppCmd @("set", "site", $SiteName, "/applicationPool:$WebAppPool") | Out-Null
-    Invoke-AppCmd @("set", "app", "$SiteName/", "/physicalPath:$WebDest") | Out-Null
+    Set-ItemProperty "IIS:\Sites\$SiteName" -Name physicalPath -Value $WebDest
+    Set-ItemProperty "IIS:\Sites\$SiteName" -Name applicationPool -Value $WebAppPool
 }
 
-# Ensure /api application
-$apps = Invoke-AppCmd @("list", "app", "/text:path")
-if ($apps.Text -notmatch "/api") {
-    # check specifically for this site
-}
-$apiApp = Invoke-AppCmd @("list", "app", "$SiteName/api")
-if (-not $apiApp.Ok) {
+$apiApp = Get-WebApplication -Site $SiteName -Name "api" -ErrorAction SilentlyContinue
+if (-not $apiApp) {
     Write-Host "Creating application $SiteName/api"
     New-Item -ItemType Directory -Path $ApiDest -Force | Out-Null
-    Invoke-AppCmd @("add", "app", "/site.name:$SiteName", "/path:/api", "/physicalPath:$ApiDest") | Out-Null
+    New-WebApplication -Site $SiteName -Name "api" -PhysicalPath $ApiDest -ApplicationPool $ApiAppPool | Out-Null
+} else {
+    Set-ItemProperty "IIS:\Sites\$SiteName\api" -Name physicalPath -Value $ApiDest
+    Set-ItemProperty "IIS:\Sites\$SiteName\api" -Name applicationPool -Value $ApiAppPool
 }
-Invoke-AppCmd @("set", "app", "$SiteName/api", "/applicationPool:$ApiAppPool") | Out-Null
-Invoke-AppCmd @("set", "app", "$SiteName/api", "/physicalPath:$ApiDest") | Out-Null
 
 Stop-AppPool $WebAppPool
 Stop-AppPool $ApiAppPool
