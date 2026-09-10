@@ -38,8 +38,10 @@ jobs:
       - name: Publish Field PWA
         run: |
           dotnet publish Renaissance.AspNet/frontend/MedReach.Field/MedReach.Field.csproj `
-            -c Release --self-contained false `
+            -c Release `
             /p:BaseHref=/field/ `
+            /p:PublishTrimmed=false `
+            /p:RunAOTCompilation=false `
             -o "${{ github.workspace }}/artifacts/field"
           $cfg = "Renaissance.AspNet/frontend/MedReach.Field/wwwroot/web.config"
           if (Test-Path $cfg) {

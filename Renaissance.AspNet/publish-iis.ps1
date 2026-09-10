@@ -58,8 +58,9 @@ if ($LASTEXITCODE -ne 0) { throw "Web publish failed." }
 Write-Host "Publishing Field PWA (base href /field/)..."
 dotnet publish $FieldProj `
     -c Release `
-    --self-contained false `
     /p:BaseHref=/field/ `
+    /p:PublishTrimmed=false `
+    /p:RunAOTCompilation=false `
     /p:DebugType=None `
     /p:DebugSymbols=false `
     -o $FieldOut
