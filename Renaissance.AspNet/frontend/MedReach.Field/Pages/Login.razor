@@ -14,61 +14,33 @@
 <PageTitle>Sign in - MedReach Field</PageTitle>
 
 <div class="login-stage">
-    <section class="login-hero" aria-label="MedReach community outreach programs">
-        <div class="login-hero-media-frame">
-            <div class="login-carousel" aria-hidden="true">
-                @for (var i = 0; i < _slides.Length; i++)
-                {
-                    var slide = _slides[i];
-                    <div class="login-slide @(_activeSlide == i ? "is-active" : null)">
-                        <div class="login-slide-photo" style="background-image: url('@slide.ImageUrl');"></div>
-                        <div class="login-slide-fade"></div>
-                    </div>
-                }
-            </div>
-
-            <div class="login-carousel-nav" role="tablist" aria-label="Outreach programs">
-                @for (var i = 0; i < _slides.Length; i++)
-                {
-                    var index = i;
-                    <button type="button"
-                            class="login-dot @(_activeSlide == index ? "is-active" : null)"
-                            role="tab"
-                            aria-selected="@(_activeSlide == index)"
-                            aria-label="@_slides[index].Title"
-                            @onclick="() => GoToSlide(index)">
-                    </button>
-                }
-            </div>
-        </div>
-
-        <div class="login-hero-copy">
-            <p class="login-kicker">
-                <span class="login-kicker-pulse" aria-hidden="true"></span>
-                Medical outreach for communities
-            </p>
-            <h1 class="login-wordmark">MedReach</h1>
-            <p class="login-lede">
-                Field tablet capture for community outreach — work offline, sync when you reconnect.
-            </p>
-
-            <div class="login-program-chip" @key="_activeSlide">
-                <span class="login-program-icon"><i class="bi @_slides[_activeSlide].Icon"></i></span>
-                <div>
-                    <strong>@_slides[_activeSlide].Title</strong>
-                    <span>@_slides[_activeSlide].Blurb</span>
-                </div>
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(_facilityName))
+    <div class="login-backdrop" aria-hidden="true">
+        <div class="login-carousel">
+            @for (var i = 0; i < _slides.Length; i++)
             {
-                <p class="login-facility">@_facilityName</p>
+                var slide = _slides[i];
+                <div class="login-slide @(_activeSlide == i ? "is-active" : null)">
+                    <div class="login-slide-photo" style="background-image: url('@slide.ImageUrl');"></div>
+                </div>
             }
         </div>
-    </section>
+        <div class="login-backdrop-wash"></div>
+    </div>
 
     <section class="login-panel" aria-labelledby="login-heading">
         <div class="login-panel-shell">
+            <header class="login-brand">
+                <p class="login-kicker">
+                    <span class="login-kicker-pulse" aria-hidden="true"></span>
+                    Medical outreach for communities
+                </p>
+                <h1 class="login-wordmark">MedReach</h1>
+                @if (!string.IsNullOrWhiteSpace(_facilityName))
+                {
+                    <p class="login-facility">@_facilityName</p>
+                }
+            </header>
+
             <div class="login-card">
                 <header class="login-panel-head">
                     <span class="login-mark" aria-hidden="true">
@@ -151,11 +123,10 @@
 
     private static readonly OutreachSlide[] _slides =
     [
-        new("Dental", "Oral care that reaches families where they are.", "bi-emoji-smile", "images/login/dental.png"),
-        new("Eye", "Vision screening and eye care for every community.", "bi-eye", "images/login/eye.png"),
-        new("Children Deworming", "Protecting children with timely community treatment.", "bi-balloon-heart",
-            "https://images.unsplash.com/photo-1509099836639-18ba1795216d?auto=format&fit=crop&w=1600&q=80"),
-        new("Insecticide Treated Net", "Malaria prevention through nets that save lives.", "bi-shield-check", "images/login/itn.png")
+        new("Dental", "images/login/dental.png"),
+        new("Eye", "images/login/eye.png"),
+        new("Children Deworming", "https://images.unsplash.com/photo-1509099836639-18ba1795216d?auto=format&fit=crop&w=1600&q=80"),
+        new("Insecticide Treated Net", "images/login/itn.png")
     ];
 
     protected override async Task OnInitializedAsync()
@@ -203,10 +174,9 @@
         }
         catch (OperationCanceledException)
         {
+            // Expected on dispose.
         }
     }
-
-    private void GoToSlide(int index) => _activeSlide = index;
 
     private async Task LoginAsync()
     {
@@ -263,5 +233,5 @@
         }
     }
 
-    private sealed record OutreachSlide(string Title, string Blurb, string Icon, string ImageUrl);
+    private sealed record OutreachSlide(string Title, string ImageUrl);
 }
