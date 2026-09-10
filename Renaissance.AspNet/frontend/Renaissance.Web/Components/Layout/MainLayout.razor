@@ -5,6 +5,7 @@
 @inject RenaissanceApiClient Api
 @inject HospitalModuleStateService ModuleState
 @inject OutreachStateService Outreach
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="ren-app-shell">
@@ -89,7 +90,7 @@
                             </li>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-person-circle me-1"></i> @Auth.User!.FullName
+                                    <i class="bi bi-person-circle me-1"></i> <span class="ren-user-name">@Auth.User!.FullName</span>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li class="dropdown-item-text text-muted small">@Auth.User.RoleName</li>
@@ -164,9 +165,24 @@
     {
         Auth.Changed += OnAuthChanged;
         Outreach.Changed += OnOutreachChanged;
+        Nav.LocationChanged += OnLocationChanged;
         _successMessage = Notifications.TakeMessage();
         ApplyRouteState();
         await LoadFacilityNameAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("renaissanceSyncHeaderHeight");
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     private async Task LoadFacilityNameAsync()
@@ -185,6 +201,24 @@
     private void OnAuthChanged() => InvokeAsync(StateHasChanged);
 
     private void OnOutreachChanged() => InvokeAsync(ApplyRouteState);
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        ApplyRouteState();
+        try
+        {
+            await JS.InvokeVoidAsync("renaissanceCloseMainNav");
+            await JS.InvokeVoidAsync("renaissanceSyncHeaderHeight");
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
 
     private void ApplyRouteState()
     {
@@ -221,5 +255,6 @@
     {
         Auth.Changed -= OnAuthChanged;
         Outreach.Changed -= OnOutreachChanged;
+        Nav.LocationChanged -= OnLocationChanged;
     }
 }

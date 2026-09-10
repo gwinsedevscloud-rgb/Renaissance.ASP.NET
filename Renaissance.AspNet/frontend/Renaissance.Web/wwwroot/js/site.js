@@ -14,6 +14,37 @@ window.renaissanceCopyText = async (text) => {
     await navigator.clipboard.writeText(text);
 };
 
+window.renaissanceCloseMainNav = () => {
+    const el = document.getElementById('mainNav');
+    if (!el || typeof bootstrap === 'undefined') {
+        return;
+    }
+
+    const instance = bootstrap.Collapse.getInstance(el);
+    if (instance) {
+        instance.hide();
+        return;
+    }
+
+    if (el.classList.contains('show')) {
+        el.classList.remove('show');
+        document.querySelectorAll('[data-bs-target="#mainNav"]').forEach((btn) => {
+            btn.setAttribute('aria-expanded', 'false');
+            btn.classList.add('collapsed');
+        });
+    }
+};
+
+window.renaissanceSyncHeaderHeight = () => {
+    const header = document.querySelector('.ren-header');
+    if (!header) {
+        return;
+    }
+
+    const height = Math.ceil(header.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--ren-header-height', `${height}px`);
+};
+
 (function () {
     const hideDelayMs = 900;
     const timers = new WeakMap();
@@ -51,10 +82,17 @@ window.renaissanceCopyText = async (text) => {
         }
     }
 
+    function syncHeader() {
+        window.renaissanceSyncHeaderHeight();
+    }
+
     window.addEventListener(
         'scroll',
         () => markScrolling(document.documentElement),
         { passive: true }
     );
     document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    window.addEventListener('resize', syncHeader, { passive: true });
+    document.addEventListener('DOMContentLoaded', syncHeader);
+    syncHeader();
 })();

@@ -22,7 +22,21 @@
     else
     {
         <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
-        <div class="section-card table-card p-0">
+
+        <div class="module-mobile-list d-md-none">
+            @foreach (var l in _items)
+            {
+                <ModuleMobileCard Patient="Patient(l.PatientId)"
+                                  Primary="@(l.TestName ?? "—")"
+                                  Secondary="@(string.IsNullOrWhiteSpace(l.Result) ? "Result pending" : $"Result: {l.Result}")"
+                                  Date="l.CreatedDate"
+                                  Href="@($"/laboratory/edit/{l.Id}")"
+                                  Title="Edit test"
+                                  Icon="bi-pencil" />
+            }
+        </div>
+
+        <div class="section-card table-card p-0 d-none d-md-block">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 module-record-table module-table-laboratory">
                     <ModuleRecordColGroup Widths="@(new[] { "24%", "28%", "18%", "16%", "4.5rem" })" />

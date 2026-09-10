@@ -1,0 +1,41 @@
+<article class="module-mobile-card">
+    <div class="module-mobile-main">
+        <div class="module-mobile-patient">
+            <ClientIdentity Patient="Patient" />
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Primary))
+        {
+            <p class="module-mobile-primary">@Primary</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Secondary))
+        {
+            <p class="module-mobile-secondary">@Secondary</p>
+        }
+        @if (Date is not null)
+        {
+            <time class="module-mobile-date" datetime="@Date.Value.ToUniversalTime().ToString("o")">
+                @Date.Value.ToLocalTime().ToString("MMM d, yyyy · h:mm tt")
+            </time>
+        }
+        @ChildContent
+    </div>
+    <a class="module-mobile-action" href="@Href" title="@Title" aria-label="@Title">
+        <i class="bi @Icon"></i>
+        @if (!string.IsNullOrWhiteSpace(Label))
+        {
+            <span>@Label</span>
+        }
+    </a>
+</article>
+
+@code {
+    [Parameter] public Patient? Patient { get; set; }
+    [Parameter] public string? Primary { get; set; }
+    [Parameter] public string? Secondary { get; set; }
+    [Parameter] public DateTime? Date { get; set; }
+    [Parameter, EditorRequired] public string Href { get; set; } = string.Empty;
+    [Parameter] public string Title { get; set; } = "Open";
+    [Parameter] public string Icon { get; set; } = "bi-pencil";
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

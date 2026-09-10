@@ -22,7 +22,20 @@
     else
     {
         <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
-        <div class="section-card table-card p-0">
+
+        <div class="module-mobile-list d-md-none">
+            @foreach (var d in _items)
+            {
+                <ModuleMobileCard Patient="Patient(d.PatientId)"
+                                  Primary="@(d.Diagnoses.Count == 0 ? "No diagnosis recorded" : string.Join(", ", d.Diagnoses.Take(3)))"
+                                  Date="d.CreatedDate"
+                                  Href="@($"/dental/edit/{d.Id}")"
+                                  Title="Edit dental record"
+                                  Icon="bi-pencil" />
+            }
+        </div>
+
+        <div class="section-card table-card p-0 d-none d-md-block">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 module-record-table module-table-dental">
                     <ModuleRecordColGroup Widths="@(new[] { "28%", "46%", "18%", "4.5rem" })" />

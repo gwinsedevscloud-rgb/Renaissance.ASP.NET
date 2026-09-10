@@ -1,5 +1,7 @@
 @page "/login"
 @layout LoginLayout
+@rendermode InteractiveServer
+@implements IAsyncDisposable
 @inject AuthStateService Auth
 @inject RenaissanceApiClient Api
 @inject HospitalModuleStateService ModuleState
@@ -8,41 +10,112 @@
 
 <PageTitle>Sign in - MedReach</PageTitle>
 
-<div class="login-wrap">
-    <div class="login-card">
-        <div class="login-brand">
-            <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
-            <h1>@(_facilityName ?? "MedReach")</h1>
-            <p>Sign in to access clinical modules assigned to your role.</p>
+<div class="login-stage">
+    <section class="login-hero" aria-label="MedReach community outreach programs">
+        <div class="login-hero-media-frame">
+            <div class="login-carousel" aria-hidden="true">
+                @for (var i = 0; i < _slides.Length; i++)
+                {
+                    var slide = _slides[i];
+                    <div class="login-slide @(_activeSlide == i ? "is-active" : null)">
+                        <div class="login-slide-photo" style="background-image: url('@slide.ImageUrl');"></div>
+                        <div class="login-slide-fade"></div>
+                    </div>
+                }
+            </div>
+
+            <div class="login-carousel-nav" role="tablist" aria-label="Outreach programs">
+                @for (var i = 0; i < _slides.Length; i++)
+                {
+                    var index = i;
+                    <button type="button"
+                            class="login-dot @(_activeSlide == index ? "is-active" : null)"
+                            role="tab"
+                            aria-selected="@(_activeSlide == index)"
+                            aria-label="@_slides[index].Title"
+                            @onclick="() => GoToSlide(index)">
+                    </button>
+                }
+            </div>
         </div>
 
-        @if (!string.IsNullOrEmpty(_error))
-        {
-            <div class="alert alert-danger">@_error</div>
-        }
+        <div class="login-hero-copy">
+            <p class="login-kicker">
+                <span class="login-kicker-pulse" aria-hidden="true"></span>
+                Medical outreach for communities
+            </p>
+            <h1 class="login-wordmark">MedReach</h1>
+            <p class="login-lede">
+                Bringing clinical care to the places people live, work, and gather —
+                so every community can be reached.
+            </p>
 
-        <EditForm Model="_model" FormName="login" OnValidSubmit="SignInAsync">
-            <DataAnnotationsValidator />
-            <div class="mb-3">
-                <label class="form-label" for="username">Username</label>
-                <div class="form-input-group">
-                    <span class="form-input-icon"><i class="bi bi-person"></i></span>
-                    <InputText id="username" class="form-control" @bind-Value="_model.UserName" autocomplete="username" />
+            <div class="login-program-chip" @key="_activeSlide">
+                <span class="login-program-icon"><i class="bi @_slides[_activeSlide].Icon"></i></span>
+                <div>
+                    <strong>@_slides[_activeSlide].Title</strong>
+                    <span>@_slides[_activeSlide].Blurb</span>
                 </div>
             </div>
-            <div class="mb-4">
-                <label class="form-label" for="password">Password</label>
-                <div class="form-input-group">
-                    <span class="form-input-icon"><i class="bi bi-lock"></i></span>
-                    <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" autocomplete="current-password" />
-                </div>
+
+            @if (!string.IsNullOrWhiteSpace(_facilityName))
+            {
+                <p class="login-facility">@_facilityName</p>
+            }
+        </div>
+    </section>
+
+    <section class="login-panel" aria-labelledby="login-heading">
+        <div class="login-panel-shell">
+            <div class="login-card">
+                <header class="login-panel-head">
+                    <span class="login-mark" aria-hidden="true">
+                        <i class="bi bi-heart-pulse-fill"></i>
+                    </span>
+                    <div>
+                        <h2 id="login-heading">Welcome back</h2>
+                        <p>Sign in to continue outreach work.</p>
+                    </div>
+                </header>
+
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <div class="login-alert" role="alert">@_error</div>
+                }
+
+                <EditForm Model="_model" FormName="login" OnValidSubmit="SignInAsync" class="login-form">
+                    <DataAnnotationsValidator />
+                    <div class="login-field">
+                        <label class="form-label" for="username">Username</label>
+                        <div class="form-input-group">
+                            <span class="form-input-icon"><i class="bi bi-person"></i></span>
+                            <InputText id="username" class="form-control" @bind-Value="_model.UserName" autocomplete="username" />
+                        </div>
+                    </div>
+                    <div class="login-field">
+                        <label class="form-label" for="password">Password</label>
+                        <div class="form-input-group">
+                            <span class="form-input-icon"><i class="bi bi-lock"></i></span>
+                            <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" autocomplete="current-password" />
+                        </div>
+                    </div>
+                    <button class="btn btn-primary login-submit" type="submit" disabled="@_busy">
+                        @if (_busy)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>
+                        }
+                        Sign in
+                    </button>
+                </EditForm>
+
+                <p class="login-footnote">Secure access for field and facility teams</p>
             </div>
-            <button class="btn btn-primary w-100" type="submit" disabled="@_busy">
-                @if (_busy) { <span class="spinner-border spinner-border-sm me-1"></span> }
-                <i class="bi bi-box-arrow-in-right me-1"></i> Sign in
-            </button>
-        </EditForm>
-    </div>
+        </div>
+    </section>
 </div>
 
 @code {
@@ -50,6 +123,34 @@
     private string? _error;
     private bool _busy;
     private string? _facilityName;
+    private int _activeSlide;
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+    private Task? _carouselTask;
+
+    private static readonly OutreachSlide[] _slides =
+    [
+        new(
+            "Dental",
+            "Oral care that reaches families where they are.",
+            "bi-emoji-smile",
+            "images/login/dental.png"),
+        new(
+            "Eye",
+            "Vision screening and eye care for every community.",
+            "bi-eye",
+            "images/login/eye.png"),
+        new(
+            "Children Deworming",
+            "Protecting children with timely community treatment.",
+            "bi-balloon-heart",
+            "https://images.unsplash.com/photo-1509099836639-18ba1795216d?auto=format&fit=crop&w=1600&q=80"),
+        new(
+            "Insecticide Treated Net",
+            "Malaria prevention through nets that save lives.",
+            "bi-shield-check",
+            "images/login/itn.png")
+    ];
 
     protected override async Task OnInitializedAsync()
     {
@@ -68,6 +169,39 @@
         {
             _facilityName = null;
         }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender || _timer is not null)
+        {
+            return;
+        }
+
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(5.5));
+        _carouselTask = RunCarouselAsync(_cts.Token);
+    }
+
+    private async Task RunCarouselAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (_timer is not null && await _timer.WaitForNextTickAsync(ct))
+            {
+                _activeSlide = (_activeSlide + 1) % _slides.Length;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on dispose / navigation away.
+        }
+    }
+
+    private void GoToSlide(int index)
+    {
+        _activeSlide = index;
     }
 
     private async Task SignInAsync()
@@ -92,6 +226,24 @@
         }
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        if (_cts is not null)
+        {
+            await _cts.CancelAsync();
+            _cts.Dispose();
+            _cts = null;
+        }
+
+        _timer?.Dispose();
+        _timer = null;
+
+        if (_carouselTask is not null)
+        {
+            try { await _carouselTask; } catch { /* ignore */ }
+        }
+    }
+
     private sealed class LoginForm
     {
         [System.ComponentModel.DataAnnotations.Required]
@@ -100,4 +252,6 @@
         [System.ComponentModel.DataAnnotations.Required]
         public string Password { get; set; } = "Admin@123";
     }
+
+    private sealed record OutreachSlide(string Title, string Blurb, string Icon, string ImageUrl);
 }

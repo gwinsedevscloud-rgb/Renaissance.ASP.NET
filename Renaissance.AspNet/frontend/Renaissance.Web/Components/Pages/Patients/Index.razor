@@ -153,6 +153,7 @@
             {
 
                 var name = ClientDisplayHelper.DisplayName(p);
+                var expanded = _expandedPatientId == p.Id;
 
                 <article class="client-card">
 
@@ -187,15 +188,51 @@
 
                                 <div class="patient-history-chips mt-1">
 
-                                    @foreach (var item in p.ClinicalHistory.Take(3))
+                                    @foreach (var item in p.ClinicalHistory.Take(1))
 
                                     {
 
-                                        <span class="patient-history-chip">@item.Module <strong>@item.Count</strong></span>
+                                        <span class="patient-history-chip" title="@FormatHistoryTooltip(item)">@item.Module <strong>@item.Count</strong></span>
 
                                     }
 
                                 </div>
+
+                                @if (p.ClinicalHistory.Count > 1)
+
+                                {
+
+                                    <button type="button" class="patient-history-toggle mt-1" @onclick="() => ToggleHistory(p.Id)">
+
+                                        @(expanded ? "Hide history" : "Show full history")
+
+                                    </button>
+
+                                    @if (expanded)
+
+                                    {
+
+                                        <ul class="patient-history-panel-list mt-2 mb-0">
+
+                                            @foreach (var item in p.ClinicalHistory)
+
+                                            {
+
+                                                <li>
+
+                                                    <span>@item.Module · @item.Count record@(item.Count == 1 ? "" : "s")</span>
+
+                                                    <span class="text-muted">@(item.LastDate?.ToLocalTime().ToString("g") ?? "—")</span>
+
+                                                </li>
+
+                                            }
+
+                                        </ul>
+
+                                    }
+
+                                }
 
                             }
 
@@ -227,7 +264,7 @@
 
                 <table class="table table-hover mb-0 clients-table">
 
-                    <ModuleRecordColGroup Widths="@(new[] { "148rem", "118rem", "132rem", "78rem", "80rem", "118rem", "130rem", "130rem" })" />
+                    <ModuleRecordColGroup Widths="@(new[] { "18%", "14%", "16%", "8%", "8%", "14%", "12%", "10%" })" />
 
                     <thead>
 
@@ -301,7 +338,7 @@
 
                                     <div class="patient-history-chips">
 
-                                        @foreach (var item in p.ClinicalHistory.Take(3))
+                                        @foreach (var item in p.ClinicalHistory.Take(1))
 
                                         {
 
@@ -315,7 +352,7 @@
 
                                     </div>
 
-                                    @if (p.ClinicalHistory.Count > 0)
+                                    @if (p.ClinicalHistory.Count > 1)
 
                                     {
 
