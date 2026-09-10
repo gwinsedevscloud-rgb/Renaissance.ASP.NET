@@ -1,0 +1,141 @@
+@page "/triage"
+@using MedReach.Field.Models
+@using MedReach.Field.Services
+@inject AuthSessionService Auth
+@inject FieldQueueService Queue
+@inject NotificationService Notifications
+
+<PageTitle>Triage - MedReach</PageTitle>
+
+<div class="module-page module-triage">
+    <StationHeader Title="Field triage" Subtitle="Vitals and risk flags · offline queue" Icon="bi-activity" />
+
+    <div class="field-hint">
+        <i class="bi bi-arrow-right-circle"></i>
+        <span>Link to a patient on this tablet. If they have not synced yet, triage attaches after the patient push.</span>
+    </div>
+
+    @if (!Auth.IsAuthenticated)
+    {
+        <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>Please <a href="login">sign in</a> first.</div>
+    }
+    else
+    {
+        <EditForm Model="_form" OnValidSubmit="SaveAsync" class="form-card form-card-create">
+            <div class="form-section">
+                <div class="form-section-header">
+                    <span class="section-icon feature-icon-teal"><i class="bi bi-people"></i></span>
+                    <h3>Patient link</h3>
+                </div>
+                <PatientPicker Patients="_patients" @bind-SelectedKey="_patientKey" PatientChanged="OnPatient"
+                               Hint="Choose a patient registered on this tablet." />
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-header">
+                    <span class="section-icon feature-icon-teal"><i class="bi bi-heart-pulse"></i></span>
+                    <h3>Vitals</h3>
+                </div>
+                <div class="row g-3">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Weight (kg)</label>
+                        <InputNumber class="form-control" @bind-Value="_form.Weight" />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Height (cm)</label>
+                        <InputNumber class="form-control" @bind-Value="_form.Height" />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Temp (°C)</label>
+                        <InputNumber class="form-control" @bind-Value="_form.Temperature" />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Pulse</label>
+                        <InputNumber class="form-control" @bind-Value="_form.PulseRate" />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">BP systolic</label>
+                        <InputNumber class="form-control" @bind-Value="_form.SystolicBp" />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">BP diastolic</label>
+                        <InputNumber class="form-control" @bind-Value="_form.DiastolicBp" />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Resp. rate</label>
+                        <InputNumber class="form-control" @bind-Value="_form.RespiratoryRate" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-header">
+                    <span class="section-icon feature-icon-teal"><i class="bi bi-clipboard2-pulse"></i></span>
+                    <h3>Risk flags</h3>
+                </div>
+                <div class="row g-2">
+                    <div class="col-6 col-md-3"><label class="form-check"><InputCheckbox class="form-check-input" @bind-Value="_diabetes" /> <span class="form-check-label">Diabetes</span></label></div>
+                    <div class="col-6 col-md-3"><label class="form-check"><InputCheckbox class="form-check-input" @bind-Value="_asthma" /> <span class="form-check-label">Asthma</span></label></div>
+                    <div class="col-6 col-md-3"><label class="form-check"><InputCheckbox class="form-check-input" @bind-Value="_sickle" /> <span class="form-check-label">Sickle cell</span></label></div>
+                    <div class="col-6 col-md-3"><label class="form-check"><InputCheckbox class="form-check-input" @bind-Value="_smoking" /> <span class="form-check-label">Smoking</span></label></div>
+                </div>
+            </div>
+
+            <FormActions SaveLabel="Save triage offline" SaveIcon="bi-activity" Saving="_busy" CancelHref="" />
+        </EditForm>
+    }
+</div>
+
+@code {
+    private readonly FieldPendingTriageDto _form = new();
+    private List<LocalPatientOption> _patients = [];
+    private string _patientKey = string.Empty;
+    private string _displayName = "Triage";
+    private bool _diabetes, _asthma, _sickle, _smoking;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAuthenticated)
+        {
+            _patients = await Queue.GetLocalPatientsAsync();
+        }
+    }
+
+    private void OnPatient((Guid? ClientId, Guid? ServerId, string DisplayName) args)
+    {
+        _form.ClientPatientRecordId = args.ClientId;
+        _form.ServerPatientId = args.ServerId;
+        _displayName = string.IsNullOrWhiteSpace(args.DisplayName) ? "Triage" : args.DisplayName;
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        try
+        {
+            _form.ClientRecordId = Guid.NewGuid();
+            _form.CapturedAtUtc = DateTime.UtcNow;
+            _form.Diabetes = _diabetes;
+            _form.Asthma = _asthma;
+            _form.SickleCell = _sickle;
+            _form.Smoking = _smoking;
+            await Queue.EnqueueTriageAsync(_form, _displayName);
+            Notifications.ShowSuccess("Triage queued on this tablet.");
+            _form.Weight = _form.Height = _form.Temperature = null;
+            _form.SystolicBp = _form.DiastolicBp = _form.PulseRate = _form.RespiratoryRate = null;
+            _diabetes = _asthma = _sickle = _smoking = false;
+            _patientKey = string.Empty;
+            _form.ClientPatientRecordId = null;
+            _form.ServerPatientId = null;
+        }
+        catch (Exception ex)
+        {
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -1,0 +1,209 @@
+@page "/register"
+@using MedReach.Field.Models
+@using MedReach.Field.Services
+@inject AuthSessionService Auth
+@inject OutreachCacheService Cache
+@inject FieldQueueService Queue
+@inject NotificationService Notifications
+
+<PageTitle>Outreach registration - MedReach</PageTitle>
+
+<div class="client-form-page">
+    <StationHeader Title="Outreach registration" Subtitle="Saved on this tablet first · syncs when online" Icon="bi-person-vcard" />
+
+    <div class="field-hint">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>Same MedReach registration flow as the hospital web app — works offline for community tablets.</span>
+    </div>
+
+    @if (!Auth.IsAuthenticated)
+    {
+        <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>Please <a href="login">sign in</a> first.</div>
+    }
+    else if (Cache.Cached?.ActivePrimaryProgram is null)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-megaphone me-1"></i>
+            No active primary program in the tablet cache. Go online and refresh settings from Home.
+        </div>
+    }
+    else
+    {
+        <div class="client-form-layout">
+            <aside class="client-form-aside">
+                @if (Cache.Cached.ActivePrimaryProgram.PatientIdMode == FieldPatientIdMode.PreGenerated)
+                {
+                    <div class="client-number-card">
+                        <div class="client-number-card-icon"><i class="bi bi-upc-scan"></i></div>
+                        <div class="client-number-label">Pre-printed patient ID</div>
+                        <div class="client-number-value">@(string.IsNullOrWhiteSpace(_form.ProgramPatientIdCode) ? "Enter card ID" : _form.ProgramPatientIdCode)</div>
+                        <p class="client-number-hint">Must match a pre-generated ID for this program</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="client-number-card">
+                        <div class="client-number-label">Patient ID mode</div>
+                        <div class="client-number-value">Auto serial</div>
+                        <p class="client-number-hint">ID assigned on hospital sync</p>
+                    </div>
+                }
+
+                <div class="form-help-card">
+                    <i class="bi bi-signpost-split"></i>
+                    <p>Program: <strong>@Cache.Cached.ActivePrimaryProgram.Name</strong> (@Cache.Cached.ActivePrimaryProgram.OutreachCode)</p>
+                </div>
+            </aside>
+
+            <div class="client-form-main">
+                <EditForm Model="_form" OnValidSubmit="SaveAsync" class="form-card form-card-create">
+                    @if (Cache.Cached.ActivePrimaryProgram.PatientIdMode == FieldPatientIdMode.PreGenerated)
+                    {
+                        <div class="form-section">
+                            <div class="form-section-header">
+                                <span class="section-icon feature-icon-teal"><i class="bi bi-upc-scan"></i></span>
+                                <h3>Verify patient card</h3>
+                            </div>
+                            <label class="form-label">Card ID</label>
+                            <InputText class="form-control text-uppercase" @bind-Value="_form.ProgramPatientIdCode" />
+                        </div>
+                    }
+
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <span class="section-icon feature-icon-teal"><i class="bi bi-person"></i></span>
+                            <h3>Patient details</h3>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Sex *</label>
+                                <InputSelect class="form-select" @bind-Value="_form.Sex">
+                                    <option value="">Select</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Age *</label>
+                                <InputNumber class="form-control" @bind-Value="_form.Age" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Age unit *</label>
+                                <InputSelect class="form-select" @bind-Value="_form.AgeUnit">
+                                    <option value="Years">Years</option>
+                                    <option value="Months">Months</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Phone number</label>
+                                <InputText class="form-control" @bind-Value="_form.PhoneNumber" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Marital status</label>
+                                <InputSelect class="form-select" @bind-Value="_form.MaritalStatus">
+                                    <option value="">Select</option>
+                                    <option value="Single">Single</option>
+                                    <option value="Married">Married</option>
+                                    <option value="Cohabiting">Cohabiting</option>
+                                    <option value="Divorced/Separated">Divorced/Separated</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tribe</label>
+                                <InputText class="form-control" @bind-Value="_form.Tribe" placeholder="e.g. Hausa, Yoruba, Igbo, Fulani, Ijaw, Kanuri, Ibibio, Tiv, Edo, Nupe…" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Religion</label>
+                                <InputSelect class="form-select" @bind-Value="_form.Religion">
+                                    <option value="">Select</option>
+                                    <option value="Christian">Christian</option>
+                                    <option value="Islam">Islam</option>
+                                    <option value="Trad">Trad</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Occupation</label>
+                                <InputSelect class="form-select" @bind-Value="_form.Occupation">
+                                    <option value="">Select</option>
+                                    <option value="Employed">Employed</option>
+                                    <option value="Self-employed">Self-employed</option>
+                                    <option value="Unemployed">Unemployed</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Address</label>
+                                <InputText class="form-control" @bind-Value="_form.Address" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <FormActions SaveLabel="Save offline" SaveIcon="bi-person-plus" Saving="_busy" CancelHref="">
+                        <a class="btn btn-outline-primary" href="sync"><i class="bi bi-cloud-arrow-up me-1"></i> View queue</a>
+                    </FormActions>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly FieldPendingPatientDto _form = new() { AgeUnit = "Years", Age = 1 };
+    private bool _busy;
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Sex) || _form.Age <= 0)
+        {
+            Notifications.ShowError("Sex and age are required.");
+            return;
+        }
+
+        var program = Cache.Cached?.ActivePrimaryProgram;
+        if (program is null)
+        {
+            Notifications.ShowError("Missing program cache.");
+            return;
+        }
+
+        if (program.PatientIdMode == FieldPatientIdMode.PreGenerated && string.IsNullOrWhiteSpace(_form.ProgramPatientIdCode))
+        {
+            Notifications.ShowError("Enter the pre-printed patient ID.");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _form.ClientRecordId = Guid.NewGuid();
+            _form.CapturedAtUtc = DateTime.UtcNow;
+            _form.CareProgramId = program.Id;
+            // Final name is set on sync as "Patient {Patient ID}". Use ID when known for the local queue label.
+            var idHint = program.PatientIdMode == FieldPatientIdMode.PreGenerated
+                ? _form.ProgramPatientIdCode!.Trim().ToUpperInvariant()
+                : "pending";
+            _form.FullName = $"Patient {idHint}";
+            await Queue.EnqueuePatientAsync(_form, _form.FullName);
+            Notifications.ShowSuccess($"Queued {_form.FullName}. Open Sync when you have signal.");
+            _form.Sex = string.Empty;
+            _form.Age = 1;
+            _form.AgeUnit = "Years";
+            _form.PhoneNumber = null;
+            _form.MaritalStatus = null;
+            _form.Tribe = null;
+            _form.Religion = null;
+            _form.Occupation = null;
+            _form.Address = null;
+            _form.ProgramPatientIdCode = null;
+            _form.FullName = string.Empty;
+            _form.ClientRecordId = Guid.Empty;
+        }
+        catch (Exception ex)
+        {
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

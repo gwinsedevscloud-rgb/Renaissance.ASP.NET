@@ -1,0 +1,204 @@
+@page "/laboratory"
+@using MedReach.Field.Models
+@using MedReach.Field.Services
+@inject AuthSessionService Auth
+@inject OutreachCacheService Cache
+@inject FieldQueueService Queue
+@inject NotificationService Notifications
+
+<PageTitle>Laboratory - MedReach</PageTitle>
+
+<StationHeader Title="Laboratory" Subtitle="Select up to two tests and enter results" Icon="bi-eyedropper" />
+<div class="field-hint"><i class="bi bi-clipboard-data"></i><span>Choose tests from the list, or Other to type a custom test.</span></div>
+
+@if (!Auth.IsAuthenticated)
+{
+    <div class="alert alert-warning">Please <a href="login">sign in</a> first.</div>
+}
+else
+{
+    <EditForm Model="_anchor" OnValidSubmit="SaveAsync" class="form-card form-card-create">
+        <PatientPicker Patients="_patients" @bind-SelectedKey="_patientKey" PatientChanged="OnPatient"
+                       Hint="Choose a patient registered on this tablet." />
+
+        <div class="form-section">
+            <div class="form-section-header">
+                <span class="section-icon feature-icon-teal"><i class="bi bi-clipboard-data"></i></span>
+                <h3>Tests</h3>
+            </div>
+
+            @for (var i = 0; i < _lines.Length; i++)
+            {
+                var index = i;
+                <div class="lab-test-line mb-3">
+                    <div class="small text-muted mb-1">Test @(index + 1)@(index == 0 ? " *" : " (optional)")</div>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Test name</label>
+                            <InputSelect class="form-select" @bind-Value="_lines[index].SelectedKey" @bind-Value:after="() => OnLineChanged(index)">
+                                <option value="">Select</option>
+                                @foreach (var name in TestNames)
+                                {
+                                    <option value="@name" disabled="@IsTaken(index, name)">@name</option>
+                                }
+                                <option value="@OtherKey">Other</option>
+                            </InputSelect>
+                            @if (_lines[index].SelectedKey == OtherKey)
+                            {
+                                <InputText class="form-control mt-2" @bind-Value="_lines[index].CustomName" placeholder="Type the test name" />
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Result</label>
+                            <InputText class="form-control" @bind-Value="_lines[index].Result" placeholder="Enter result" />
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Note</label>
+                    <InputTextArea class="form-control" rows="2" @bind-Value="_note" />
+                </div>
+            </div>
+        </div>
+
+        <FormActions SaveLabel="Save offline" SaveIcon="bi-eyedropper" Saving="_busy" CancelHref="" />
+    </EditForm>
+}
+
+@code {
+    private const string OtherKey = "__other__";
+
+    private sealed class LabLine
+    {
+        public string SelectedKey { get; set; } = string.Empty;
+        public string? CustomName { get; set; }
+        public string? Result { get; set; }
+
+        public string? ResolvedName =>
+            SelectedKey == OtherKey
+                ? CustomName?.Trim()
+                : string.IsNullOrWhiteSpace(SelectedKey) ? null : SelectedKey;
+    }
+
+    private readonly object _anchor = new();
+    private readonly LabLine[] _lines = [new(), new()];
+    private List<LocalPatientOption> _patients = [];
+    private string _patientKey = string.Empty;
+    private string _displayName = "Lab";
+    private string? _note;
+    private Guid? _clientPatientId;
+    private Guid? _serverPatientId;
+    private bool _busy;
+
+    private IEnumerable<string> TestNames
+    {
+        get
+        {
+            var fromCache = Cache.Catalog.LabTests.Select(t => t.Name).Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
+            if (fromCache.Count > 0) return fromCache;
+            return
+            [
+                "Fasting Blood Sugar", "Random Blood Sugar", "Malaria Parasite_RDT",
+                "Hepatitis B", "Hepatitis C", "HIV Test", "Cholesterol", "PSA"
+            ];
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAuthenticated) _patients = await Queue.GetLocalPatientsAsync();
+    }
+
+    private void OnPatient((Guid? ClientId, Guid? ServerId, string DisplayName) args)
+    {
+        _clientPatientId = args.ClientId;
+        _serverPatientId = args.ServerId;
+        _displayName = string.IsNullOrWhiteSpace(args.DisplayName) ? "Lab" : args.DisplayName;
+    }
+
+    private bool IsTaken(int index, string name)
+    {
+        for (var i = 0; i < _lines.Length; i++)
+        {
+            if (i == index) continue;
+            if (string.Equals(_lines[i].SelectedKey, name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    private void OnLineChanged(int index)
+    {
+        if (_lines[index].SelectedKey != OtherKey)
+            _lines[index].CustomName = null;
+        _lines[index].Result = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!_clientPatientId.HasValue && !_serverPatientId.HasValue)
+        {
+            Notifications.ShowError("Select a patient.");
+            return;
+        }
+
+        var entries = new List<(string Name, string Result)>();
+        foreach (var line in _lines)
+        {
+            var name = line.ResolvedName;
+            var hasName = !string.IsNullOrWhiteSpace(name);
+            var hasResult = !string.IsNullOrWhiteSpace(line.Result);
+            if (!hasName && !hasResult) continue;
+            if (!hasName)
+            {
+                Notifications.ShowError("Enter or select a test name for each result.");
+                return;
+            }
+            if (!hasResult)
+            {
+                Notifications.ShowError($"Enter a result for {name}.");
+                return;
+            }
+            entries.Add((name!, line.Result!.Trim()));
+        }
+
+        if (entries.Count == 0)
+        {
+            Notifications.ShowError("Select at least one test and enter its result.");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            foreach (var (name, result) in entries)
+            {
+                var form = new FieldPendingLaboratoryDto
+                {
+                    ClientRecordId = Guid.NewGuid(),
+                    ClientPatientRecordId = _clientPatientId,
+                    ServerPatientId = _serverPatientId,
+                    TestName = name,
+                    Result = result,
+                    Note = _note,
+                    CapturedAtUtc = DateTime.UtcNow
+                };
+                await Queue.EnqueueLaboratoryAsync(form, $"{_displayName} · {name}");
+            }
+
+            Notifications.ShowSuccess(entries.Count == 1 ? "Laboratory result queued." : $"{entries.Count} laboratory results queued.");
+            foreach (var line in _lines)
+            {
+                line.SelectedKey = string.Empty;
+                line.CustomName = null;
+                line.Result = null;
+            }
+            _note = null;
+        }
+        catch (Exception ex) { Notifications.ShowError(ex.Message); }
+        finally { _busy = false; }
+    }
+}

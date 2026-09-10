@@ -1,4 +1,4 @@
-# Deploy MedReach API + Web into IIS site folders (self-hosted runner).
+# Deploy MedReach API + Web + Field into IIS site folders (self-hosted runner).
 # Pattern matches adl-monitor/scripts/deploy_iis.ps1 and ECOMAN/scripts/deploy-iis.ps1.
 param(
     [Parameter(Mandatory = $true)]
@@ -7,10 +7,14 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ApiSource,
 
+    [string]$FieldSource = "",
+
     [string]$WebDest = "C:\inetpub\wwwroot\MedReach\web",
     [string]$ApiDest = "C:\inetpub\wwwroot\MedReach\api",
+    [string]$FieldDest = "C:\inetpub\wwwroot\MedReach\field",
     [string]$WebAppPool = "MedReach",
     [string]$ApiAppPool = "MedReach-api",
+    [string]$FieldAppPool = "MedReach-field",
     [string]$SiteName = "MedReach",
     [string]$HostName = "medreach.ecews.org",
     [switch]$PreserveServerAppSettings
@@ -75,14 +79,19 @@ Write-Host "=== MedReach IIS deploy ==="
 Write-Host "Runner: $([Security.Principal.WindowsIdentity]::GetCurrent().Name)"
 Write-Host "Web: $WebSource -> $WebDest ($WebAppPool)"
 Write-Host "API: $ApiSource -> $ApiDest ($ApiAppPool)"
+if (-not [string]::IsNullOrWhiteSpace($FieldSource)) {
+    Write-Host "Field: $FieldSource -> $FieldDest ($FieldAppPool)"
+}
 Write-Host "Site: $SiteName / host $HostName"
 
 Ensure-AppPool $WebAppPool
 Ensure-AppPool $ApiAppPool
+if (-not [string]::IsNullOrWhiteSpace($FieldSource)) {
+    Ensure-AppPool $FieldAppPool
+}
 
 Import-Module WebAdministration -ErrorAction Stop
 
-# Ensure site + pools (WebAdministration — same as Install-MedReachFromGitHub.ps1)
 if (-not (Get-Website -Name $SiteName -ErrorAction SilentlyContinue)) {
     Write-Host "Creating IIS site $SiteName"
     New-Item -ItemType Directory -Path $WebDest -Force | Out-Null
@@ -102,13 +111,31 @@ if (-not $apiApp) {
     Set-ItemProperty "IIS:\Sites\$SiteName\api" -Name applicationPool -Value $ApiAppPool
 }
 
+if (-not [string]::IsNullOrWhiteSpace($FieldSource)) {
+    $fieldApp = Get-WebApplication -Site $SiteName -Name "field" -ErrorAction SilentlyContinue
+    if (-not $fieldApp) {
+        Write-Host "Creating application $SiteName/field"
+        New-Item -ItemType Directory -Path $FieldDest -Force | Out-Null
+        New-WebApplication -Site $SiteName -Name "field" -PhysicalPath $FieldDest -ApplicationPool $FieldAppPool | Out-Null
+    } else {
+        Set-ItemProperty "IIS:\Sites\$SiteName\field" -Name physicalPath -Value $FieldDest
+        Set-ItemProperty "IIS:\Sites\$SiteName\field" -Name applicationPool -Value $FieldAppPool
+    }
+}
+
 Stop-AppPool $WebAppPool
 Stop-AppPool $ApiAppPool
+if (-not [string]::IsNullOrWhiteSpace($FieldSource)) {
+    Stop-AppPool $FieldAppPool
+}
 Start-Sleep -Seconds 2
 
 try {
     Sync-Folder $WebSource $WebDest
     Sync-Folder $ApiSource $ApiDest
+    if (-not [string]::IsNullOrWhiteSpace($FieldSource)) {
+        Sync-Folder $FieldSource $FieldDest
+    }
 
     $appData = Join-Path $ApiDest "App_Data"
     New-Item -ItemType Directory -Path $appData -Force | Out-Null
@@ -118,20 +145,30 @@ try {
 finally {
     Start-AppPool $ApiAppPool
     Start-AppPool $WebAppPool
+    if (-not [string]::IsNullOrWhiteSpace($FieldSource)) {
+        Start-AppPool $FieldAppPool
+    }
     Invoke-AppCmd @("start", "site", $SiteName) | Out-Null
 }
 
-# Basic verify
 if (-not (Test-Path (Join-Path $WebDest "Renaissance.Web.dll"))) {
     throw "Renaissance.Web.dll missing after deploy"
 }
 if (-not (Test-Path (Join-Path $ApiDest "Renaissance.Api.dll"))) {
     throw "Renaissance.Api.dll missing after deploy"
 }
+if (-not [string]::IsNullOrWhiteSpace($FieldSource)) {
+    if (-not (Test-Path (Join-Path $FieldDest "index.html"))) {
+        throw "Field index.html missing after deploy"
+    }
+}
 
 Write-Host "Deploy complete."
-Write-Host "  Web: http://$HostName/"
-Write-Host "  API: http://$HostName/api/"
+Write-Host "  Web:   http://$HostName/"
+Write-Host "  API:   http://$HostName/api/"
+if (-not [string]::IsNullOrWhiteSpace($FieldSource)) {
+    Write-Host "  Field: http://$HostName/field/"
+}
 Write-Host "Add HTTPS binding in IIS Manager if needed. Database is not modified."
 $global:LASTEXITCODE = 0
 exit 0

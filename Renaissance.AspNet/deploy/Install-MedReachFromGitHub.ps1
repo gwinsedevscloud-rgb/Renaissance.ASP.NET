@@ -41,6 +41,7 @@ Expand-Archive -Path $zip -DestinationPath $temp -Force
 
 $apiSrc = Join-Path $temp "api"
 $webSrc = Join-Path $temp "web"
+$fieldSrc = Join-Path $temp "field"
 if (-not (Test-Path $apiSrc) -or -not (Test-Path $webSrc)) {
     throw "Zip must contain api/ and web/ folders."
 }
@@ -54,7 +55,11 @@ try {
 
 $webPath = Join-Path $SitePath "web"
 $apiPath = Join-Path $SitePath "api"
+$fieldPath = Join-Path $SitePath "field"
 New-Item -ItemType Directory -Force -Path $webPath, $apiPath | Out-Null
+if (Test-Path $fieldSrc) {
+    New-Item -ItemType Directory -Force -Path $fieldPath | Out-Null
+}
 
 Write-Host "Stopping site/app pools if present..."
 if (Get-Website -Name $SiteName -ErrorAction SilentlyContinue) {
@@ -66,12 +71,17 @@ if (Test-Path "IIS:\AppPools\$SiteName") {
 if (Test-Path "IIS:\AppPools\$SiteName-api") {
     Stop-WebAppPool -Name "$SiteName-api" -ErrorAction SilentlyContinue
 }
+if (Test-Path "IIS:\AppPools\$SiteName-field") {
+    Stop-WebAppPool -Name "$SiteName-field" -ErrorAction SilentlyContinue
+}
 Start-Sleep -Seconds 2
 
 Write-Host "Copying published files to $SitePath ..."
 robocopy $webSrc $webPath /MIR /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
 robocopy $apiSrc $apiPath /MIR /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
-
+if (Test-Path $fieldSrc) {
+    robocopy $fieldSrc $fieldPath /MIR /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
+}
 function Ensure-AppPool([string]$Name) {
     if (-not (Test-Path "IIS:\AppPools\$Name")) {
         New-WebAppPool -Name $Name | Out-Null
@@ -82,6 +92,9 @@ function Ensure-AppPool([string]$Name) {
 
 Ensure-AppPool $SiteName
 Ensure-AppPool "$SiteName-api"
+if (Test-Path $fieldSrc) {
+    Ensure-AppPool "$SiteName-field"
+}
 
 # Environment variables for ASP.NET Core
 function Set-PoolEnv([string]$PoolName, [hashtable]$Vars) {
@@ -146,6 +159,17 @@ if (-not $apiApp) {
     Set-ItemProperty "IIS:\Sites\$SiteName\api" -Name applicationPool -Value "$SiteName-api"
 }
 
+# Ensure /field application (static Blazor WASM PWA)
+if (Test-Path $fieldSrc) {
+    $fieldApp = Get-WebApplication -Site $SiteName -Name "field" -ErrorAction SilentlyContinue
+    if (-not $fieldApp) {
+        New-WebApplication -Site $SiteName -Name "field" -PhysicalPath $fieldPath -ApplicationPool "$SiteName-field" | Out-Null
+    } else {
+        Set-ItemProperty "IIS:\Sites\$SiteName\field" -Name physicalPath -Value $fieldPath
+        Set-ItemProperty "IIS:\Sites\$SiteName\field" -Name applicationPool -Value "$SiteName-field"
+    }
+}
+
 # Permissions for App_Data
 $appData = Join-Path $apiPath "App_Data"
 New-Item -ItemType Directory -Force -Path $appData | Out-Null
@@ -153,11 +177,17 @@ icacls $appData /grant "IIS AppPool\${SiteName}-api:(OI)(CI)M" | Out-Null
 
 Start-WebAppPool -Name $SiteName -ErrorAction SilentlyContinue
 Start-WebAppPool -Name "$SiteName-api" -ErrorAction SilentlyContinue
+if (Test-Path $fieldSrc) {
+    Start-WebAppPool -Name "$SiteName-field" -ErrorAction SilentlyContinue
+}
 Start-Website -Name $SiteName -ErrorAction SilentlyContinue
 
 Write-Host ""
 Write-Host "MedReach deployed to $SitePath"
-Write-Host "  Web: http://$HostName/  (add HTTPS binding in IIS Manager if not present)"
-Write-Host "  API: http://$HostName/api/"
+Write-Host "  Web:   http://$HostName/  (add HTTPS binding in IIS Manager if not present)"
+Write-Host "  API:   http://$HostName/api/"
+if (Test-Path $fieldSrc) {
+    Write-Host "  Field: http://$HostName/field/"
+}
 Write-Host "Ensure .NET 10 ASP.NET Core Hosting Bundle is installed, then run: iisreset"
 Write-Host "Database is not modified by this script."

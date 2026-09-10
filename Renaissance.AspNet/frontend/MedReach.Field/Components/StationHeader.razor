@@ -1,0 +1,33 @@
+<div class="field-station-header @CssClass">
+    <div class="field-station-brand">
+        <span class="field-station-icon" aria-hidden="true"><i class="bi @Icon"></i></span>
+        <div>
+            <h1>@Title</h1>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p>@Subtitle</p>
+            }
+        </div>
+    </div>
+    @if (Trailing is not null)
+    {
+        <div class="field-station-trailing">@Trailing</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string Icon { get; set; } = "bi-heart-pulse";
+
+    [Parameter]
+    public string CssClass { get; set; } = "";
+
+    [Parameter]
+    public RenderFragment? Trailing { get; set; }
+}

@@ -35,6 +35,26 @@ jobs:
             -c Release -r win-x64 --self-contained false `
             -o "${{ github.workspace }}/artifacts/web"
 
+      - name: Publish Field PWA
+        run: |
+          dotnet publish Renaissance.AspNet/frontend/MedReach.Field/MedReach.Field.csproj `
+            -c Release --self-contained false `
+            /p:BaseHref=/field/ `
+            -o "${{ github.workspace }}/artifacts/field"
+          $cfg = "Renaissance.AspNet/frontend/MedReach.Field/wwwroot/web.config"
+          if (Test-Path $cfg) {
+            Copy-Item $cfg "${{ github.workspace }}/artifacts/field/web.config" -Force
+          }
+          if (-not (Test-Path "${{ github.workspace }}/artifacts/field/index.html")) {
+            $www = "${{ github.workspace }}/artifacts/field/wwwroot"
+            if (Test-Path $www) {
+              Get-ChildItem $www | ForEach-Object {
+                Move-Item $_.FullName -Destination "${{ github.workspace }}/artifacts/field/$($_.Name)" -Force
+              }
+              Remove-Item $www -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+
       - name: Copy server install scripts
         run: |
           New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/artifacts/deploy" | Out-Null
@@ -63,6 +83,7 @@ jobs:
           name: MedReach IIS package (latest)
           body: |
             Automated IIS publish from `${{ github.sha }}`.
+            Includes **web**, **api**, and **field** (`/field` PWA).
             Database is not included — use the existing server SQL database.
             On the IIS server, run `deploy/Install-MedReachFromGitHub.ps1` (or extract this zip under `C:\inetpub\MedReach`).
           files: MedReach-IIS.zip

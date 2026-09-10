@@ -1,0 +1,83 @@
+@page "/patients"
+@using MedReach.Field.Models
+@using MedReach.Field.Services
+@inject AuthSessionService Auth
+@inject FieldQueueService Queue
+
+<PageTitle>Local patients - MedReach</PageTitle>
+
+<div class="module-page module-patients">
+    <StationHeader Title="Local patients" Subtitle="Registered on this tablet · pending or synced" Icon="bi-people">
+        <Trailing>
+            <a class="btn btn-light btn-sm" href="register"><i class="bi bi-person-plus me-1"></i> Register</a>
+        </Trailing>
+    </StationHeader>
+
+    @if (!Auth.IsAuthenticated)
+    {
+        <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>Please <a href="login">sign in</a> first.</div>
+    }
+    else if (_patients.Count == 0)
+    {
+        <div class="empty-state py-5">
+            <i class="bi bi-people d-block fs-1 mb-3"></i>
+            <h2 class="h5">No patients on this tablet yet</h2>
+            <p class="text-muted">Register outreach patients offline — they appear here for triage and clinical modules.</p>
+            <a class="btn btn-primary" href="register"><i class="bi bi-person-plus me-1"></i> Register patient</a>
+        </div>
+    }
+    else
+    {
+        <div class="section-card p-0 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Client #</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in _patients)
+                        {
+                            <tr>
+                                <td>
+                                    <i class="bi bi-person-circle text-muted me-1"></i>
+                                    @p.DisplayName
+                                </td>
+                                <td>@(p.ClientNumber ?? "—")</td>
+                                <td>
+                                    <span class="badge @(p.Status == "synced" ? "text-bg-success" : p.Status == "failed" ? "text-bg-danger" : "text-bg-warning")">
+                                        @if (p.Status == "synced") { <i class="bi bi-cloud-check me-1"></i> }
+                                        else if (p.Status == "failed") { <i class="bi bi-exclamation-octagon me-1"></i> }
+                                        else { <i class="bi bi-hourglass-split me-1"></i> }
+                                        @p.Status
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-primary" href="triage"><i class="bi bi-activity me-1"></i>Triage</a>
+                                    <a class="btn btn-sm btn-outline-secondary" href="laboratory"><i class="bi bi-eyedropper me-1"></i>Lab</a>
+                                    <a class="btn btn-sm btn-outline-secondary" href="consultation"><i class="bi bi-stethoscope me-1"></i>Consult</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<LocalPatientOption> _patients = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAuthenticated)
+        {
+            _patients = await Queue.GetLocalPatientsAsync();
+        }
+    }
+}

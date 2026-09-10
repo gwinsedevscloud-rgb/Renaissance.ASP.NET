@@ -1,0 +1,274 @@
+@page "/eye"
+@using MedReach.Field.Models
+@using MedReach.Field.Services
+@inject AuthSessionService Auth
+@inject OutreachCacheService Cache
+@inject FieldQueueService Queue
+@inject NotificationService Notifications
+
+<PageTitle>Eye clinic - MedReach</PageTitle>
+
+<div class="module-page module-eye">
+    <StationHeader Title="Eye clinic" Subtitle="Optometry secondary outreach · offline queue" Icon="bi-eye" />
+
+    <div class="field-hint">
+        <i class="bi bi-arrow-right-circle"></i>
+        <span>Capture visual acuity, diagnosis, and treatment for Eye / Optometrist programs.</span>
+    </div>
+
+    @if (!Auth.IsAuthenticated)
+    {
+        <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>Please <a href="login">sign in</a> first.</div>
+    }
+    else if (Cache.Cached?.ActiveSecondaryPrograms.All(p => !p.IsEyeClinic) != false)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-1"></i>
+            No active Eye clinic secondary program in the tablet cache. Refresh settings while online.
+        </div>
+    }
+    else
+    {
+        <EditForm Model="_form" OnValidSubmit="SaveAsync" class="form-card form-card-create">
+            <div class="form-section">
+                <div class="form-section-header">
+                    <span class="section-icon feature-icon-teal"><i class="bi bi-people"></i></span>
+                    <h3>Patient link</h3>
+                </div>
+                <PatientPicker Patients="_patients" @bind-SelectedKey="_patientKey" PatientChanged="OnPatient"
+                               Hint="Choose a patient registered on this tablet." />
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-header">
+                    <span class="section-icon feature-icon-teal"><i class="bi bi-eye"></i></span>
+                    <h3>Exam</h3>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">VA right</label>
+                        <InputSelect class="form-select" @bind-Value="_form.VisualAcuityRight">
+                            <option value="">Select</option>
+                            @foreach (var v in VisualAcuityOptions)
+                            {
+                                <option value="@v">@v</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">VA left</label>
+                        <InputSelect class="form-select" @bind-Value="_form.VisualAcuityLeft">
+                            <option value="">Select</option>
+                            @foreach (var v in VisualAcuityOptions)
+                            {
+                                <option value="@v">@v</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Diagnosis</label>
+                    <details class="field-multiselect">
+                        <summary class="form-select field-multiselect-summary">
+                            @(_dx.Count == 0 ? "Select diagnoses…" : _dx.Count == 1 ? _dx.First() : $"{_dx.Count} selected")
+                        </summary>
+                        <div class="field-multiselect-menu">
+                            @foreach (var d in EyeDiagnoses)
+                            {
+                                <label class="field-multiselect-item">
+                                    <InputCheckbox class="form-check-input me-2"
+                                                   checked="@_dx.Contains(d)"
+                                                   @onchange="e => Toggle(_dx, d, e.Value)" />
+                                    @d
+                                </label>
+                            }
+                        </div>
+                    </details>
+                    @if (_dx.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            @foreach (var d in _dx.ToList())
+                            {
+                                <button type="button" class="badge rounded-pill text-bg-primary border-0" @onclick="() => RemoveDx(d)">
+                                    @d <i class="bi bi-x"></i>
+                                </button>
+                            }
+                        </div>
+                    }
+                    <div class="form-hint">Open the list and tick all diagnoses that apply.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Treatment</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var t in EyeTreatments)
+                        {
+                            <label class="badge rounded-pill @(_tx.Contains(t) ? "text-bg-primary" : "text-bg-light border")" style="cursor:pointer">
+                                <InputCheckbox class="form-check-input me-1" checked="@_tx.Contains(t)" @onchange="e => ToggleTreatment(t, e.Value)" /> @t
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                @if (_tx.Contains("MEDICATION"))
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Medications</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var m in EyeMedications)
+                            {
+                                <label class="badge rounded-pill @(_meds.Contains(m) ? "text-bg-primary" : "text-bg-light border")" style="cursor:pointer">
+                                    <InputCheckbox class="form-check-input me-1" checked="@_meds.Contains(m)" @onchange="e => Toggle(_meds, m, e.Value)" /> @m
+                                </label>
+                            }
+                        </div>
+                        <div class="mt-2">
+                            <label class="form-label">Other medications</label>
+                            <InputTextArea class="form-control" rows="2" @bind-Value="_otherMedsText"
+                                           placeholder="Additional medications (one per line)…" />
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex flex-wrap gap-3">
+                    <div class="form-check">
+                        <InputCheckbox class="form-check-input" @bind-Value="_glasses" id="gl" />
+                        <label class="form-check-label" for="gl">Glasses dispensed</label>
+                    </div>
+                    <div class="form-check">
+                        <InputCheckbox class="form-check-input" @bind-Value="_referred" id="eye-referred" />
+                        <label class="form-check-label" for="eye-referred">Referred</label>
+                    </div>
+                </div>
+            </div>
+
+            <FormActions SaveLabel="Save eye visit offline" SaveIcon="bi-eye" Saving="_busy" CancelHref="" />
+        </EditForm>
+    }
+</div>
+
+@code {
+    private readonly FieldPendingEyeDto _form = new();
+    private readonly HashSet<string> _dx = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _tx = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _meds = new(StringComparer.OrdinalIgnoreCase);
+    private List<LocalPatientOption> _patients = [];
+    private string _patientKey = string.Empty;
+    private string _displayName = "Eye";
+    private string? _otherMedsText;
+    private bool _glasses;
+    private bool _referred;
+    private bool _busy;
+
+    private IEnumerable<string> VisualAcuityOptions =>
+        Cache.Catalog.VisualAcuityOptions.Count > 0
+            ? Cache.Catalog.VisualAcuityOptions
+            : FallbackVa;
+
+    private IEnumerable<string> EyeDiagnoses =>
+        Cache.Catalog.EyeDiagnoses.Count > 0 ? Cache.Catalog.EyeDiagnoses : FallbackDiagnoses;
+
+    private IEnumerable<string> EyeTreatments =>
+        Cache.Catalog.EyeTreatments.Count > 0 ? Cache.Catalog.EyeTreatments : FallbackTreatments;
+
+    private IEnumerable<string> EyeMedications =>
+        Cache.Catalog.EyeMedications.Count > 0 ? Cache.Catalog.EyeMedications : FallbackMedications;
+
+    private static readonly string[] FallbackVa =
+        ["6/6", "6/9", "6/12", "6/18", "6/24", "6/36", "6/60", "3/60", "CF", "HM", "LP", "NLP"];
+
+    private static readonly string[] FallbackDiagnoses =
+    [
+        "ALLERGIC CONJUNCTIVITIS", "ASTIGMATISM", "BACTERIAL CONJUNCTIVITIS", "CORNEA OPACITY",
+        "DRY EYE", "FOREIGN BODY", "GLAUCOMA", "HYPEROPIA", "IMMATURE CATARACT", "MATURE CATARACT",
+        "MYOPIA", "PRESBYOPIA", "PTERYGIUM", "Vernal conjunctivitis"
+    ];
+
+    private static readonly string[] FallbackTreatments = ["MEDICATION", "REFRACTION", "SURGERY"];
+
+    private static readonly string[] FallbackMedications =
+    [
+        "Chloramphenicol eye drop", "Antallerg eye drop", "Timolol eye drop",
+        "Hypromellose eyedrop", "Bet-N eyedrop", "Ivyflur eye drop"
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAuthenticated) _patients = await Queue.GetLocalPatientsAsync();
+    }
+
+    private void OnPatient((Guid? ClientId, Guid? ServerId, string DisplayName) args)
+    {
+        _form.ClientPatientRecordId = args.ClientId;
+        _form.ServerPatientId = args.ServerId;
+        _displayName = string.IsNullOrWhiteSpace(args.DisplayName) ? "Eye" : args.DisplayName;
+    }
+
+    private void Toggle(HashSet<string> set, string value, object? checkedValue)
+    {
+        var on = checkedValue is bool b && b;
+        if (on) set.Add(value); else set.Remove(value);
+    }
+
+    private void RemoveDx(string value) => _dx.Remove(value);
+
+    private void ToggleTreatment(string value, object? checkedValue)
+    {
+        Toggle(_tx, value, checkedValue);
+        if (!_tx.Contains("MEDICATION"))
+        {
+            _meds.Clear();
+            _otherMedsText = null;
+        }
+    }
+
+    private static List<string> SplitLines(string? value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? []
+            : value.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+    private async Task SaveAsync()
+    {
+        if (!_form.ClientPatientRecordId.HasValue && !_form.ServerPatientId.HasValue)
+        {
+            Notifications.ShowError("Select a patient.");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _form.ClientRecordId = Guid.NewGuid();
+            _form.CapturedAtUtc = DateTime.UtcNow;
+            _form.Diagnoses = _dx.ToList();
+            _form.Treatments = _tx.ToList();
+            var meds = _meds.ToList();
+            meds.AddRange(SplitLines(_otherMedsText).Where(m => !meds.Contains(m, StringComparer.OrdinalIgnoreCase)));
+            _form.Medications = meds;
+            _form.GlassesDispensed = _glasses;
+            _form.Referred = _referred;
+            await Queue.EnqueueEyeAsync(_form, _displayName);
+            Notifications.ShowSuccess("Eye clinic visit queued on this tablet.");
+            _dx.Clear(); _tx.Clear(); _meds.Clear();
+            _glasses = false;
+            _referred = false;
+            _otherMedsText = null;
+            _form.VisualAcuityLeft = _form.VisualAcuityRight = null;
+            _form.Referred = false;
+            _patientKey = string.Empty;
+            _form.ClientPatientRecordId = null;
+            _form.ServerPatientId = null;
+        }
+        catch (Exception ex)
+        {
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

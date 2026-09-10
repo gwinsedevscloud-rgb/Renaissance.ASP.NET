@@ -1,0 +1,166 @@
+@page "/secondary"
+@using MedReach.Field.Models
+@using MedReach.Field.Services
+@inject AuthSessionService Auth
+@inject OutreachCacheService Cache
+@inject FieldQueueService Queue
+@inject NotificationService Notifications
+
+<PageTitle>Secondary outreach - MedReach</PageTitle>
+
+<div class="module-page module-secondary">
+<StationHeader Title="Secondary outreach" Subtitle="Deworming, ITN, and registration-only programs" Icon="bi-capsule-pill" />
+<div class="field-hint"><i class="bi bi-megaphone"></i><span>Dental and Eye clinics use their own Clinical modules after triage referral.</span></div>
+
+@if (!Auth.IsAuthenticated)
+{
+    <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>Please <a href="login">sign in</a> first.</div>
+}
+else if (_programs.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-1"></i>
+        No active registration-only secondary programs in the tablet cache.
+        Refresh settings while online (Dental/Eye clinics use their own modules).
+    </div>
+}
+else
+{
+    <EditForm Model="_form" OnValidSubmit="SaveAsync" class="form-card form-card-create">
+        <div class="form-section">
+            <div class="form-section-header">
+                <span class="section-icon feature-icon-teal"><i class="bi bi-megaphone"></i></span>
+                <h3>Program</h3>
+            </div>
+            <label class="form-label">Secondary program *</label>
+            <InputSelect class="form-select" @bind-Value="_programId" @bind-Value:after="OnProgramChanged">
+                <option value="">Select</option>
+                @foreach (var p in _programs)
+                {
+                    <option value="@p.Id">@p.Name (@p.OutreachCode)</option>
+                }
+            </InputSelect>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-header">
+                <span class="section-icon feature-icon-teal"><i class="bi bi-person"></i></span>
+                <h3>Registration</h3>
+            </div>
+            <div class="row g-3">
+                @if (_selected?.PatientIdMode == FieldPatientIdMode.PreGenerated)
+                {
+                    <div class="col-md-6">
+                        <label class="form-label">Pre-printed ID</label>
+                        <InputText class="form-control text-uppercase" @bind-Value="_form.ProgramPatientIdCode" />
+                    </div>
+                }
+                <div class="col-md-8">
+                    <label class="form-label">Full name *</label>
+                    <InputText class="form-control" @bind-Value="_form.FullName" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Sex *</label>
+                    <InputSelect class="form-select" @bind-Value="_form.Sex">
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Age *</label>
+                    <InputNumber class="form-control" @bind-Value="_form.Age" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Status *</label>
+                    <InputSelect class="form-select" @bind-Value="_form.Status">
+                        @foreach (var s in _statusOptions)
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </InputSelect>
+                </div>
+            </div>
+        </div>
+
+        <FormActions SaveLabel="Save offline" SaveIcon="bi-capsule-pill" Saving="_busy" CancelHref="" />
+    </EditForm>
+}
+</div>
+
+@code {
+    private readonly FieldPendingSecondaryDto _form = new() { Age = 1, Status = "Dewormed" };
+    private List<CareProgramSummaryDto> _programs = [];
+    private CareProgramSummaryDto? _selected;
+    private string _programId = string.Empty;
+    private List<string> _statusOptions = ["Dewormed", "Pending", "Referred", "Not Eligible"];
+    private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        _programs = Cache.Cached?.ActiveSecondaryPrograms
+            .Where(p => p.IsRegistrationSecondary)
+            .ToList() ?? [];
+        if (_programs.Count == 1)
+        {
+            _programId = _programs[0].Id.ToString();
+            OnProgramChanged();
+        }
+    }
+
+    private void OnProgramChanged()
+    {
+        _selected = Guid.TryParse(_programId, out var id)
+            ? _programs.FirstOrDefault(p => p.Id == id)
+            : null;
+        _statusOptions = GetStatusOptions(_selected?.Name);
+        _form.Status = _statusOptions[0];
+        _form.CareProgramId = _selected?.Id ?? Guid.Empty;
+    }
+
+    private static List<string> GetStatusOptions(string? programName)
+    {
+        if (programName?.Contains("ITN", StringComparison.OrdinalIgnoreCase) == true
+            || programName?.Contains("Net", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return ["Net Issued", "Pending", "Already Has Net", "Not Eligible"];
+        }
+
+        return ["Dewormed", "Pending", "Referred", "Not Eligible"];
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_form.CareProgramId == Guid.Empty)
+        {
+            Notifications.ShowError("Select a program.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_form.FullName) || string.IsNullOrWhiteSpace(_form.Sex) || _form.Age <= 0)
+        {
+            Notifications.ShowError("Name, sex, and age are required.");
+            return;
+        }
+        if (_selected?.PatientIdMode == FieldPatientIdMode.PreGenerated && string.IsNullOrWhiteSpace(_form.ProgramPatientIdCode))
+        {
+            Notifications.ShowError("Enter the pre-printed ID.");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _form.ClientRecordId = Guid.NewGuid();
+            _form.CapturedAtUtc = DateTime.UtcNow;
+            await Queue.EnqueueSecondaryAsync(_form, $"{_form.FullName.Trim()} · {_selected?.Name}");
+            Notifications.ShowSuccess("Secondary registration queued.");
+            _form.FullName = string.Empty;
+            _form.Sex = string.Empty;
+            _form.Age = 1;
+            _form.ProgramPatientIdCode = null;
+            _form.ClientRecordId = Guid.Empty;
+        }
+        catch (Exception ex) { Notifications.ShowError(ex.Message); }
+        finally { _busy = false; }
+    }
+}

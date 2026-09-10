@@ -1,0 +1,242 @@
+﻿@page "/"
+@using MedReach.Field.Models
+@using MedReach.Field.Services
+@inject AuthSessionService Auth
+@inject OutreachCacheService Cache
+@inject FieldQueueService Queue
+@inject SyncOrchestrator SyncOrch
+@inject ConnectivityService Connectivity
+@inject NotificationService Notifications
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>Home - MedReach</PageTitle>
+
+@if (!Auth.IsAuthenticated)
+{
+    <div class="empty-state py-5">
+        <i class="bi bi-box-arrow-in-right d-block fs-1 mb-3"></i>
+        <h1 class="h4">Sign in to MedReach Field</h1>
+        <p class="text-muted">Same look and account as the hospital web app.</p>
+        <a class="btn btn-primary mt-2" href="login"><i class="bi bi-box-arrow-in-right me-1"></i> Sign in</a>
+    </div>
+}
+else
+{
+    <div class="home-dashboard">
+        <div class="hero-panel home-hero mb-3">
+            <div class="home-hero-glow home-hero-glow-light" aria-hidden="true"></div>
+            <div class="home-hero-grid" aria-hidden="true"></div>
+
+            <div class="position-relative home-hero-layout">
+                <div class="home-hero-content">
+                    <div class="home-hero-intro-block">
+                        <span class="home-hero-accent" aria-hidden="true"></span>
+                        <h1 class="home-hero-title mb-1">
+                            <i class="bi bi-heart-pulse me-2"></i>MedReach
+                        </h1>
+                        <p class="lead mb-1">
+                            Welcome back, @(Auth.User?.FullName ?? "colleague").
+                        </p>
+                        <p class="home-hero-subtext mb-0">
+                            Field tablet mode — capture outreach offline, sync when you have signal.
+                            @(string.IsNullOrWhiteSpace(Cache.Cached?.FacilityName) ? "" : $" Facility: {Cache.Cached.FacilityName}.")
+                        </p>
+                    </div>
+
+                    <div class="home-hero-actions">
+                        <a class="btn btn-light-hero" href="register">
+                            <i class="bi bi-person-vcard me-2"></i>Register patient
+                        </a>
+                        <button class="btn btn-outline-light home-hero-btn-outline" type="button" disabled="@(_busy || !Connectivity.IsOnline)" @onclick="PushAsync">
+                            <i class="bi bi-cloud-arrow-up me-2"></i>Sync now
+                        </button>
+                    </div>
+                </div>
+
+                <aside class="home-hero-aside">
+                    <dl class="home-hero-stats">
+                        <div class="home-hero-stat">
+                            <dt>Connection</dt>
+                            <dd>@(Connectivity.IsOnline ? "Online" : "Offline")</dd>
+                        </div>
+                        <div class="home-hero-stat @(_pending > 0 ? "has-pending" : "")">
+                            <dt>Queue</dt>
+                            <dd>@_pending</dd>
+                        </div>
+                    </dl>
+
+                    @if (Cache.Cached?.ActivePrimaryProgram is { } program)
+                    {
+                        <div class="home-hero-status">
+                            <i class="bi bi-megaphone-fill"></i>
+                            @program.Name (@program.OutreachCode)
+                        </div>
+                    }
+                    else if (Cache.Cached is null)
+                    {
+                        <div class="home-hero-status">
+                            <i class="bi bi-exclamation-circle-fill"></i>
+                            Settings not cached yet — refresh while online.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="home-hero-status">
+                            <i class="bi bi-info-circle-fill"></i>
+                            No active primary outreach program.
+                        </div>
+                    }
+
+                    <div class="home-hero-meta">
+                        @if (!string.IsNullOrWhiteSpace(Cache.Cached?.FacilityName))
+                        {
+                            <span><i class="bi bi-hospital me-1"></i>@Cache.Cached.FacilityName</span>
+                        }
+                        <span><i class="bi bi-calendar3 me-1"></i>@DateTime.Now.ToString("dddd, d MMM yyyy")</span>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <div class="home-modules-section mt-2">
+            <div class="home-modules-header mb-3">
+                <h2 class="h5 mb-1">Field modules</h2>
+                <p class="text-muted mb-0">Same MedReach branding as the hospital web app — optimized for offline tablets.</p>
+            </div>
+
+            <div class="home-module-grid">
+                <a class="home-module-card" href="register">
+                    <span class="card-icon"><i class="bi bi-person-plus"></i></span>
+                    <h2>Outreach registration</h2>
+                    <p>Register patients for the active care program.</p>
+                </a>
+                <a class="home-module-card" href="patients">
+                    <span class="card-icon"><i class="bi bi-people"></i></span>
+                    <h2>Local patients</h2>
+                    <p>Pick patients already on this tablet for clinical steps.</p>
+                </a>
+                <a class="home-module-card" href="secondary">
+                    <span class="card-icon"><i class="bi bi-capsule-pill"></i></span>
+                    <h2>Secondary outreach</h2>
+                    <p>Deworming / ITN registration-only programs.</p>
+                </a>
+                <a class="home-module-card" href="triage">
+                    <span class="card-icon"><i class="bi bi-clipboard2-pulse"></i></span>
+                    <h2>Triage</h2>
+                    <p>Vitals and risk flags.</p>
+                </a>
+                <a class="home-module-card" href="laboratory">
+                    <span class="card-icon"><i class="bi bi-eyedropper"></i></span>
+                    <h2>Laboratory</h2>
+                    <p>Field tests with cached result catalogs.</p>
+                </a>
+                <a class="home-module-card" href="consultation">
+                    <span class="card-icon"><i class="bi bi-stethoscope"></i></span>
+                    <h2>Consultation</h2>
+                    <p>Diagnoses and treatments offline.</p>
+                </a>
+                <a class="home-module-card" href="pharmacy">
+                    <span class="card-icon"><i class="bi bi-capsule"></i></span>
+                    <h2>Pharmacy</h2>
+                    <p>Prescribe and dispense common drugs.</p>
+                </a>
+                <a class="home-module-card" href="dental">
+                    <span class="card-icon"><i class="bi bi-emoji-smile"></i></span>
+                    <h2>Dental</h2>
+                    <p>Dental secondary outreach visits.</p>
+                </a>
+                <a class="home-module-card" href="eye">
+                    <span class="card-icon"><i class="bi bi-eye"></i></span>
+                    <h2>Eye clinic</h2>
+                    <p>Optometry secondary outreach visits.</p>
+                </a>
+                <a class="home-module-card" href="sync">
+                    <span class="card-icon"><i class="bi bi-cloud-check"></i></span>
+                    <h2>Sync queue</h2>
+                    <p>Push pending records; export for troubleshooting.</p>
+                </a>
+            </div>
+
+            <div class="mt-3 d-flex flex-wrap gap-2">
+                <button class="btn btn-primary" type="button" disabled="@_busy" @onclick="RefreshAsync">
+                    <i class="bi bi-arrow-repeat me-1"></i> Refresh settings
+                </button>
+                <a class="btn btn-outline-primary" href="sync"><i class="bi bi-list-check me-1"></i> Open queue</a>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private int _pending;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsAuthenticated)
+        {
+            return;
+        }
+
+        await RefreshCountsAsync();
+        Connectivity.Changed += OnConn;
+    }
+
+    private void OnConn() => InvokeAsync(async () =>
+    {
+        StateHasChanged();
+        if (Connectivity.IsOnline && Auth.IsAuthenticated)
+        {
+            var result = await SyncOrch.PushQueueAsync();
+            NotifySync(result);
+            await RefreshCountsAsync();
+            StateHasChanged();
+        }
+    });
+
+    public void Dispose() => Connectivity.Changed -= OnConn;
+
+    private async Task RefreshCountsAsync()
+    {
+        var all = await Queue.GetAllAsync();
+        _pending = all.Count(x => string.Equals(x.Status, "pending", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task RefreshAsync()
+    {
+        _busy = true;
+        try
+        {
+            var result = await SyncOrch.PullConfigAsync();
+            if (result.Ok) Notifications.ShowSuccess(result.Message);
+            else Notifications.ShowWarning(result.Message);
+            await RefreshCountsAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task PushAsync()
+    {
+        _busy = true;
+        try
+        {
+            var result = await SyncOrch.PushQueueAsync();
+            NotifySync(result);
+            await RefreshCountsAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void NotifySync((int Accepted, int Failed, string Message) result)
+    {
+        if (result.Failed > 0) Notifications.ShowWarning(result.Message);
+        else Notifications.ShowSuccess(result.Message);
+    }
+}

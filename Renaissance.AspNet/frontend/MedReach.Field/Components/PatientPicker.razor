@@ -1,0 +1,46 @@
+@using MedReach.Field.Models
+
+<div class="mb-3">
+    <label class="form-label">@Label</label>
+    <select class="form-select" value="@SelectedKey" @onchange="OnChanged">
+        <option value="">— Select patient —</option>
+        @foreach (var p in Patients)
+        {
+            <option value="@p.ClientRecordId">
+                @p.DisplayName@(string.IsNullOrWhiteSpace(p.ClientNumber) ? "" : $" · {p.ClientNumber}") (@p.Status)
+            </option>
+        }
+    </select>
+    @if (!string.IsNullOrWhiteSpace(Hint))
+    {
+        <div class="form-text">@Hint</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Patient";
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public List<LocalPatientOption> Patients { get; set; } = [];
+    [Parameter] public string SelectedKey { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> SelectedKeyChanged { get; set; }
+    [Parameter] public EventCallback<(Guid? ClientId, Guid? ServerId, string DisplayName)> PatientChanged { get; set; }
+
+    private async Task OnChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? string.Empty;
+        SelectedKey = value;
+        await SelectedKeyChanged.InvokeAsync(value);
+
+        if (Guid.TryParse(value, out var id))
+        {
+            var p = Patients.FirstOrDefault(x => x.ClientRecordId == id);
+            if (p is not null)
+            {
+                await PatientChanged.InvokeAsync((p.ClientRecordId, p.ServerId, p.DisplayName));
+                return;
+            }
+        }
+
+        await PatientChanged.InvokeAsync((null, null, string.Empty));
+    }
+}

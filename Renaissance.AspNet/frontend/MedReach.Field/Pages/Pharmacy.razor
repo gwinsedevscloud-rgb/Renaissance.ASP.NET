@@ -1,0 +1,137 @@
+@page "/pharmacy"
+@using MedReach.Field.Models
+@using MedReach.Field.Services
+@inject AuthSessionService Auth
+@inject OutreachCacheService Cache
+@inject FieldQueueService Queue
+@inject NotificationService Notifications
+
+<PageTitle>Pharmacy - MedReach</PageTitle>
+
+<StationHeader Title="Pharmacy" Subtitle="Prescribe and dispense common outreach drugs" Icon="bi-capsule" />
+<div class="field-hint"><i class="bi bi-prescription2"></i><span>Drug list is cached from the hospital catalog on refresh.</span></div>
+
+@if (!Auth.IsAuthenticated)
+{
+    <div class="alert alert-warning">Please <a href="login">sign in</a> first.</div>
+}
+else
+{
+    <EditForm Model="_form" OnValidSubmit="SaveAsync" class="form-card form-card-create">
+        <PatientPicker Patients="_patients" @bind-SelectedKey="_patientKey" PatientChanged="OnPatient" />
+
+        <div class="form-section">
+            <div class="form-section-header">
+                <span class="section-icon feature-icon-teal"><i class="bi bi-prescription2"></i></span>
+                <h3>Prescription</h3>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Category</label>
+                    <InputSelect class="form-select" @bind-Value="_form.DrugCategory" @bind-Value:after="OnCategory">
+                        <option value="">Select</option>
+                        @foreach (var c in Cache.Catalog.DrugCategories) { <option value="@c">@c</option> }
+                    </InputSelect>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Drug *</label>
+                    <InputSelect class="form-select" @bind-Value="_form.DrugName" @bind-Value:after="OnDrug">
+                        <option value="">Select</option>
+                        @foreach (var d in _drugs) { <option value="@d.Name">@d.Name</option> }
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Dosage</label>
+                    <InputText class="form-control" @bind-Value="_form.Dosage" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Frequency</label>
+                    <InputText class="form-control" @bind-Value="_form.Frequency" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Duration</label>
+                    <InputText class="form-control" @bind-Value="_form.Duration" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Qty dispensed</label>
+                    <InputNumber class="form-control" @bind-Value="_form.QuantityDispensed" />
+                </div>
+                <div class="col-md-8 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <InputCheckbox class="form-check-input" @bind-Value="_form.MarkDispensed" id="disp" />
+                        <label class="form-check-label" for="disp">Mark as dispensed now</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <FormActions SaveLabel="Save offline" SaveIcon="bi-capsule" Saving="_busy" CancelHref="" />
+    </EditForm>
+}
+
+@code {
+    private readonly FieldPendingPharmacyDto _form = new() { MarkDispensed = true };
+    private List<LocalPatientOption> _patients = [];
+    private List<FieldDrugOptionDto> _drugs = [];
+    private string _patientKey = string.Empty;
+    private string _displayName = "Pharmacy";
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAuthenticated) _patients = await Queue.GetLocalPatientsAsync();
+    }
+
+    private void OnPatient((Guid? ClientId, Guid? ServerId, string DisplayName) args)
+    {
+        _form.ClientPatientRecordId = args.ClientId;
+        _form.ServerPatientId = args.ServerId;
+        _displayName = string.IsNullOrWhiteSpace(args.DisplayName) ? "Pharmacy" : args.DisplayName;
+    }
+
+    private void OnCategory()
+    {
+        _drugs = Cache.Catalog.Drugs
+            .Where(d => string.Equals(d.Category, _form.DrugCategory, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        _form.DrugName = string.Empty;
+        _form.Dosage = _form.Frequency = _form.Duration = null;
+    }
+
+    private void OnDrug()
+    {
+        var drug = _drugs.FirstOrDefault(d => d.Name == _form.DrugName);
+        if (drug is null) return;
+        _form.Dosage = drug.Dosage;
+        _form.Frequency = drug.Frequency;
+        _form.Duration = drug.Duration;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!_form.ClientPatientRecordId.HasValue && !_form.ServerPatientId.HasValue)
+        {
+            Notifications.ShowError("Select a patient.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_form.DrugName))
+        {
+            Notifications.ShowError("Select a drug.");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _form.ClientRecordId = Guid.NewGuid();
+            _form.CapturedAtUtc = DateTime.UtcNow;
+            await Queue.EnqueuePharmacyAsync(_form, $"{_displayName} · {_form.DrugName}");
+            Notifications.ShowSuccess("Prescription queued.");
+            _form.DrugName = string.Empty;
+            _form.Dosage = _form.Frequency = _form.Duration = null;
+            _form.QuantityDispensed = null;
+        }
+        catch (Exception ex) { Notifications.ShowError(ex.Message); }
+        finally { _busy = false; }
+    }
+}

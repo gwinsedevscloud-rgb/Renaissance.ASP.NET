@@ -1,0 +1,321 @@
+@page "/dental"
+@using MedReach.Field.Models
+@using MedReach.Field.Services
+@inject AuthSessionService Auth
+@inject OutreachCacheService Cache
+@inject FieldQueueService Queue
+@inject NotificationService Notifications
+
+<PageTitle>Dental - MedReach</PageTitle>
+
+<div class="module-page module-dental">
+    <StationHeader Title="Dental clinic" Subtitle="Secondary outreach dental visits · offline queue" Icon="bi-emoji-smile" />
+
+    <div class="field-hint">
+        <i class="bi bi-arrow-right-circle"></i>
+        <span>Link to a patient on this tablet, then capture services, other diagnoses, and dispensed items.</span>
+    </div>
+
+    @if (!Auth.IsAuthenticated)
+    {
+        <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>Please <a href="login">sign in</a> first.</div>
+    }
+    else if (Cache.Cached?.ActiveSecondaryPrograms.All(p => !p.IsDentalClinic) != false)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-1"></i>
+            No active Dental clinic secondary program in the tablet cache. Refresh settings while online.
+        </div>
+    }
+    else
+    {
+        <EditForm Model="_form" OnValidSubmit="SaveAsync" class="form-card form-card-create">
+            <div class="form-section">
+                <div class="form-section-header">
+                    <span class="section-icon feature-icon-teal"><i class="bi bi-people"></i></span>
+                    <h3>Patient link</h3>
+                </div>
+                <PatientPicker Patients="_patients" @bind-SelectedKey="_patientKey" PatientChanged="OnPatient"
+                               Hint="Choose a patient registered on this tablet." />
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-header">
+                    <span class="section-icon feature-icon-teal"><i class="bi bi-tooth"></i></span>
+                    <h3>Services provided</h3>
+                </div>
+                <p class="form-hint mb-2">Tap a category to mark it, then tick services under each group.</p>
+                @{
+                    var groups = Cache.Catalog.DentalServiceGroups.Count > 0
+                        ? Cache.Catalog.DentalServiceGroups
+                        : FallbackDentalGroups;
+                    var roman = new[] { "I", "II", "III", "IV", "V" };
+                    var gi = 0;
+                }
+                @foreach (var group in groups)
+                {
+                    var numeral = gi < roman.Length ? roman[gi] : $"{gi + 1}";
+                    gi++;
+                    var categoryOn = _dx.Contains(group.Category);
+                    <div class="mb-3">
+                        <button type="button"
+                                class="btn btn-sm mb-2 @(_dx.Contains(group.Category) ? "btn-primary" : "btn-outline-secondary")"
+                                @onclick="() => ToggleCategory(group.Category)">
+                            @numeral. @group.Category
+                            @if (categoryOn)
+                            {
+                                <i class="bi bi-check2 ms-1"></i>
+                            }
+                        </button>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var t in group.Services)
+                            {
+                                <label class="badge rounded-pill @(_tx.Contains(t) ? "text-bg-primary" : "text-bg-light border")" style="cursor:pointer">
+                                    <InputCheckbox class="form-check-input me-1" checked="@_tx.Contains(t)" @onchange="e => ToggleService(group.Category, t, e.Value)" /> @t
+                                </label>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-header">
+                    <span class="section-icon feature-icon-teal"><i class="bi bi-clipboard2-pulse"></i></span>
+                    <h3>Other diagnoses</h3>
+                </div>
+                <details class="field-multiselect">
+                    <summary class="form-select field-multiselect-summary">
+                        @(_otherDx.Count == 0 ? "Select other diagnoses…" : _otherDx.Count == 1 ? _otherDx.First() : $"{_otherDx.Count} selected")
+                    </summary>
+                    <div class="field-multiselect-menu">
+                        @foreach (var d in OtherDiagnoses)
+                        {
+                            <label class="field-multiselect-item">
+                                <InputCheckbox class="form-check-input me-2"
+                                               checked="@_otherDx.Contains(d)"
+                                               @onchange="e => Toggle(_otherDx, d, e.Value)" />
+                                @d
+                            </label>
+                        }
+                    </div>
+                </details>
+                @if (_otherDx.Count > 0)
+                {
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        @foreach (var d in _otherDx.ToList())
+                        {
+                            <button type="button" class="badge rounded-pill text-bg-primary border-0" @onclick="() => _otherDx.Remove(d)">
+                                @d <i class="bi bi-x"></i>
+                            </button>
+                        }
+                    </div>
+                }
+                <div class="mt-3">
+                    <label class="form-label">Other treatment notes</label>
+                    <InputTextArea class="form-control" rows="3" @bind-Value="_otherTreatmentText"
+                                   placeholder="Additional treatment notes…" />
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-header">
+                    <span class="section-icon feature-icon-teal"><i class="bi bi-box-seam"></i></span>
+                    <h3>Dispense &amp; refer</h3>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Dispensed items</label>
+                    <details class="field-multiselect">
+                        <summary class="form-select field-multiselect-summary">
+                            @(_items.Count == 0 ? "Select dispensed items…" : _items.Count == 1 ? _items.First() : $"{_items.Count} selected")
+                        </summary>
+                        <div class="field-multiselect-menu">
+                            @foreach (var i in DispensedItems)
+                            {
+                                <label class="field-multiselect-item">
+                                    <InputCheckbox class="form-check-input me-2"
+                                                   checked="@_items.Contains(i)"
+                                                   @onchange="e => Toggle(_items, i, e.Value)" />
+                                    @i
+                                </label>
+                            }
+                        </div>
+                    </details>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Services referred</label>
+                    <details class="field-multiselect">
+                        <summary class="form-select field-multiselect-summary">
+                            @(_ref.Count == 0 ? "Select referral services…" : _ref.Count == 1 ? _ref.First() : $"{_ref.Count} selected")
+                        </summary>
+                        <div class="field-multiselect-menu">
+                            @foreach (var r in ReferralOptions)
+                            {
+                                <label class="field-multiselect-item">
+                                    <InputCheckbox class="form-check-input me-2"
+                                                   checked="@_ref.Contains(r)"
+                                                   @onchange="e => ToggleRefer(r, e.Value)" />
+                                    @r
+                                </label>
+                            }
+                        </div>
+                    </details>
+                </div>
+
+                <div class="form-check">
+                    <InputCheckbox class="form-check-input" @bind-Value="_referred" id="dental-referred" />
+                    <label class="form-check-label" for="dental-referred">Mark as referred</label>
+                </div>
+            </div>
+
+            <FormActions SaveLabel="Save dental offline" SaveIcon="bi-emoji-smile" Saving="_busy" CancelHref="" />
+        </EditForm>
+    }
+</div>
+
+@code {
+    private readonly FieldPendingDentalDto _form = new();
+    private readonly HashSet<string> _dx = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _tx = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _otherDx = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _items = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _ref = new(StringComparer.OrdinalIgnoreCase);
+    private List<LocalPatientOption> _patients = [];
+    private string _patientKey = string.Empty;
+    private string _displayName = "Dental";
+    private string? _otherTreatmentText;
+    private bool _referred;
+    private bool _busy;
+
+    private IEnumerable<string> OtherDiagnoses =>
+        Cache.Catalog.DentalOtherDiagnoses.Count > 0 ? Cache.Catalog.DentalOtherDiagnoses : FallbackOtherDx;
+
+    private IEnumerable<string> DispensedItems =>
+        Cache.Catalog.DentalDispensedItems.Count > 0 ? Cache.Catalog.DentalDispensedItems : FallbackDispensed;
+
+    private IEnumerable<string> ReferralOptions =>
+        Cache.Catalog.ReferralServices.Count > 0 ? Cache.Catalog.ReferralServices : FallbackReferrals;
+
+    private static readonly List<FieldDentalServiceGroupDto> FallbackDentalGroups =
+    [
+        new() { Category = "Routine Check Up", Services = ["Comprehensive oral examination", "Professional cleaning"] },
+        new() { Category = "Preventive Care", Services = ["Scaling and Polishing", "Fluoride treatments", "Sealants", "Oral hygiene education"] },
+        new() { Category = "Restorative Services", Services = ["Fillings"] },
+        new() { Category = "Oral Surgery", Services = ["Extractions"] },
+        new() { Category = "Others", Services = ["Giving of toothbrushes"] }
+    ];
+
+    private static readonly string[] FallbackOtherDx =
+    [
+        "ACUTE PERIODONTITIS", "Acute pericoronitis", "BLEEDING GUM", "CHRONIC PERIODONTITIS",
+        "Clinically healthy mouth", "Collapsed filling", "Cracked tooth syndrome", "DENTAL CARIES",
+        "DENTAL PLAQUE", "Dentoalveolar abscess on lower right 1st premolar", "Denture", "Enamel hypoplasi",
+        "Erupting incisors", "Erupting molars", "Erupting upper left 3", "FETOR ORIS", "Fractured tooth",
+        "GINGIVAL POCKET", "GINGIVAL RECESSION", "Missing tooth", "Mobile tooth",
+        "Pericoronitis 2° imparted third molar", "Periodontal abscess", "Recurrent Pericoronitis left last molar",
+        "Retain destinies tooth; Lingual emptying incisor", "Stains", "Supernumerary teeth",
+        "TOOTH SENSITIVITY", "Toothwear lesion", "Others"
+    ];
+
+    private static readonly string[] FallbackDispensed =
+    [
+        "Toothbrush", "Dental filling material", "Fluoride varnish", "Sealant material",
+        "Chlorhexidine mouthwash", "Ibuprofen 400 mg", "Amoxicillin 500 mg"
+    ];
+
+    private static readonly string[] FallbackReferrals =
+        ["Laboratory", "Pharmacy", "Dental", "Ancillary", "Optometry", "Ophthalmology", "Triage"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAuthenticated) _patients = await Queue.GetLocalPatientsAsync();
+    }
+
+    private void OnPatient((Guid? ClientId, Guid? ServerId, string DisplayName) args)
+    {
+        _form.ClientPatientRecordId = args.ClientId;
+        _form.ServerPatientId = args.ServerId;
+        _displayName = string.IsNullOrWhiteSpace(args.DisplayName) ? "Dental" : args.DisplayName;
+    }
+
+    private void Toggle(HashSet<string> set, string value, object? checkedValue)
+    {
+        var on = checkedValue is bool b && b;
+        if (on) set.Add(value); else set.Remove(value);
+    }
+
+    private void ToggleCategory(string category)
+    {
+        if (!_dx.Add(category))
+        {
+            _dx.Remove(category);
+        }
+    }
+
+    private void ToggleService(string category, string service, object? checkedValue)
+    {
+        Toggle(_tx, service, checkedValue);
+        if (checkedValue is bool on && on)
+        {
+            _dx.Add(category);
+        }
+    }
+
+    private void ToggleRefer(string value, object? checkedValue)
+    {
+        Toggle(_ref, value, checkedValue);
+        if (_ref.Count > 0)
+        {
+            _referred = true;
+        }
+    }
+
+    private static List<string> SplitLines(string? value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? []
+            : value.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+    private async Task SaveAsync()
+    {
+        if (!_form.ClientPatientRecordId.HasValue && !_form.ServerPatientId.HasValue)
+        {
+            Notifications.ShowError("Select a patient.");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _form.ClientRecordId = Guid.NewGuid();
+            _form.CapturedAtUtc = DateTime.UtcNow;
+            _form.Diagnoses = _dx.ToList();
+            _form.Treatments = _tx.ToList();
+            _form.OthersDiagnosis = _otherDx.ToList();
+            _form.OthersTreatment = SplitLines(_otherTreatmentText);
+            _form.DispensedItems = _items.ToList();
+            _form.ServicesReferred = _ref.ToList();
+            _form.Referred = _referred || _ref.Count > 0;
+            await Queue.EnqueueDentalAsync(_form, _displayName);
+            Notifications.ShowSuccess("Dental visit queued on this tablet.");
+            _dx.Clear(); _tx.Clear(); _otherDx.Clear(); _items.Clear(); _ref.Clear();
+            _otherTreatmentText = null;
+            _referred = false;
+            _patientKey = string.Empty;
+            _form.ClientPatientRecordId = null;
+            _form.ServerPatientId = null;
+            _form.Referred = false;
+        }
+        catch (Exception ex)
+        {
+            Notifications.ShowError(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

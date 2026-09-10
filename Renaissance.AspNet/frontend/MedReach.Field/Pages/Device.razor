@@ -1,0 +1,65 @@
+@page "/device"
+@using MedReach.Field.Services
+@inject DeviceIdentityService DeviceIdentity
+@inject AuthSessionService Auth
+@inject NotificationService Notifications
+
+<PageTitle>Device - MedReach</PageTitle>
+
+<div class="module-page module-device">
+    <StationHeader Title="This tablet" Subtitle="Label appears in Admin → Field devices after sync" Icon="bi-tablet" />
+
+    @if (!Auth.IsAuthenticated)
+    {
+        <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>Please <a href="login">sign in</a> first.</div>
+    }
+    else
+    {
+        <div class="form-card form-card-create" style="max-width:32rem">
+            <div class="form-section">
+                <div class="form-section-header">
+                    <span class="section-icon feature-icon-teal"><i class="bi bi-hdd"></i></span>
+                    <h3>Identity</h3>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Device ID</label>
+                    <div class="form-input-group">
+                        <span class="form-input-icon"><i class="bi bi-fingerprint"></i></span>
+                        <input class="form-control" readonly value="@_deviceId" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Device label</label>
+                    <div class="form-input-group">
+                        <span class="form-input-icon"><i class="bi bi-tag"></i></span>
+                        <input class="form-control" @bind="_label" maxlength="120" placeholder="Tablet-North-Camp-01" />
+                    </div>
+                    <div class="form-text">Example: Tablet-North-Camp-01</div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 align-items-center mt-3 pt-3 border-top">
+                <button class="btn btn-primary" type="button" @onclick="SaveAsync">
+                    <i class="bi bi-save me-1"></i> Save label
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string _deviceId = string.Empty;
+    private string _label = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _deviceId = await DeviceIdentity.GetOrCreateAsync();
+        _label = await DeviceIdentity.GetLabelAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        await DeviceIdentity.SetLabelAsync(_label);
+        Notifications.ShowSuccess("Device label saved on this tablet.");
+    }
+}

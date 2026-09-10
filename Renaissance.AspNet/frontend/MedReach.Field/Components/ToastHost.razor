@@ -1,0 +1,88 @@
+@inject NotificationService Notifications
+@implements IDisposable
+
+<div class="referral-toast-host field-toast-host">
+    @foreach (var toast in _toasts)
+    {
+        <div class="referral-toast field-toast @KindClass(toast.Kind) @toast.VisibleClass" role="alert">
+            <div class="referral-toast-icon"><i class="bi @toast.Icon"></i></div>
+            <div class="referral-toast-body">
+                <strong>@toast.Title</strong>
+                @if (!string.IsNullOrWhiteSpace(toast.Body))
+                {
+                    <p>@toast.Body</p>
+                }
+            </div>
+            <div class="referral-toast-actions">
+                <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => Dismiss(toast.Id)"></button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<ToastEntry> _toasts = [];
+
+    protected override void OnInitialized()
+    {
+        Notifications.ToastRaised += OnToast;
+    }
+
+    private void OnToast(ToastMessage message)
+    {
+        InvokeAsync(async () =>
+        {
+            var entry = new ToastEntry(message);
+            _toasts.Insert(0, entry);
+            StateHasChanged();
+            await Task.Delay(40);
+            entry.VisibleClass = "show";
+            StateHasChanged();
+            _ = AutoDismissAsync(entry.Id);
+        });
+    }
+
+    private static string KindClass(ToastKind kind) => kind switch
+    {
+        ToastKind.Success => "field-toast-success",
+        ToastKind.Error => "field-toast-error",
+        ToastKind.Warning => "field-toast-warning",
+        _ => "field-toast-info"
+    };
+
+    private async Task AutoDismissAsync(int id)
+    {
+        await Task.Delay(5500);
+        await InvokeAsync(() => { Dismiss(id); return Task.CompletedTask; });
+    }
+
+    private void Dismiss(int id)
+    {
+        var toast = _toasts.FirstOrDefault(t => t.Id == id);
+        if (toast is null) return;
+        toast.VisibleClass = "";
+        StateHasChanged();
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(280);
+            await InvokeAsync(() =>
+            {
+                _toasts.RemoveAll(t => t.Id == id);
+                StateHasChanged();
+                return Task.CompletedTask;
+            });
+        });
+    }
+
+    public void Dispose() => Notifications.ToastRaised -= OnToast;
+
+    private sealed class ToastEntry(ToastMessage message)
+    {
+        public int Id { get; } = message.Id;
+        public ToastKind Kind { get; } = message.Kind;
+        public string Title { get; } = message.Title;
+        public string Body { get; } = message.Body;
+        public string Icon { get; } = message.Icon;
+        public string VisibleClass { get; set; } = "";
+    }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "MedReach",
+  "short_name": "MedReach",
+  "id": "./",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f1eb",
+  "theme_color": "#0d6e6e",
+  "description": "MedReach clinical data collection — Field offline tablet app",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ]
+}

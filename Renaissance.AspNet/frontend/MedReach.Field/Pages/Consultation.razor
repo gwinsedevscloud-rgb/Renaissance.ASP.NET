@@ -1,0 +1,113 @@
+@page "/consultation"
+@using MedReach.Field.Models
+@using MedReach.Field.Services
+@inject AuthSessionService Auth
+@inject OutreachCacheService Cache
+@inject FieldQueueService Queue
+@inject NotificationService Notifications
+
+<PageTitle>Consultation - MedReach</PageTitle>
+
+<StationHeader Title="Consultation" Subtitle="Diagnoses and treatments · offline" Icon="bi-stethoscope" />
+<div class="field-hint"><i class="bi bi-journal-medical"></i><span>Tap chips to select diagnoses and treatments from the cached catalog.</span></div>
+
+@if (!Auth.IsAuthenticated)
+{
+    <div class="alert alert-warning">Please <a href="login">sign in</a> first.</div>
+}
+else
+{
+    <EditForm Model="_form" OnValidSubmit="SaveAsync" class="form-card form-card-create">
+        <PatientPicker Patients="_patients" @bind-SelectedKey="_patientKey" PatientChanged="OnPatient" />
+
+        <div class="form-section">
+            <div class="form-section-header">
+                <span class="section-icon feature-icon-teal"><i class="bi bi-journal-medical"></i></span>
+                <h3>Clinical findings</h3>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Diagnoses</label>
+                <div class="module-chip-row">
+                    @foreach (var d in Cache.Catalog.ConsultationDiagnoses)
+                    {
+                        <label class="badge rounded-pill @(_selectedDx.Contains(d) ? "text-bg-primary" : "text-bg-light border")" style="cursor:pointer">
+                            <InputCheckbox class="form-check-input me-1" checked="@_selectedDx.Contains(d)" @onchange="e => Toggle(_selectedDx, d, e.Value)" /> @d
+                        </label>
+                    }
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Treatments</label>
+                <div class="module-chip-row">
+                    @foreach (var t in Cache.Catalog.ConsultationTreatments)
+                    {
+                        <label class="badge rounded-pill @(_selectedTx.Contains(t) ? "text-bg-primary" : "text-bg-light border")" style="cursor:pointer">
+                            <InputCheckbox class="form-check-input me-1" checked="@_selectedTx.Contains(t)" @onchange="e => Toggle(_selectedTx, t, e.Value)" /> @t
+                        </label>
+                    }
+                </div>
+            </div>
+            <div class="form-check">
+                <InputCheckbox class="form-check-input" @bind-Value="_referred" id="ref" />
+                <label class="form-check-label" for="ref">Referred for further care</label>
+            </div>
+        </div>
+
+        <FormActions SaveLabel="Save offline" SaveIcon="bi-stethoscope" Saving="_busy" CancelHref="" />
+    </EditForm>
+}
+
+@code {
+    private readonly FieldPendingConsultationDto _form = new();
+    private readonly HashSet<string> _selectedDx = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _selectedTx = new(StringComparer.OrdinalIgnoreCase);
+    private List<LocalPatientOption> _patients = [];
+    private string _patientKey = string.Empty;
+    private string _displayName = "Consultation";
+    private bool _referred;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAuthenticated) _patients = await Queue.GetLocalPatientsAsync();
+    }
+
+    private void OnPatient((Guid? ClientId, Guid? ServerId, string DisplayName) args)
+    {
+        _form.ClientPatientRecordId = args.ClientId;
+        _form.ServerPatientId = args.ServerId;
+        _displayName = string.IsNullOrWhiteSpace(args.DisplayName) ? "Consultation" : args.DisplayName;
+    }
+
+    private void Toggle(HashSet<string> set, string value, object? checkedValue)
+    {
+        var on = checkedValue is bool b && b;
+        if (on) set.Add(value); else set.Remove(value);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!_form.ClientPatientRecordId.HasValue && !_form.ServerPatientId.HasValue)
+        {
+            Notifications.ShowError("Select a patient.");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _form.ClientRecordId = Guid.NewGuid();
+            _form.CapturedAtUtc = DateTime.UtcNow;
+            _form.Diagnoses = _selectedDx.ToList();
+            _form.Treatments = _selectedTx.ToList();
+            _form.Referred = _referred;
+            await Queue.EnqueueConsultationAsync(_form, _displayName);
+            Notifications.ShowSuccess("Consultation queued.");
+            _selectedDx.Clear();
+            _selectedTx.Clear();
+            _referred = false;
+        }
+        catch (Exception ex) { Notifications.ShowError(ex.Message); }
+        finally { _busy = false; }
+    }
+}

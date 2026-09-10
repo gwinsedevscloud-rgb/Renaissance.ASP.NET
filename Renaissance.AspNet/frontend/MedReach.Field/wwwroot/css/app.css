@@ -1,0 +1,270 @@
+/* Field PWA — host chrome + shared MedReach theme extras */
+
+html, body {
+    margin: 0;
+    height: 100%;
+}
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: #fffbeb;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.12);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.65rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+.loading-progress {
+    position: absolute;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    inset: 20vh 0 auto 0;
+    margin: 0 auto;
+}
+
+.loading-progress circle {
+    fill: none;
+    stroke: #0d6e6e;
+    stroke-width: 0.6rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+    stroke: #d4a574;
+    stroke-dasharray: calc(3.14159265359 * 10rem);
+    stroke-dashoffset: calc(3.14159265359 * var(--blazor-load-percentage, 0%) * 1rem / 100);
+    transition: stroke-dashoffset 0.15s ease;
+}
+
+.loading-progress-text {
+    text-align: center;
+    font-weight: 600;
+    color: #0a5555;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    position: absolute;
+    inset: calc(20vh + 8.5rem) 0 auto 0;
+}
+
+.loading-progress-text:after {
+    content: var(--blazor-load-percentage-text, "Loading MedReach");
+}
+
+.field-conn-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.28rem 0.65rem;
+    border-radius: 2rem;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    white-space: nowrap;
+}
+
+.field-conn-chip.offline {
+    background: rgba(185, 28, 28, 0.85);
+}
+
+.field-conn-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: #86efac;
+}
+
+.field-conn-chip.offline .field-conn-dot {
+    background: #fecaca;
+}
+
+.field-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.4rem;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    margin-left: 0.35rem;
+}
+
+.home-module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+}
+
+.home-module-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    text-decoration: none;
+    color: inherit;
+    background: var(--ren-surface);
+    border: 1px solid var(--ren-border);
+    border-radius: var(--ren-radius-lg);
+    padding: 1.15rem 1.2rem;
+    box-shadow: var(--ren-shadow);
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-module-card:hover {
+    color: inherit;
+    border-color: color-mix(in srgb, var(--ren-primary) 35%, var(--ren-border));
+    transform: translateY(-2px);
+    box-shadow: var(--ren-shadow-lg);
+}
+
+.home-module-card .card-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ren-primary-light);
+    color: var(--ren-primary);
+    font-size: 1.2rem;
+}
+
+.home-module-card h2 {
+    font-size: 1.05rem;
+    font-weight: 650;
+    margin: 0;
+}
+
+.home-module-card p {
+    margin: 0;
+    color: var(--ren-text-muted);
+    font-size: 0.9rem;
+}
+
+/* Station headers (match web triage-station vibe) */
+.field-station-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    padding: 1.15rem 1.25rem;
+    border-radius: var(--ren-radius-lg);
+    background: linear-gradient(135deg, var(--ren-primary) 0%, #148080 45%, #1a9696 100%);
+    color: #fff;
+    box-shadow: var(--ren-shadow-lg);
+}
+
+.field-station-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.field-station-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+
+.field-station-header h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.field-station-header p {
+    margin: 0.15rem 0 0;
+    opacity: 0.9;
+    font-size: 0.92rem;
+}
+
+.field-hint {
+    display: flex;
+    gap: 0.65rem;
+    align-items: flex-start;
+    padding: 0.85rem 1rem;
+    border-radius: var(--ren-radius);
+    background: var(--ren-primary-light);
+    border: 1px solid color-mix(in srgb, var(--ren-primary) 18%, transparent);
+    color: var(--ren-primary-dark);
+    margin-bottom: 1rem;
+}
+
+.field-hint i {
+    margin-top: 0.15rem;
+}
+
+/* Toasts — reuse referral-toast shell from site.css */
+.field-toast-host {
+    z-index: 1080;
+}
+
+.field-toast.field-toast-success .referral-toast-icon {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.field-toast.field-toast-error .referral-toast-icon {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.field-toast.field-toast-warning .referral-toast-icon {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+.field-toast.field-toast-info .referral-toast-icon {
+    background: var(--ren-primary-light);
+    color: var(--ren-primary);
+}
+
+.field-toast.field-toast-success { border-left: 4px solid #10b981; }
+.field-toast.field-toast-error { border-left: 4px solid #ef4444; }
+.field-toast.field-toast-warning { border-left: 4px solid var(--ren-accent, #d4a574); }
+.field-toast.field-toast-info { border-left: 4px solid var(--ren-primary); }
+
+.field-banner {
+    border: none;
+    border-radius: var(--ren-radius);
+    box-shadow: var(--ren-shadow);
+}
+
+.login-alert.login-alert-success {
+    border-color: #a7f3d0;
+    background: #ecfdf5;
+    color: #047857;
+    animation: none;
+}
+
+.module-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.module-chip-row .badge {
+    font-weight: 600;
+}
