@@ -8,12 +8,13 @@
 
 <PageTitle>Secondary Outreach - MedReach</PageTitle>
 
-<div class="module-page">
+<div class="module-page outreach-program-theme">
     <PageHeader Title="@(_selected?.Name ?? "Secondary Outreach")"
                 Subtitle="@(_selected?.IsClinicLinked == true
                     ? "Clinic linked to primary outreach — patients arrive via Triage referral"
                     : "Registration-only outreach — name, age, gender, and status")"
-                Icon="bi-droplet" />
+                Icon="bi-droplet"
+                IconBgClass="feature-icon-teal" />
 
     @if (_loading)
     {
@@ -30,23 +31,27 @@
             @foreach (var program in _programs)
             {
                 <div class="col-md-6 col-lg-4">
-                    <div class="section-card h-100">
+                    <div class="section-card h-100 outreach-program-card">
+                        <div class="outreach-program-card-accent" aria-hidden="true"></div>
                         <h2 class="h5">
-                            <i class="bi @ProgramIcon(program) me-1"></i>@program.Name
+                            <span class="outreach-program-card-icon"><i class="bi @ProgramIcon(program)"></i></span>
+                            @program.Name
                         </h2>
                         <p class="text-muted small mb-2">@program.StartDate.ToString("d MMM") – @program.EndDate.ToString("d MMM yyyy")</p>
                         @if (program.IsClinicLinked || program.LinkedClinicalModule.HasValue)
                         {
                             <p class="small mb-3">
                                 Clinic referrals: <strong>@program.RegisteredCount</strong>
-                                <span class="badge text-bg-info ms-1">From Triage</span>
+                                <span class="badge outreach-badge ms-1">From Triage</span>
                             </p>
-                            <a class="btn btn-primary btn-sm" href="@ClinicHref(program)">Open clinic queue</a>
+                            <a class="btn btn-primary btn-sm" href="@SecondaryOutreachNav.EnrolledHref(program.Id)">View enrolled</a>
+                            <a class="btn btn-outline-primary btn-sm ms-1" href="@ClinicHref(program)">Clinic queue</a>
                         }
                         else
                         {
                             <p class="small mb-3">Registered: <strong>@program.RegisteredCount</strong>@if (program.BatchSize is not null) { <text> / @program.BatchSize</text> }</p>
-                            <a class="btn btn-primary btn-sm" href="/secondary-outreach/register/@program.Id">Open registration</a>
+                            <a class="btn btn-primary btn-sm" href="@SecondaryOutreachNav.EnrolledHref(program.Id)">View enrolled</a>
+                            <a class="btn btn-outline-primary btn-sm ms-1" href="/secondary-outreach/register/@program.Id">Register</a>
                         }
                     </div>
                 </div>

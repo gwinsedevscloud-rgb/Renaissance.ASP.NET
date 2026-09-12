@@ -1,3 +1,64 @@
+window.renaissanceCloseMainNav = () => {
+    const shell = document.querySelector(".ren-shell-with-sidebar");
+    if (shell) {
+        shell.classList.remove("sidebar-open");
+    }
+
+    const el = document.getElementById("mainNav");
+    if (!el) {
+        return;
+    }
+
+    el.classList.remove("is-open", "show");
+
+    if (typeof bootstrap !== "undefined") {
+        const instance = bootstrap.Collapse.getInstance(el);
+        if (instance) {
+            instance.hide();
+        }
+    }
+};
+
+window.renaissanceSyncHeaderHeight = () => {
+    window.renaissanceSyncShellMetrics();
+};
+
+window.renaissanceSyncShellMetrics = () => {
+    const root = document.documentElement;
+    const mobileBar = document.querySelector(".ren-mobile-bar");
+
+    if (mobileBar && getComputedStyle(mobileBar).display !== "none") {
+        const height = Math.ceil(mobileBar.getBoundingClientRect().height);
+        root.style.setProperty("--ren-header-height", `${height}px`);
+    } else if (window.matchMedia("(min-width: 992px)").matches) {
+        root.style.setProperty("--ren-header-height", "0px");
+    }
+
+    // Desktop sidebar offset is CSS-driven (expanded vs collapsed).
+    // Clear any stale inline pad so collapse/expand cannot desync content.
+    if (window.matchMedia("(min-width: 992px)").matches) {
+        root.style.removeProperty("--ren-shell-pad");
+    } else {
+        root.style.removeProperty("--ren-shell-pad");
+    }
+};
+
+window.renaissanceGetSidebarCollapsed = () => {
+    try {
+        return localStorage.getItem("ren-sidebar-collapsed") === "1";
+    } catch {
+        return false;
+    }
+};
+
+window.renaissanceSetSidebarCollapsed = (collapsed) => {
+    try {
+        localStorage.setItem("ren-sidebar-collapsed", collapsed ? "1" : "0");
+    } catch {
+        /* ignore */
+    }
+};
+
 window.renaissanceDownloadBytes = (fileName, contentType, byteArray) => {
     const blob = new Blob([new Uint8Array(byteArray)], { type: contentType });
     const url = URL.createObjectURL(blob);
@@ -12,37 +73,6 @@ window.renaissanceDownloadBytes = (fileName, contentType, byteArray) => {
 
 window.renaissanceCopyText = async (text) => {
     await navigator.clipboard.writeText(text);
-};
-
-window.renaissanceCloseMainNav = () => {
-    const el = document.getElementById('mainNav');
-    if (!el || typeof bootstrap === 'undefined') {
-        return;
-    }
-
-    const instance = bootstrap.Collapse.getInstance(el);
-    if (instance) {
-        instance.hide();
-        return;
-    }
-
-    if (el.classList.contains('show')) {
-        el.classList.remove('show');
-        document.querySelectorAll('[data-bs-target="#mainNav"]').forEach((btn) => {
-            btn.setAttribute('aria-expanded', 'false');
-            btn.classList.add('collapsed');
-        });
-    }
-};
-
-window.renaissanceSyncHeaderHeight = () => {
-    const header = document.querySelector('.ren-header');
-    if (!header) {
-        return;
-    }
-
-    const height = Math.ceil(header.getBoundingClientRect().height);
-    document.documentElement.style.setProperty('--ren-header-height', `${height}px`);
 };
 
 (function () {

@@ -22,14 +22,16 @@
 {
     <ul class="nav nav-tabs mb-3 stakeholders-outreach-tabs">
         <li class="nav-item">
-            <button type="button" class="nav-link @(_tab == "facility" ? "active" : "")" @onclick='() => _tab = "facility"'>Facility overview</button>
+            <button type="button" class="nav-link @(_tab == "facility" ? "active" : "")" @onclick='() => _tab = "facility"'>
+                <i class="bi bi-building me-1" aria-hidden="true"></i>Facility overview
+            </button>
         </li>
         @foreach (var outreach in _outreachOverview!.OutreachDashboards)
         {
             <li class="nav-item">
                 <button type="button" class="nav-link @(_tab == outreach.ProgramId.ToString() ? "active" : "")"
                         @onclick="() => _tab = outreach.ProgramId.ToString()">
-                    @outreach.ProgramName
+                    <i class="bi @OutreachTabIcon(outreach) me-1" aria-hidden="true"></i>@outreach.ProgramName
                 </button>
             </li>
         }
@@ -38,63 +40,190 @@
 
 @if (_tab != "facility" && _selectedOutreach is not null)
 {
-    <div class="stakeholders-dashboard mb-4">
-        <div class="insights-banner">
-            <div class="insights-banner-icon"><i class="bi bi-megaphone-fill"></i></div>
-            <div>
-                <div class="insights-banner-label">@_selectedOutreach.ProgramType outreach</div>
-                <p class="mb-0"><strong>@_selectedOutreach.ProgramName</strong> — @_selectedOutreach.StartDate.ToString("d MMM yyyy") to @_selectedOutreach.EndDate.ToString("d MMM yyyy")</p>
+    var o = _selectedOutreach;
+    var targetPct = o.TargetBatchSize is > 0
+        ? Math.Min(100, (int)Math.Round(100.0 * o.TotalRegistrations / o.TargetBatchSize.Value))
+        : (int?)null;
+    var daysLeft = Math.Max(0, (o.EndDate.Date - DateTime.Today).Days);
+    var trendMax = Math.Max(1, o.RegistrationTrend.Count == 0 ? 1 : o.RegistrationTrend.Max(x => x.Count));
+    var sexTotal = Math.Max(1, o.SexDistribution.Sum(x => x.Count));
+    var ageTotal = Math.Max(1, o.AgeGroupDistribution.Sum(x => x.Count));
+    var topStatus = o.StatusBreakdown.OrderByDescending(x => x.Count).FirstOrDefault();
+    var accent = OutreachAccentClass(o);
+
+    <div class="stakeholders-dashboard stakeholders-outreach-dash @accent mb-4">
+        <div class="so-banner">
+            <div class="so-banner-icon" aria-hidden="true"><i class="bi bi-megaphone-fill"></i></div>
+            <div class="so-banner-copy">
+                <div class="so-banner-label">@o.ProgramType outreach</div>
+                <h2 class="so-banner-title">@o.ProgramName</h2>
+                <p class="so-banner-meta mb-0">
+                    <span><i class="bi bi-calendar3" aria-hidden="true"></i> @o.StartDate.ToString("d MMM yyyy") – @o.EndDate.ToString("d MMM yyyy")</span>
+                    <span class="so-banner-dot" aria-hidden="true"></span>
+                    <span><i class="bi bi-hourglass-split" aria-hidden="true"></i> @daysLeft day@(daysLeft == 1 ? "" : "s") left</span>
+                </p>
+            </div>
+            <div class="so-banner-stat">
+                <strong>@o.TotalRegistrations</strong>
+                <span>registered</span>
             </div>
         </div>
-        <div class="kpi-grid">
+
+        <div class="kpi-grid so-kpi-grid">
             <div class="kpi-card">
-                <div class="kpi-value">@_selectedOutreach.TotalRegistrations</div>
+                <div class="kpi-icon feature-icon-teal"><i class="bi bi-people-fill"></i></div>
+                <div class="kpi-value">@o.TotalRegistrations</div>
                 <div class="kpi-label">Total registrations</div>
+                @if (topStatus is not null)
+                {
+                    <div class="kpi-sub">Top status: @topStatus.Label</div>
+                }
             </div>
             <div class="kpi-card">
-                <div class="kpi-value">@_selectedOutreach.RegistrationsThisMonth</div>
+                <div class="kpi-icon feature-icon-blue"><i class="bi bi-calendar-plus"></i></div>
+                <div class="kpi-value">@o.RegistrationsThisMonth</div>
                 <div class="kpi-label">This month</div>
+                <div class="kpi-sub">New in current month</div>
             </div>
-            @if (_selectedOutreach.TargetBatchSize is not null)
+            @if (o.TargetBatchSize is not null)
             {
-                <div class="kpi-card">
-                    <div class="kpi-value">@_selectedOutreach.TargetBatchSize</div>
+                <div class="kpi-card so-kpi-target">
+                    <div class="kpi-icon feature-icon-amber"><i class="bi bi-bullseye"></i></div>
+                    <div class="kpi-value">@o.TargetBatchSize</div>
                     <div class="kpi-label">Target batch</div>
+                    <div class="kpi-sub">@o.TotalRegistrations of @o.TargetBatchSize · @targetPct%</div>
+                    <div class="so-progress" aria-hidden="true">
+                        <span class="so-progress-fill" style="width: @(targetPct)%"></span>
+                    </div>
                 </div>
             }
+            <div class="kpi-card">
+                <div class="kpi-icon feature-icon-slate"><i class="bi bi-graph-up"></i></div>
+                <div class="kpi-value">@(o.RegistrationTrend.Count == 0 ? "—" : o.RegistrationTrend.Sum(x => x.Count))</div>
+                <div class="kpi-label">Trend window</div>
+                <div class="kpi-sub">@(o.RegistrationTrend.Count) day@(o.RegistrationTrend.Count == 1 ? "" : "s") tracked</div>
+            </div>
         </div>
-        <div class="row g-3 mt-1">
-            <div class="col-md-4">
-                <div class="section-card h-100">
-                    <strong>Status breakdown</strong>
-                    <ul class="list-unstyled small mt-2 mb-0">
-                        @foreach (var item in _selectedOutreach.StatusBreakdown)
-                        {
-                            <li class="d-flex justify-content-between"><span>@item.Label</span><span>@item.Count (@item.Percent%)</span></li>
-                        }
-                    </ul>
+
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <div class="section-card so-panel h-100">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-teal"><i class="bi bi-bar-chart-line"></i></span>
+                        <h2>Registration trend</h2>
+                    </div>
+                    @if (o.RegistrationTrend.Count == 0)
+                    {
+                        <p class="so-empty mb-0">No daily registration data yet for this program.</p>
+                    }
+                    else
+                    {
+                        <div class="so-trend" role="img" aria-label="Daily registration counts">
+                            @foreach (var day in o.RegistrationTrend)
+                            {
+                                var h = (int)Math.Round(100.0 * day.Count / trendMax);
+                                <div class="so-trend-col" title="@day.Date.ToString("d MMM"): @day.Count">
+                                    <div class="so-trend-bar-wrap">
+                                        <span class="so-trend-bar" style="--bar-h: @(Math.Max(h, day.Count > 0 ? 8 : 0))%"></span>
+                                    </div>
+                                    <span class="so-trend-label">@day.Date.ToString("d")</span>
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="section-card h-100">
-                    <strong>Gender</strong>
-                    <ul class="list-unstyled small mt-2 mb-0">
-                        @foreach (var item in _selectedOutreach.SexDistribution)
-                        {
-                            <li class="d-flex justify-content-between"><span>@item.Label</span><span>@item.Count</span></li>
-                        }
-                    </ul>
+            <div class="col-lg-4">
+                <div class="section-card so-panel h-100">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-teal"><i class="bi bi-pie-chart"></i></span>
+                        <h2>Status mix</h2>
+                    </div>
+                    @if (o.StatusBreakdown.Count == 0)
+                    {
+                        <p class="so-empty mb-0">No status data yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="so-dist">
+                            @foreach (var item in o.StatusBreakdown)
+                            {
+                                <li>
+                                    <div class="so-dist-head">
+                                        <span>@item.Label</span>
+                                        <strong>@item.Count <span>@item.Percent.ToString("0")%</span></strong>
+                                    </div>
+                                    <div class="so-dist-track">
+                                        <span class="so-dist-fill" style="width: @(Math.Max(item.Percent, item.Count > 0 ? 2 : 0))%"></span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="section-card h-100">
-                    <strong>Age groups</strong>
-                    <ul class="list-unstyled small mt-2 mb-0">
-                        @foreach (var item in _selectedOutreach.AgeGroupDistribution)
-                        {
-                            <li class="d-flex justify-content-between"><span>@item.Label</span><span>@item.Count</span></li>
-                        }
-                    </ul>
+        </div>
+
+        <div class="row g-3 mt-0">
+            <div class="col-md-6">
+                <div class="section-card so-panel h-100">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-blue"><i class="bi bi-gender-ambiguous"></i></span>
+                        <h2>Gender</h2>
+                    </div>
+                    @if (o.SexDistribution.Count == 0)
+                    {
+                        <p class="so-empty mb-0">No gender data yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="so-dist">
+                            @foreach (var item in o.SexDistribution)
+                            {
+                                var pct = item.Percent > 0 ? item.Percent : 100.0 * item.Count / sexTotal;
+                                var icon = SexIcon(item.Label);
+                                <li>
+                                    <div class="so-dist-head">
+                                        <span class="so-dist-label"><i class="bi @icon" aria-hidden="true"></i> @item.Label</span>
+                                        <strong>@item.Count <span>@pct.ToString("0")%</span></strong>
+                                    </div>
+                                    <div class="so-dist-track">
+                                        <span class="so-dist-fill so-dist-fill-sex" style="width: @(Math.Max(pct, item.Count > 0 ? 2 : 0))%"></span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="section-card so-panel h-100">
+                    <div class="section-card-header">
+                        <span class="section-icon feature-icon-amber"><i class="bi bi-people"></i></span>
+                        <h2>Age groups</h2>
+                    </div>
+                    @if (o.AgeGroupDistribution.Count == 0)
+                    {
+                        <p class="so-empty mb-0">No age-group data yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="so-dist">
+                            @foreach (var item in o.AgeGroupDistribution)
+                            {
+                                var pct = item.Percent > 0 ? item.Percent : 100.0 * item.Count / ageTotal;
+                                <li>
+                                    <div class="so-dist-head">
+                                        <span>@item.Label</span>
+                                        <strong>@item.Count <span>@pct.ToString("0")%</span></strong>
+                                    </div>
+                                    <div class="so-dist-track">
+                                        <span class="so-dist-fill so-dist-fill-age" style="width: @(Math.Max(pct, item.Count > 0 ? 2 : 0))%"></span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
                 </div>
             </div>
         </div>
@@ -580,4 +709,65 @@ else
     private static string GrowthClass(double value) => value >= 0 ? "text-success" : "text-danger";
     private static string TrendClass(int delta) => delta > 0 ? "trend-up" : delta < 0 ? "trend-down" : "trend-flat";
     private static string FormatDelta(int delta) => delta == 0 ? "—" : delta > 0 ? $"+{delta}" : delta.ToString();
+
+    private static string OutreachTabIcon(OutreachStakeholdersDashboardDto program)
+    {
+        if (program.ProgramName.Contains("Dental", StringComparison.OrdinalIgnoreCase))
+        {
+            return "bi-emoji-smile";
+        }
+
+        if (program.ProgramName.Contains("Eye", StringComparison.OrdinalIgnoreCase)
+            || program.ProgramName.Contains("Optom", StringComparison.OrdinalIgnoreCase))
+        {
+            return "bi-eye";
+        }
+
+        if (program.ProgramName.Contains("ITN", StringComparison.OrdinalIgnoreCase)
+            || program.ProgramName.Contains("Insecticide", StringComparison.OrdinalIgnoreCase))
+        {
+            return "bi-shield-check";
+        }
+
+        return "bi-droplet";
+    }
+
+    private static string OutreachAccentClass(OutreachStakeholdersDashboardDto program)
+    {
+        if (program.ProgramName.Contains("Dental", StringComparison.OrdinalIgnoreCase))
+        {
+            return "so-accent-dental";
+        }
+
+        if (program.ProgramName.Contains("Eye", StringComparison.OrdinalIgnoreCase)
+            || program.ProgramName.Contains("Optom", StringComparison.OrdinalIgnoreCase))
+        {
+            return "so-accent-eye";
+        }
+
+        if (program.ProgramName.Contains("ITN", StringComparison.OrdinalIgnoreCase)
+            || program.ProgramName.Contains("Insecticide", StringComparison.OrdinalIgnoreCase))
+        {
+            return "so-accent-itn";
+        }
+
+        return "so-accent-deworm";
+    }
+
+    private static string SexIcon(string label)
+    {
+        if (label.Contains("female", StringComparison.OrdinalIgnoreCase)
+            || label.Equals("F", StringComparison.OrdinalIgnoreCase))
+        {
+            return "bi-gender-female";
+        }
+
+        if (label.Contains("male", StringComparison.OrdinalIgnoreCase)
+            || label.Equals("M", StringComparison.OrdinalIgnoreCase))
+        {
+            return "bi-gender-male";
+        }
+
+        return "bi-person";
+    }
 }

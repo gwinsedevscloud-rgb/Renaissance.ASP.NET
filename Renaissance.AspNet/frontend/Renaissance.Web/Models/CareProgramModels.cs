@@ -149,6 +149,7 @@ public class CareProgramSummaryDto
     public bool IsClinicLinked { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
+    public string? TargetCommunity { get; set; }
     public string OutreachCode { get; set; } = string.Empty;
     public PatientIdMode PatientIdMode { get; set; }
     public int RegisteredCount { get; set; }
@@ -174,12 +175,36 @@ public class SecondaryOutreachRegistrationDto
 {
     public Guid Id { get; set; }
     public Guid CareProgramId { get; set; }
+    public string ProgramName { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public int Age { get; set; }
     public string Sex { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string? RegistrationCode { get; set; }
+    public string? OutreachLocation { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
     public DateTime? CreatedDate { get; set; }
+}
+
+public class SecondaryOutreachEnrollmentDto
+{
+    public Guid Id { get; set; }
+    public Guid CareProgramId { get; set; }
+    public string ProgramName { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public int? Age { get; set; }
+    public string? AgeUnit { get; set; }
+    public string? Sex { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? RegistrationCode { get; set; }
+    public string? OutreachLocation { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public DateTime? EnrolledAt { get; set; }
+    public Guid? PatientId { get; set; }
+    public bool IsClinicEnrollment { get; set; }
+    public AppModule? LinkedClinicalModule { get; set; }
 }
 
 public class RegisterSecondaryOutreachRequest

@@ -11,10 +11,12 @@ namespace Renaissance.Application.Services;
 public class SecondaryOutreachService : ISecondaryOutreachService
 {
     private readonly IApplicationDbContext _db;
+    private readonly IUserModuleAccessService _modules;
 
-    public SecondaryOutreachService(IApplicationDbContext db)
+    public SecondaryOutreachService(IApplicationDbContext db, IUserModuleAccessService modules)
     {
         _db = db;
+        _modules = modules;
     }
 
     public async Task<List<CareProgramSummaryDto>> GetAccessibleProgramsAsync(
@@ -24,8 +26,8 @@ public class SecondaryOutreachService : ISecondaryOutreachService
     {
         var programs = await _db.CarePrograms.AsNoTracking()
             .Where(p => !p.Archived
-                && p.Status == CareProgramStatus.Active
-                && p.ProgramType == CareProgramType.Secondary)
+                && p.ProgramType == CareProgramType.Secondary
+                && (p.Status == CareProgramStatus.Active || p.Status == CareProgramStatus.Draft))
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
 
@@ -46,9 +48,22 @@ public class SecondaryOutreachService : ISecondaryOutreachService
             .ToListAsync(cancellationToken);
 
         var assignedSet = assignedIds.ToHashSet();
+        var modules = await _modules.GetAccessibleModulesAsync(userId, cancellationToken);
+        var moduleSet = modules.ToHashSet();
+        var hasSecondary = moduleSet.Contains(AppModule.SecondaryOutreach);
+
         var result = new List<CareProgramSummaryDto>();
-        foreach (var program in programs.Where(p => assignedSet.Contains(p.Id)))
+        foreach (var program in programs)
         {
+            var allowed = assignedSet.Contains(program.Id)
+                || (program.LinkedClinicalModule.HasValue && moduleSet.Contains(program.LinkedClinicalModule.Value))
+                || (!program.LinkedClinicalModule.HasValue && hasSecondary);
+
+            if (!allowed)
+            {
+                continue;
+            }
+
             result.Add(await ToSummaryAsync(program, cancellationToken));
         }
 
@@ -59,6 +74,14 @@ public class SecondaryOutreachService : ISecondaryOutreachService
         Guid programId,
         CancellationToken cancellationToken = default)
     {
+        var program = await _db.CarePrograms.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == programId && !p.Archived, cancellationToken);
+
+        if (program is null)
+        {
+            return [];
+        }
+
         return await _db.SecondaryOutreachRegistrations.AsNoTracking()
             .Where(r => !r.Archived && r.CareProgramId == programId)
             .OrderByDescending(r => r.CreatedDate)
@@ -66,12 +89,114 @@ public class SecondaryOutreachService : ISecondaryOutreachService
             {
                 Id = r.Id,
                 CareProgramId = r.CareProgramId,
+                ProgramName = program.Name,
                 FullName = r.FullName,
                 Age = r.Age,
                 Sex = r.Sex,
                 Status = r.Status,
                 RegistrationCode = r.RegistrationCode,
+                OutreachLocation = program.TargetCommunity,
+                StartDate = program.StartDate,
+                EndDate = program.EndDate,
                 CreatedDate = r.CreatedDate
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<SecondaryOutreachEnrollmentDto>> GetEnrolledAsync(
+        Guid programId,
+        Guid userId,
+        bool isSystemAdmin,
+        CancellationToken cancellationToken = default)
+    {
+        var program = await _db.CarePrograms.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == programId && !p.Archived, cancellationToken)
+            ?? throw new InvalidOperationException("Care program not found.");
+
+        if (program.ProgramType != CareProgramType.Secondary)
+        {
+            throw new InvalidOperationException("This program is not a secondary outreach.");
+        }
+
+        await EnsureEnrollmentAccessAsync(program, userId, isSystemAdmin, cancellationToken);
+
+        if (program.LinkedClinicalModule.HasValue)
+        {
+            var module = program.LinkedClinicalModule.Value;
+            var referrals = await _db.Referrals.AsNoTracking()
+                .Where(r => !r.Archived
+                    && r.TargetModule == module
+                    && (r.Status == ReferralStatus.Pending
+                        || r.Status == ReferralStatus.InProgress
+                        || r.Status == ReferralStatus.Completed))
+                .OrderByDescending(r => r.CreatedDate)
+                .ToListAsync(cancellationToken);
+
+            var patientIds = referrals.Select(r => r.PatientId).Distinct().ToList();
+            var patients = await _db.Patients.AsNoTracking()
+                .Where(p => !p.Archived && patientIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id, cancellationToken);
+
+            var primaryProgramIds = patients.Values
+                .Where(p => p.CareProgramId.HasValue)
+                .Select(p => p.CareProgramId!.Value)
+                .Distinct()
+                .ToList();
+
+            var primaryPrograms = await _db.CarePrograms.AsNoTracking()
+                .Where(p => primaryProgramIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id, cancellationToken);
+
+            return referrals.Select(r =>
+            {
+                patients.TryGetValue(r.PatientId, out var patient);
+                CareProgram? primary = null;
+                if (patient?.CareProgramId is Guid primaryId)
+                {
+                    primaryPrograms.TryGetValue(primaryId, out primary);
+                }
+
+                return new SecondaryOutreachEnrollmentDto
+                {
+                    Id = r.Id,
+                    CareProgramId = program.Id,
+                    ProgramName = program.Name,
+                    FullName = patient?.FullName ?? "Unknown patient",
+                    Age = patient?.Age,
+                    AgeUnit = patient?.AgeUnit,
+                    Sex = patient?.Sex,
+                    Status = r.Status.ToString(),
+                    RegistrationCode = patient?.ClientNumber,
+                    OutreachLocation = primary?.TargetCommunity ?? program.TargetCommunity,
+                    StartDate = primary?.StartDate ?? program.StartDate,
+                    EndDate = primary?.EndDate ?? program.EndDate,
+                    EnrolledAt = r.CreatedDate,
+                    PatientId = r.PatientId,
+                    IsClinicEnrollment = true,
+                    LinkedClinicalModule = module
+                };
+            }).ToList();
+        }
+
+        return await _db.SecondaryOutreachRegistrations.AsNoTracking()
+            .Where(r => !r.Archived && r.CareProgramId == programId)
+            .OrderByDescending(r => r.CreatedDate)
+            .Select(r => new SecondaryOutreachEnrollmentDto
+            {
+                Id = r.Id,
+                CareProgramId = r.CareProgramId,
+                ProgramName = program.Name,
+                FullName = r.FullName,
+                Age = r.Age,
+                Sex = r.Sex,
+                Status = r.Status,
+                RegistrationCode = r.RegistrationCode,
+                OutreachLocation = program.TargetCommunity,
+                StartDate = program.StartDate,
+                EndDate = program.EndDate,
+                EnrolledAt = r.CreatedDate,
+                IsClinicEnrollment = false,
+                LinkedClinicalModule = null
             })
             .ToListAsync(cancellationToken);
     }
@@ -179,11 +304,15 @@ public class SecondaryOutreachService : ISecondaryOutreachService
         {
             Id = registration.Id,
             CareProgramId = registration.CareProgramId,
+            ProgramName = program.Name,
             FullName = registration.FullName,
             Age = registration.Age,
             Sex = registration.Sex,
             Status = registration.Status,
             RegistrationCode = registration.RegistrationCode,
+            OutreachLocation = program.TargetCommunity,
+            StartDate = program.StartDate,
+            EndDate = program.EndDate,
             CreatedDate = registration.CreatedDate
         };
     }
@@ -395,6 +524,39 @@ public class SecondaryOutreachService : ISecondaryOutreachService
             .ToList();
     }
 
+    private async Task EnsureEnrollmentAccessAsync(
+        CareProgram program,
+        Guid userId,
+        bool isSystemAdmin,
+        CancellationToken cancellationToken)
+    {
+        if (isSystemAdmin)
+        {
+            return;
+        }
+
+        var assigned = await _db.CareProgramStaff.AsNoTracking()
+            .AnyAsync(s => s.CareProgramId == program.Id && s.UserId == userId, cancellationToken);
+        if (assigned)
+        {
+            return;
+        }
+
+        if (program.LinkedClinicalModule.HasValue
+            && await _modules.HasModuleAccessAsync(userId, program.LinkedClinicalModule.Value, cancellationToken))
+        {
+            return;
+        }
+
+        if (!program.LinkedClinicalModule.HasValue
+            && await _modules.HasModuleAccessAsync(userId, AppModule.SecondaryOutreach, cancellationToken))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException("You do not have access to this outreach program.");
+    }
+
     private async Task EnsureAccessAsync(
         Guid programId,
         Guid userId,
@@ -435,6 +597,7 @@ public class SecondaryOutreachService : ISecondaryOutreachService
             LinkedClinicalModule = program.LinkedClinicalModule,
             StartDate = program.StartDate,
             EndDate = program.EndDate,
+            TargetCommunity = program.TargetCommunity,
             OutreachCode = program.OutreachCode,
             PatientIdMode = program.PatientIdMode,
             RegisteredCount = registeredCount,

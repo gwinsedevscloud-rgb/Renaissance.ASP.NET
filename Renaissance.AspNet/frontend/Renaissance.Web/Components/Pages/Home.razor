@@ -16,13 +16,9 @@
         <div class="position-relative home-hero-layout">
             <div class="home-hero-content">
                 <div class="home-hero-intro-block">
-                    <span class="home-hero-accent" aria-hidden="true"></span>
                     <h1 class="home-hero-title mb-1">
-                        <i class="bi bi-heart-pulse me-2"></i>MedReach
+                        Welcome back, @(Auth.User?.FullName ?? "colleague")
                     </h1>
-                    <p class="lead mb-1">
-                        Welcome back, @(Auth.User?.FullName ?? "colleague").
-                    </p>
                     <p class="home-hero-subtext mb-0">
                         Signed in as <strong>@Auth.User?.RoleName</strong>. You have access to
                         <strong>@ModuleCount module@(ModuleCount == 1 ? "" : "s")</strong>
@@ -39,7 +35,7 @@
                     }
                     @if (Auth.HasModule(AppModule.Stakeholders))
                     {
-                        <a class="btn btn-outline-light home-hero-btn-outline" href="/stakeholders">
+                        <a class="btn btn-outline-primary home-hero-btn-outline" href="/stakeholders">
                             <i class="bi bi-graph-up-arrow me-2"></i>Stakeholders Dashboard
                         </a>
                     }
@@ -122,47 +118,94 @@
 
     @if (_accessibleSecondary.Count > 0)
     {
-        <div class="home-modules-section mt-2">
-            <div class="home-modules-header">
-                <div class="home-modules-heading">
-                    <span class="home-modules-eyebrow">Concurrent outreach</span>
+        var outreachTotal = _accessibleSecondary.Sum(p => p.RegisteredCount);
+        var outreachMax = Math.Max(1, _accessibleSecondary.Max(p => p.RegisteredCount));
+        var donutSegments = BuildOutreachDonutSegments(outreachTotal);
+
+        <div class="home-modules-section home-outreach-section mt-2">
+            <div class="home-outreach-panel">
+                <div class="home-outreach-panel-head">
+                    <div class="home-modules-heading">
+                        <span class="home-modules-eyebrow">Concurrent outreach</span>
+                    </div>
+                    <div class="home-outreach-total">
+                        <strong>@outreachTotal</strong>
+                        <span>registered</span>
+                    </div>
                 </div>
-            </div>
-            <div class="home-secondary-grid">
-                @for (var i = 0; i < _accessibleSecondary.Count; i++)
+
+                <div class="home-outreach-chart-layout">
+                    <div class="home-outreach-donut-block" aria-hidden="true">
+                        <div class="home-outreach-donut" style="@donutSegments">
+                            <div class="home-outreach-donut-hole">
+                                <strong>@outreachTotal</strong>
+                                <span>total</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="home-outreach-bars" role="list">
+                        @for (var i = 0; i < _accessibleSecondary.Count; i++)
+                        {
+                            var program = _accessibleSecondary[i];
+                            var accent = SecondaryAccentClass(program);
+                            var icon = SecondaryIcon(program);
+                            var href = SecondaryHref(program);
+                            var kind = program.IsClinicLinked || program.LinkedClinicalModule.HasValue
+                                ? "Clinic referrals"
+                                : "Registration only";
+                            var barPct = (int)Math.Round(100.0 * program.RegisteredCount / outreachMax);
+                            var sharePct = outreachTotal > 0
+                                ? (int)Math.Round(100.0 * program.RegisteredCount / outreachTotal)
+                                : 0;
+
+                            <a class="home-outreach-bar-row @accent text-decoration-none"
+                               href="@href"
+                               role="listitem"
+                               style="--home-stagger: @i; --bar-pct: @(barPct)%"
+                               title="@program.Name">
+                                <span class="home-outreach-bar-icon" aria-hidden="true">
+                                    <i class="bi @icon"></i>
+                                </span>
+                                <span class="home-outreach-bar-main">
+                                    <span class="home-outreach-bar-label">
+                                        <span class="home-outreach-bar-name">@program.Name</span>
+                                        <span class="home-outreach-bar-kind">@kind</span>
+                                    </span>
+                                    <span class="home-outreach-bar-track">
+                                        <span class="home-outreach-bar-fill"></span>
+                                    </span>
+                                </span>
+                                <span class="home-outreach-bar-stats">
+                                    <strong>@program.RegisteredCount</strong>
+                                    <span>@sharePct%</span>
+                                </span>
+                            </a>
+                        }
+                    </div>
+                </div>
+
+                @if (Outreach.IsOutreachMode && Outreach.ActiveProgram is not null)
                 {
-                    var program = _accessibleSecondary[i];
-                    var accent = SecondaryAccentClass(program);
-                    var icon = SecondaryIcon(program);
-                    var href = SecondaryHref(program);
-                    var kind = program.IsClinicLinked || program.LinkedClinicalModule.HasValue
-                        ? "Clinic referrals"
-                        : "Registration only";
-                    <a class="home-secondary-card @accent text-decoration-none"
-                       href="@href"
-                       style="--home-stagger: @i">
-                        <span class="home-secondary-shine" aria-hidden="true"></span>
-                        <span class="home-secondary-stripe" aria-hidden="true"></span>
-                        <div class="home-secondary-top">
-                            <span class="home-secondary-icon" aria-hidden="true">
-                                <i class="bi @icon"></i>
+                    var program = Outreach.ActiveProgram;
+                    <div class="home-outreach-panel-foot">
+                        <div class="home-outreach-foot-mode">
+                            <i class="bi bi-megaphone" aria-hidden="true"></i>
+                            <span>
+                                <strong>Outreach mode:</strong> @program.Name
+                                <span class="home-outreach-foot-dates">@program.StartDate.ToString("d MMM") – @program.EndDate.ToString("d MMM yyyy")</span>
                             </span>
-                            <span class="home-secondary-count">@program.RegisteredCount</span>
                         </div>
-                        <div class="home-secondary-body">
-                            <h3 class="home-secondary-name">@program.Name</h3>
-                            <p class="home-secondary-meta">@program.RegisteredCount registered · @kind</p>
+                        <div class="home-outreach-foot-meta">
+                            Registered <strong>@program.RegisteredCount</strong>@if (program.BatchSize is not null) { <text> / @program.BatchSize</text> }
+                            <span class="home-outreach-foot-flow">Flow: Registration → Triage → Lab → Consultation → Pharmacy</span>
                         </div>
-                        <span class="home-secondary-go" aria-hidden="true">
-                            <i class="bi bi-arrow-right"></i>
-                        </span>
-                    </a>
+                    </div>
                 }
             </div>
         </div>
     }
-
-    @if (Outreach.IsOutreachMode && Outreach.ActiveProgram is not null)
+    else if (Outreach.IsOutreachMode && Outreach.ActiveProgram is not null)
     {
         var program = Outreach.ActiveProgram;
         <div class="home-outreach-banner d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -324,6 +367,46 @@
             => "home-secondary-itn",
         _ => "home-secondary-deworm"
     };
+
+    private static string SecondaryAccentColor(CareProgramSummaryDto program) => program.LinkedClinicalModule switch
+    {
+        AppModule.Dental => "#c27803",
+        AppModule.Optometrists => "#0f766e",
+        _ when program.Name.Contains("ITN", StringComparison.OrdinalIgnoreCase)
+              || program.Name.Contains("Insecticide", StringComparison.OrdinalIgnoreCase)
+            => "#0369a1",
+        _ => "#007f7f"
+    };
+
+    private string BuildOutreachDonutSegments(int total)
+    {
+        if (_accessibleSecondary.Count == 0)
+        {
+            return "--outreach-donut: conic-gradient(#e8eeee 0 100%)";
+        }
+
+        if (total <= 0)
+        {
+            var equal = string.Join(", ", _accessibleSecondary.Select((p, i) =>
+            {
+                var start = i * 100.0 / _accessibleSecondary.Count;
+                var end = (i + 1) * 100.0 / _accessibleSecondary.Count;
+                return $"{SecondaryAccentColor(p)} {start:0.##}% {end:0.##}%";
+            }));
+            return $"--outreach-donut: conic-gradient(from -90deg, {equal})";
+        }
+
+        var cursor = 0.0;
+        var parts = new List<string>(_accessibleSecondary.Count);
+        foreach (var program in _accessibleSecondary)
+        {
+            var start = cursor;
+            cursor += 100.0 * program.RegisteredCount / total;
+            parts.Add($"{SecondaryAccentColor(program)} {start:0.##}% {cursor:0.##}%");
+        }
+
+        return $"--outreach-donut: conic-gradient(from -90deg, {string.Join(", ", parts)})";
+    }
 
     private static string SecondaryHref(CareProgramSummaryDto program) => program.LinkedClinicalModule switch
     {

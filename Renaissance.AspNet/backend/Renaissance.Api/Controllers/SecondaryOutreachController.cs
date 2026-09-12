@@ -38,6 +38,23 @@ public class SecondaryOutreachController : ControllerBase
         CancellationToken cancellationToken)
         => Ok(await _secondary.GetRegistrationsAsync(programId, cancellationToken));
 
+    [HttpGet("{programId:guid}/enrolled")]
+    [Authorize]
+    public async Task<ActionResult<List<SecondaryOutreachEnrollmentDto>>> GetEnrolled(
+        Guid programId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var (userId, isAdmin) = await GetUserContextAsync(cancellationToken);
+            return Ok(await _secondary.GetEnrolledAsync(programId, userId, isAdmin, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpPost("register")]
     [Authorize]
     public async Task<ActionResult<SecondaryOutreachRegistrationDto>> Register(

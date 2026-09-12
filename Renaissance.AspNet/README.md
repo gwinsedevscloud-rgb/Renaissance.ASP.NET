@@ -166,9 +166,9 @@ cd Renaissance.AspNet
 dotnet build
 ```
 
-### Publish for IIS (v1.0.0)
+### Publish for IIS (v1.1.0)
 
-Produces `publish/MedReach-1.0.0/` with `api/` and `web/` folders (Field PWA not included):
+Produces `publish/MedReach-1.1.0/` with `api/`, `web/`, and `field/` folders (Field PWA at `/field/`):
 
 ```powershell
 cd Renaissance.AspNet
@@ -177,9 +177,9 @@ cd Renaissance.AspNet
 .\publish-iis.ps1 -SelfContained
 ```
 
-**Production host:** `https://medreach.ecews.org` (Web) and `https://medreach.ecews.org/api` (API as IIS application).
+**Production host:** `https://medreach.ecews.org` (Web), `https://medreach.ecews.org/api` (API), and `https://medreach.ecews.org/field` (Field PWA).
 
-See `publish/MedReach-1.0.0/IIS-README.md` after publish for IIS setup steps. Requires the **.NET 10 ASP.NET Core Hosting Bundle** on the server unless `-SelfContained` is used. Set `RENAISSANCE_JWT_KEY` (32+ chars) and the SQL connection string on the server.
+See `publish/MedReach-1.1.0/IIS-README.md` after publish for IIS setup steps. Requires the **.NET 10 ASP.NET Core Hosting Bundle** on the server unless `-SelfContained` is used. Set `RENAISSANCE_JWT_KEY` (32+ chars) and the SQL connection string on the server.
 
 ## Sample data (Akwa Ibom)
 

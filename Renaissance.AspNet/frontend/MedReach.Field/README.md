@@ -52,6 +52,17 @@ Copy-Item .\frontend\Renaissance.Web\wwwroot\images\login\* .\frontend\MedReach.
 
 ## Production URL
 
-After IIS publish/deploy, Field is available at:
+After IIS publish/deploy, Field **v1.1.0** is available at:
 
 `https://medreach.ecews.org/field`
+
+Production API base is set in `wwwroot/appsettings.Production.json` (`https://medreach.ecews.org/api/`).
+
+Publish with the solution script (sets `BaseHref=/field/` and bumps the offline cache from assembly version `1.1.0`):
+
+```powershell
+cd Renaissance.AspNet
+.\publish-iis.ps1
+```
+
+Then deploy the `field/` folder from `publish/MedReach-1.1.0/` (or via GitHub Actions / `deploy/deploy-iis.ps1`). After go-live, installed tablets pick up the new service worker automatically (`updateViaCache: 'none'`).

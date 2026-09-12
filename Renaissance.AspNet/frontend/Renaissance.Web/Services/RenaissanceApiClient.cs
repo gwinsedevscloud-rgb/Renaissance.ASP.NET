@@ -706,6 +706,9 @@ public class RenaissanceApiClient
     public Task<List<SecondaryOutreachRegistrationDto>> GetSecondaryRegistrationsAsync(Guid programId, CancellationToken ct = default)
         => GetRequiredAsync<List<SecondaryOutreachRegistrationDto>>($"api/secondary-outreach/{programId}/registrations", ct);
 
+    public Task<List<SecondaryOutreachEnrollmentDto>> GetSecondaryEnrolledAsync(Guid programId, CancellationToken ct = default)
+        => GetRequiredAsync<List<SecondaryOutreachEnrollmentDto>>($"api/secondary-outreach/{programId}/enrolled", ct);
+
     public async Task UpdateCareProgramStaffAsync(Guid programId, UpdateCareProgramStaffRequest request, CancellationToken ct = default)
     {
         var response = await _http.PutAsJsonAsync($"api/secondary-outreach/{programId}/staff", request, JsonOptions, ct);

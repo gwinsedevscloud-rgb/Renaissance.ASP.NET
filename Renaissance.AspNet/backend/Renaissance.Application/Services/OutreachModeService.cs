@@ -148,6 +148,7 @@ public class OutreachModeService : IOutreachModeService
             LinkedClinicalModule = program.LinkedClinicalModule,
             StartDate = program.StartDate,
             EndDate = program.EndDate,
+            TargetCommunity = program.TargetCommunity,
             OutreachCode = program.OutreachCode,
             PatientIdMode = program.PatientIdMode,
             RegisteredCount = registeredCount,

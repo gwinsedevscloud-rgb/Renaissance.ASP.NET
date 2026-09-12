@@ -8,138 +8,233 @@
 @inject IJSRuntime JS
 @implements IDisposable
 
-<div class="ren-app-shell">
-    <header class="ren-header">
-        <nav class="navbar navbar-expand-lg navbar-dark ren-navbar">
-            <div class="container">
-                <a class="navbar-brand" href="/">
-                    <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
+<div class="ren-app-shell ren-shell-with-sidebar @(_sidebarOpen ? "sidebar-open" : null) @(_sidebarCollapsed ? "sidebar-collapsed" : null)">
+    <aside class="ren-sidebar" id="mainNav" aria-label="Main navigation">
+        <div class="ren-sidebar-glow" aria-hidden="true"></div>
+
+        <div class="ren-sidebar-brand">
+            <a class="ren-sidebar-brand-link" href="/" @onclick="CloseSidebar" title="@(_facilityName ?? "MedReach")">
+                <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
+                <span class="brand-copy">
                     <span class="brand-text">@(_facilityName ?? "MedReach")</span>
+                    <span class="brand-tagline">Clinical outreach</span>
+                </span>
+            </a>
+            <button type="button"
+                    class="ren-sidebar-collapse"
+                    @onclick="ToggleSidebarCollapsedAsync"
+                    aria-label="@(_sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")"
+                    title="@(_sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")">
+                <i class="bi bi-layout-sidebar-inset"></i>
+            </button>
+            <button type="button" class="ren-sidebar-close d-lg-none" @onclick="CloseSidebar" aria-label="Close menu">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <nav class="ren-sidebar-nav">
+            <p class="ren-side-label">Workspace</p>
+
+            <a class="ren-side-link @(_homeActive ? "active" : null)" href="/" @onclick="CloseSidebar" title="Home">
+                <span class="ren-side-ico"><i class="bi bi-house-door"></i></span>
+                <span>Home</span>
+            </a>
+
+            @if (Auth.HasModule(AppModule.Clients))
+            {
+                <a class="ren-side-link @(_clientsActive ? "active" : null)" href="/patients" @onclick="CloseSidebar" title="Patients">
+                    <span class="ren-side-ico"><i class="bi bi-people"></i></span>
+                    <span>Patients</span>
                 </a>
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+            }
+
+            @if (_clinical.Count > 0)
+            {
+                <button type="button"
+                        class="ren-side-link ren-side-toggle @(_clinicalActive || _modulesOpen ? "active" : null) @(_modulesOpen ? "is-open" : null)"
+                        @onclick="ToggleModules"
+                        title="Modules">
+                    <span class="ren-side-ico"><i class="bi bi-clipboard2-pulse"></i></span>
+                    <span>Modules</span>
+                    <i class="bi bi-chevron-down ren-side-chevron" aria-hidden="true"></i>
                 </button>
-                <div class="collapse navbar-collapse" id="mainNav">
-                    <ul class="navbar-nav ms-lg-3 me-auto flex-wrap">
-                        <li class="nav-item">
-                            <a class="nav-link @(_homeActive ? "active" : "")" href="/">
-                                <i class="bi bi-house-door me-1"></i> Home
+                @if (_modulesOpen && !_sidebarCollapsed)
+                {
+                    <div class="ren-side-sub">
+                        @foreach (var item in _clinical)
+                        {
+                            <a class="ren-side-sublink" href="@item.Href" @onclick="CloseSidebar" title="@item.Label">
+                                <span class="ren-side-sublink-label">
+                                    <i class="bi @item.Icon"></i>
+                                    @item.Label
+                                </span>
+                                <ReferralNavBadge Clinical="@(new List<ModuleNavItem> { item })" @rendermode="InteractiveServer" />
                             </a>
+                        }
+                    </div>
+                }
+            }
+
+            @if (_outreachNav.Count > 0)
+            {
+                <button type="button"
+                        class="ren-side-link ren-side-toggle @(_outreachActive || _outreachOpen ? "active" : null) @(_outreachOpen ? "is-open" : null)"
+                        @onclick="ToggleOutreach"
+                        title="Outreach">
+                    <span class="ren-side-ico"><i class="bi bi-droplet"></i></span>
+                    <span>Outreach</span>
+                    <i class="bi bi-chevron-down ren-side-chevron" aria-hidden="true"></i>
+                </button>
+                @if (_outreachOpen && !_sidebarCollapsed)
+                {
+                    <div class="ren-side-sub">
+                        @foreach (var item in _outreachNav)
+                        {
+                            <a class="ren-side-sublink @(_outreachActiveId == item.ProgramId ? "active" : null)"
+                               href="@item.Href"
+                               @onclick="CloseSidebar"
+                               title="@item.Label">
+                                <span class="ren-side-sublink-label">
+                                    <i class="bi @item.Icon"></i>
+                                    @item.Label
+                                </span>
+                            </a>
+                        }
+                    </div>
+                }
+            }
+
+            @if (Auth.HasModule(AppModule.Stakeholders))
+            {
+                <a class="ren-side-link @(_stakeholdersActive ? "active" : null)" href="/stakeholders" @onclick="CloseSidebar" title="Stakeholders">
+                    <span class="ren-side-ico"><i class="bi bi-graph-up-arrow"></i></span>
+                    <span>Stakeholders</span>
+                </a>
+            }
+
+            @if (Auth.HasModule(AppModule.Administration))
+            {
+                <p class="ren-side-label ren-side-label-spaced">Manage</p>
+                <button type="button"
+                        class="ren-side-link ren-side-toggle @(_adminActive || _adminOpen ? "active" : null) @(_adminOpen ? "is-open" : null)"
+                        @onclick="ToggleAdmin"
+                        title="Admin">
+                    <span class="ren-side-ico"><i class="bi bi-shield-lock"></i></span>
+                    <span>Admin</span>
+                    <i class="bi bi-chevron-down ren-side-chevron" aria-hidden="true"></i>
+                </button>
+                @if (_adminOpen && !_sidebarCollapsed)
+                {
+                    <div class="ren-side-sub">
+                        <a class="ren-side-sublink" href="/admin/users" @onclick="CloseSidebar" title="Users">
+                            <span class="ren-side-sublink-label"><i class="bi bi-people"></i>Users</span>
+                        </a>
+                        <a class="ren-side-sublink" href="/admin/roles" @onclick="CloseSidebar" title="Roles & modules">
+                            <span class="ren-side-sublink-label"><i class="bi bi-key"></i>Roles &amp; modules</span>
+                        </a>
+                        @if (Auth.HasModule(AppModule.CarePrograms))
+                        {
+                            <a class="ren-side-sublink" href="/admin/care-programs" @onclick="CloseSidebar" title="Care programs">
+                                <span class="ren-side-sublink-label"><i class="bi bi-megaphone"></i>Care programs</span>
+                            </a>
+                        }
+                        <a class="ren-side-sublink" href="/admin/settings" @onclick="CloseSidebar" title="Settings">
+                            <span class="ren-side-sublink-label"><i class="bi bi-gear"></i>Settings</span>
+                        </a>
+                        <a class="ren-side-sublink" href="/admin/backup" @onclick="CloseSidebar" title="Backup">
+                            <span class="ren-side-sublink-label"><i class="bi bi-cloud-arrow-down"></i>Backup</span>
+                        </a>
+                        <a class="ren-side-sublink" href="/admin/export" @onclick="CloseSidebar" title="Export records">
+                            <span class="ren-side-sublink-label"><i class="bi bi-file-earmark-spreadsheet"></i>Export records</span>
+                        </a>
+                        <a class="ren-side-sublink" href="/admin/field-devices" @onclick="CloseSidebar" title="Field devices">
+                            <span class="ren-side-sublink-label"><i class="bi bi-tablet"></i>Field devices</span>
+                        </a>
+                    </div>
+                }
+            }
+        </nav>
+
+        @if (Auth.IsAuthenticated)
+        {
+            <div class="ren-sidebar-foot">
+                <div class="ren-sidebar-tools">
+                    <ReferralInboxBell @rendermode="InteractiveServer" />
+                    <span class="ren-sidebar-tools-hint">Inbox</span>
+                </div>
+                <div class="dropdown ren-sidebar-user">
+                    <button class="ren-side-user-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="@Auth.User!.FullName">
+                        <span class="ren-user-avatar" aria-hidden="true"><i class="bi bi-person"></i></span>
+                        <span class="ren-user-meta">
+                            <span class="ren-user-name">@Auth.User!.FullName</span>
+                            <span class="ren-user-role">@Auth.User.RoleName</span>
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu ren-sidebar-user-menu">
+                        <li class="dropdown-item-text text-muted small">Signed in</li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li>
+                            <button class="dropdown-item" type="button" @onclick="LogoutAsync">
+                                <i class="bi bi-box-arrow-right me-2"></i>Sign out
+                            </button>
                         </li>
-                        @if (Auth.HasModule(AppModule.Clients))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link @(_clientsActive ? "active" : "")" href="/patients">
-                                    <i class="bi bi-people me-1"></i> Patients
-                                </a>
-                            </li>
-                        }
-                        @if (_clinical.Count > 0)
-                        {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle @(_clinicalActive ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-clipboard2-pulse me-1"></i> Modules
-                                </a>
-                                <ul class="dropdown-menu">
-                                    @foreach (var item in _clinical)
-                                    {
-                                        <li>
-                                            <a class="dropdown-item d-flex align-items-center justify-content-between gap-2" href="@item.Href">
-                                                <span><i class="bi @item.Icon me-2"></i>@item.Label</span>
-                                                <ReferralNavBadge Clinical="@(new List<ModuleNavItem> { item })" @rendermode="InteractiveServer" />
-                                            </a>
-                                        </li>
-                                    }
-                                </ul>
-                            </li>
-                        }
-                        @if (Auth.HasModule(AppModule.Stakeholders))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link @(_stakeholdersActive ? "active" : "")" href="/stakeholders">
-                                    <i class="bi bi-graph-up-arrow me-1"></i> Stakeholders
-                                </a>
-                            </li>
-                        }
-                        @if (Auth.HasModule(AppModule.Administration))
-                        {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle @(_adminActive ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-shield-lock me-1"></i> Admin
-                                </a>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="/admin/users"><i class="bi bi-people me-2"></i>Users</a></li>
-                                    <li><a class="dropdown-item" href="/admin/roles"><i class="bi bi-key me-2"></i>Roles &amp; modules</a></li>
-                                    @if (Auth.HasModule(AppModule.CarePrograms))
-                                    {
-                                        <li><a class="dropdown-item" href="/admin/care-programs"><i class="bi bi-megaphone me-2"></i>Care programs</a></li>
-                                    }
-                                    <li><a class="dropdown-item" href="/admin/settings"><i class="bi bi-gear me-2"></i>Settings</a></li>
-                                    <li><a class="dropdown-item" href="/admin/backup"><i class="bi bi-cloud-arrow-down me-2"></i>Backup</a></li>
-                                    <li><a class="dropdown-item" href="/admin/export"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export records</a></li>
-                                    <li><a class="dropdown-item" href="/admin/field-devices"><i class="bi bi-tablet me-2"></i>Field devices</a></li>
-                                </ul>
-                            </li>
-                        }
                     </ul>
-                    @if (Auth.IsAuthenticated)
-                    {
-                        <ul class="navbar-nav align-items-center gap-2">
-                            <li class="nav-item">
-                                <ReferralInboxBell @rendermode="InteractiveServer" />
-                            </li>
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-person-circle me-1"></i> <span class="ren-user-name">@Auth.User!.FullName</span>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li class="dropdown-item-text text-muted small">@Auth.User.RoleName</li>
-                                    <li><hr class="dropdown-divider" /></li>
-                                    <li>
-                                        <button class="dropdown-item" type="button" @onclick="LogoutAsync">
-                                            <i class="bi bi-box-arrow-right me-2"></i>Sign out
-                                        </button>
-                                    </li>
-                                </ul>
-                            </li>
-                        </ul>
-                    }
                 </div>
             </div>
-        </nav>
-    </header>
+        }
+    </aside>
 
-    <main class="ren-main container">
-        @if (_successMessage is not null)
-        {
-            <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
-                <i class="bi bi-check-circle-fill"></i>
-                <span class="flex-grow-1">@_successMessage</span>
-                <button type="button" class="btn-close" @onclick="DismissAlert"></button>
+    <div class="ren-sidebar-backdrop" @onclick="CloseSidebar" aria-hidden="true"></div>
+
+    <div class="ren-shell-body">
+        <header class="ren-mobile-bar d-lg-none">
+            <button type="button" class="ren-mobile-toggle" @onclick="OpenSidebar" aria-label="Open menu">
+                <i class="bi bi-list"></i>
+            </button>
+            <a class="ren-mobile-brand" href="/">
+                <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
+                <span class="brand-text">@(_facilityName ?? "MedReach")</span>
+            </a>
+            @if (Auth.IsAuthenticated)
+            {
+                <div class="ren-mobile-tools">
+                    <ReferralInboxBell @rendermode="InteractiveServer" />
+                </div>
+            }
+        </header>
+
+        <main class="ren-main container">
+            @if (_successMessage is not null)
+            {
+                <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span class="flex-grow-1">@_successMessage</span>
+                    <button type="button" class="btn-close" @onclick="DismissAlert"></button>
+                </div>
+            }
+
+            @if (_denied)
+            {
+                <div class="empty-state py-5">
+                    <i class="bi bi-shield-x d-block fs-1 mb-3"></i>
+                    <h1 class="h4">You do not have access to this module</h1>
+                    <p class="text-muted">Ask an administrator to grant this module to your role.</p>
+                    <a href="/" class="btn btn-primary mt-2"><i class="bi bi-house me-1"></i> Back to home</a>
+                </div>
+            }
+            else
+            {
+                @Body
+            }
+        </main>
+
+        <footer class="ren-footer">
+            <div class="container ren-footer-inner">
+                <span class="ren-footer-copy"><i class="bi bi-shield-check me-1"></i> &copy; @DateTime.Now.Year MedReach Clinical Data Collection</span>
+                <span class="ren-footer-tagline"><i class="bi bi-hospital me-1"></i> Outpatient Care Platform</span>
             </div>
-        }
-
-        @if (_denied)
-        {
-            <div class="empty-state py-5">
-                <i class="bi bi-shield-x d-block fs-1 mb-3"></i>
-                <h1 class="h4">You do not have access to this module</h1>
-                <p class="text-muted">Ask an administrator to grant this module to your role.</p>
-                <a href="/" class="btn btn-primary mt-2"><i class="bi bi-house me-1"></i> Back to home</a>
-            </div>
-        }
-        else
-        {
-            @Body
-        }
-    </main>
-
-    <footer class="ren-footer">
-        <div class="container ren-footer-inner">
-            <span class="ren-footer-copy"><i class="bi bi-shield-check me-1"></i> &copy; @DateTime.Now.Year MedReach Clinical Data Collection</span>
-            <span class="ren-footer-tagline"><i class="bi bi-hospital me-1"></i> Outpatient Care Platform</span>
-        </div>
-    </footer>
+        </footer>
+    </div>
 </div>
 
 <ReferralToastHost @rendermode="InteractiveServer" />
@@ -158,7 +253,15 @@
     private bool _stakeholdersActive;
     private bool _adminActive;
     private bool _denied;
+    private bool _sidebarOpen;
+    private bool _sidebarCollapsed;
+    private bool _modulesOpen;
+    private bool _outreachOpen;
+    private bool _adminOpen;
+    private bool _outreachActive;
     private List<ModuleNavItem> _clinical = [];
+    private List<SecondaryOutreachNav.NavItem> _outreachNav = [];
+    private Guid? _outreachActiveId;
     private string? _facilityName;
 
     protected override async Task OnInitializedAsync()
@@ -175,7 +278,19 @@
     {
         try
         {
-            await JS.InvokeVoidAsync("renaissanceSyncHeaderHeight");
+            if (firstRender)
+            {
+                _sidebarCollapsed = await JS.InvokeAsync<bool>("renaissanceGetSidebarCollapsed");
+                if (_sidebarCollapsed)
+                {
+                    _modulesOpen = false;
+                    _outreachOpen = false;
+                    _adminOpen = false;
+                    StateHasChanged();
+                }
+            }
+
+            await JS.InvokeVoidAsync("renaissanceSyncShellMetrics");
         }
         catch (JSDisconnectedException)
         {
@@ -205,10 +320,11 @@
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         ApplyRouteState();
+        _sidebarOpen = false;
         try
         {
             await JS.InvokeVoidAsync("renaissanceCloseMainNav");
-            await JS.InvokeVoidAsync("renaissanceSyncHeaderHeight");
+            await JS.InvokeVoidAsync("renaissanceSyncShellMetrics");
         }
         catch (JSDisconnectedException)
         {
@@ -231,7 +347,32 @@
             return;
         }
 
+        _outreachNav = SecondaryOutreachNav.Items
+            .Where(i => i.IsVisible(Auth.User))
+            .Select(i => i with { Href = SecondaryOutreachNav.EnrolledHref(i.ProgramId) })
+            .ToList();
+
         _denied = required is not null && !Auth.HasModule(required.Value);
+        _outreachActive = false;
+        if (TryParseOutreachEnrolled(path, out var enrolledProgramId))
+        {
+            var navItem = SecondaryOutreachNav.Items.FirstOrDefault(i => i.ProgramId == enrolledProgramId)
+                ?? SecondaryOutreachNav.Items.FirstOrDefault(i =>
+                    path.Contains(i.ProgramId.ToString(), StringComparison.OrdinalIgnoreCase));
+            _denied = navItem is null || !navItem.IsVisible(Auth.User);
+            _outreachActiveId = enrolledProgramId;
+            _outreachActive = true;
+        }
+        else if (path.StartsWith("secondary-outreach", StringComparison.OrdinalIgnoreCase))
+        {
+            _outreachActive = true;
+            _outreachActiveId = null;
+        }
+        else
+        {
+            _outreachActiveId = null;
+        }
+
         var clinical = ModuleNav.Clinical.Where(m => Auth.HasModule(m.Module));
         _clinical = Outreach.FilterModules(clinical).ToList();
         _homeActive = string.IsNullOrEmpty(path);
@@ -241,6 +382,150 @@
         _clinicalActive = _clinical.Any(m => path.StartsWith(m.Href.TrimStart('/'), StringComparison.OrdinalIgnoreCase));
         _stakeholdersActive = path.StartsWith("stakeholders", StringComparison.OrdinalIgnoreCase);
         _adminActive = path.StartsWith("admin", StringComparison.OrdinalIgnoreCase);
+
+        if (_clinicalActive && !_sidebarCollapsed)
+        {
+            _modulesOpen = true;
+        }
+
+        if (_outreachActive && !_sidebarCollapsed)
+        {
+            _outreachOpen = true;
+        }
+
+        if (_adminActive && !_sidebarCollapsed)
+        {
+            _adminOpen = true;
+        }
+    }
+
+    private static bool TryParseOutreachEnrolled(string path, out Guid programId)
+    {
+        programId = default;
+        // secondary-outreach/{guid}/enrolled
+        const string prefix = "secondary-outreach/";
+        const string suffix = "/enrolled";
+        if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            || !path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var mid = path[prefix.Length..^suffix.Length];
+        return Guid.TryParse(mid, out programId);
+    }
+
+    private void OpenSidebar() => _sidebarOpen = true;
+
+    private void CloseSidebar() => _sidebarOpen = false;
+
+    private async Task ToggleSidebarCollapsedAsync()
+    {
+        _sidebarCollapsed = !_sidebarCollapsed;
+        if (_sidebarCollapsed)
+        {
+            _modulesOpen = false;
+            _outreachOpen = false;
+            _adminOpen = false;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("renaissanceSetSidebarCollapsed", _sidebarCollapsed);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
+    private void ToggleModules()
+    {
+        if (_sidebarCollapsed)
+        {
+            _ = ExpandThenOpenModulesAsync();
+            return;
+        }
+
+        _modulesOpen = !_modulesOpen;
+    }
+
+    private void ToggleOutreach()
+    {
+        if (_sidebarCollapsed)
+        {
+            _ = ExpandThenOpenOutreachAsync();
+            return;
+        }
+
+        _outreachOpen = !_outreachOpen;
+    }
+
+    private void ToggleAdmin()
+    {
+        if (_sidebarCollapsed)
+        {
+            _ = ExpandThenOpenAdminAsync();
+            return;
+        }
+
+        _adminOpen = !_adminOpen;
+    }
+
+    private async Task ExpandThenOpenModulesAsync()
+    {
+        _sidebarCollapsed = false;
+        _modulesOpen = true;
+        try
+        {
+            await JS.InvokeVoidAsync("renaissanceSetSidebarCollapsed", false);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ExpandThenOpenOutreachAsync()
+    {
+        _sidebarCollapsed = false;
+        _outreachOpen = true;
+        try
+        {
+            await JS.InvokeVoidAsync("renaissanceSetSidebarCollapsed", false);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ExpandThenOpenAdminAsync()
+    {
+        _sidebarCollapsed = false;
+        _adminOpen = true;
+        try
+        {
+            await JS.InvokeVoidAsync("renaissanceSetSidebarCollapsed", false);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task LogoutAsync()

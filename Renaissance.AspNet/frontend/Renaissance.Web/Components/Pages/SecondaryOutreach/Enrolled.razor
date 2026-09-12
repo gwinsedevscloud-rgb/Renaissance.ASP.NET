@@ -1,0 +1,413 @@
+@page "/secondary-outreach/{ProgramId:guid}/enrolled"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject NavigationManager Nav
+@inject AuthStateService Auth
+
+<PageTitle>@(_program?.Name ?? "Enrolled") - MedReach</PageTitle>
+
+<div class="module-page outreach-program-theme">
+    <PageHeader Title="@(_program?.Name ?? "Enrolled list")"
+                Subtitle="@(_program?.IsClinicLinked == true
+                    ? "Patients referred to this clinic — filter by location, dates, and status"
+                    : "Everyone enrolled in this outreach — filter by location, dates, and status")"
+                Icon="@ProgramIcon"
+                IconBgClass="feature-icon-teal"
+                CssClass="outreach-page-header">
+        <Actions>
+            @if (_program is not null && !_program.IsClinicLinked && !_program.LinkedClinicalModule.HasValue)
+            {
+                <a class="btn btn-primary" href="/secondary-outreach/register/@ProgramId">
+                    <i class="bi bi-person-plus me-1"></i> Register
+                </a>
+            }
+            @if (_program?.LinkedClinicalModule == AppModule.Dental)
+            {
+                <a class="btn btn-outline-primary" href="/dental">
+                    <i class="bi bi-emoji-smile me-1"></i> Clinic queue
+                </a>
+            }
+            else if (_program?.LinkedClinicalModule == AppModule.Optometrists)
+            {
+                <a class="btn btn-outline-primary" href="/optometrists">
+                    <i class="bi bi-eye me-1"></i> Clinic queue
+                </a>
+            }
+            <a class="btn btn-outline-secondary" href="/secondary-outreach">
+                <i class="bi bi-grid me-1"></i> All programs
+            </a>
+        </Actions>
+    </PageHeader>
+
+    @if (_loading)
+    {
+        <LoadingState Message="Loading enrolled list..." />
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+    else
+    {
+        <div class="section-card enrolled-filters mb-3">
+            <div class="enrolled-filters-head">
+                <h2 class="h6 mb-0"><i class="bi bi-funnel me-1"></i> Filters</h2>
+                <button type="button" class="btn btn-sm btn-link" @onclick="ClearFilters">Clear</button>
+            </div>
+            <div class="enrolled-filters-row">
+                <div class="enrolled-filter enrolled-filter-search">
+                    <label class="form-label" for="enrolledSearch">Search</label>
+                    <input id="enrolledSearch"
+                           class="form-control"
+                           @bind="_search"
+                           @bind:event="oninput"
+                           placeholder="Name or ID code" />
+                </div>
+                <div class="enrolled-filter">
+                    <label class="form-label" for="enrolledLocation">Outreach location</label>
+                    <select id="enrolledLocation" class="form-select" @bind="_location">
+                        <option value="">All locations</option>
+                        @foreach (var loc in _locations)
+                        {
+                            <option value="@loc">@loc</option>
+                        }
+                    </select>
+                </div>
+                <div class="enrolled-filter enrolled-filter-sm">
+                    <label class="form-label" for="enrolledSex">Gender</label>
+                    <select id="enrolledSex" class="form-select" @bind="_sex">
+                        <option value="">All</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <div class="enrolled-filter enrolled-filter-sm">
+                    <label class="form-label" for="enrolledStatus">Status</label>
+                    <select id="enrolledStatus" class="form-select" @bind="_status">
+                        <option value="">All statuses</option>
+                        @foreach (var status in _statuses)
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                </div>
+                <div class="enrolled-filter">
+                    <label class="form-label" for="fromDate">Enrolled from</label>
+                    <InputDate id="fromDate" class="form-control" @bind-Value="_fromDate" />
+                </div>
+                <div class="enrolled-filter">
+                    <label class="form-label" for="toDate">Enrolled to</label>
+                    <InputDate id="toDate" class="form-control" @bind-Value="_toDate" />
+                </div>
+            </div>
+        </div>
+
+        <div class="record-meta">
+            <strong>@_filtered.Count</strong> enrolled
+            @if (_filtered.Count != _items.Count)
+            {
+                <span class="text-muted"> (of @_items.Count)</span>
+            }
+        </div>
+
+        @if (_filtered.Count == 0)
+        {
+            <EmptyPanel Icon="@ProgramIcon"
+                        Title="No enrollments match"
+                        Message="Try clearing filters, or register / refer patients into this program." />
+        }
+        else
+        {
+            <div class="module-mobile-list d-md-none">
+                @foreach (var row in _filtered)
+                {
+                    <article class="module-mobile-card enrolled-mobile-card">
+                        <div class="d-flex justify-content-between gap-2">
+                            <strong>@row.FullName</strong>
+                            <span class="badge text-bg-light border">@row.Status</span>
+                        </div>
+                        <div class="small text-muted mt-1">
+                            @if (!string.IsNullOrWhiteSpace(row.RegistrationCode))
+                            {
+                                <span class="me-2"><i class="bi bi-upc"></i> @row.RegistrationCode</span>
+                            }
+                            @if (row.Age is not null)
+                            {
+                                <span class="me-2">@row.Age @row.AgeUnit</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(row.Sex))
+                            {
+                                <span class="sex-pill @SexClass(row.Sex)">
+                                    <i class="bi @SexIcon(row.Sex)"></i>
+                                    @row.Sex
+                                </span>
+                            }
+                        </div>
+                        <div class="small mt-2">
+                            <div><i class="bi bi-geo-alt me-1"></i>@(row.OutreachLocation ?? "—")</div>
+                            <div><i class="bi bi-calendar-range me-1"></i>@row.StartDate.ToString("d MMM yyyy") – @row.EndDate.ToString("d MMM yyyy")</div>
+                            @if (row.EnrolledAt is not null)
+                            {
+                                <div><i class="bi bi-clock-history me-1"></i>@row.EnrolledAt.Value.ToLocalTime().ToString("g")</div>
+                            }
+                        </div>
+                        @if (row.PatientId is Guid pid && row.LinkedClinicalModule is AppModule module)
+                        {
+                            <a class="btn btn-sm btn-outline-primary mt-2" href="@ModuleNav.QueueActionHref(module, pid)">Open</a>
+                        }
+                    </article>
+                }
+            </div>
+
+            <div class="section-card table-card p-0 d-none d-md-block">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 module-record-table">
+                        <thead>
+                            <tr>
+                                <ModuleTableTh Label="Name" Icon="bi-person" />
+                                <ModuleTableTh Label="ID / Code" Icon="bi-upc" />
+                                <ModuleTableTh Label="Age" Icon="bi-calendar3" />
+                                <ModuleTableTh Label="Gender" Icon="bi-gender-ambiguous" />
+                                <ModuleTableTh Label="Status" Icon="bi-flag" />
+                                <ModuleTableTh Label="Outreach Location" Icon="bi-geo-alt" />
+                                <ModuleTableTh Label="Start date" Icon="bi-calendar-event" />
+                                <ModuleTableTh Label="End date" Icon="bi-calendar-check" />
+                                <ModuleTableTh Label="Enrolled" Icon="bi-clock-history" CssClass="d-none d-xl-table-cell" />
+                        @if (_showClinicActions)
+                        {
+                            <ModuleTableActionTh />
+                        }
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var row in _filtered)
+                        {
+                            <tr>
+                                <td><strong>@row.FullName</strong></td>
+                                <td>@(row.RegistrationCode ?? "—")</td>
+                                <td>
+                                    @if (row.Age is not null)
+                                    {
+                                        @row.Age @row.AgeUnit
+                                    }
+                                    else
+                                    {
+                                        <span class="record-empty-value">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(row.Sex))
+                                    {
+                                        <span class="record-empty-value">—</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="sex-pill @SexClass(row.Sex)">
+                                            <i class="bi @SexIcon(row.Sex)"></i>
+                                            @row.Sex
+                                        </span>
+                                    }
+                                </td>
+                                <td><span class="badge text-bg-light border">@row.Status</span></td>
+                                <td>@(string.IsNullOrWhiteSpace(row.OutreachLocation) ? "—" : row.OutreachLocation)</td>
+                                <td>@row.StartDate.ToString("d MMM yyyy")</td>
+                                <td>@row.EndDate.ToString("d MMM yyyy")</td>
+                                <td class="d-none d-xl-table-cell">
+                                    @(row.EnrolledAt?.ToLocalTime().ToString("g") ?? "—")
+                                </td>
+                                @if (_showClinicActions)
+                                {
+                                    <td>
+                                        @if (row.PatientId is Guid pid && row.LinkedClinicalModule is AppModule module)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary" href="@ModuleNav.QueueActionHref(module, pid)" title="Open clinical record">
+                                                <i class="bi bi-box-arrow-up-right"></i>
+                                            </a>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Guid ProgramId { get; set; }
+
+    private CareProgramSummaryDto? _program;
+    private List<SecondaryOutreachEnrollmentDto> _items = [];
+    private bool _loading = true;
+    private string? _error;
+
+    private string _search = string.Empty;
+    private string _location = string.Empty;
+    private string _sex = string.Empty;
+    private string _status = string.Empty;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+
+    private IEnumerable<string> _locations => _items
+        .Select(i => i.OutreachLocation)
+        .Where(l => !string.IsNullOrWhiteSpace(l))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(l => l)
+        .Cast<string>();
+
+    private IEnumerable<string> _statuses => _items
+        .Select(i => i.Status)
+        .Where(s => !string.IsNullOrWhiteSpace(s))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(s => s);
+
+    private List<SecondaryOutreachEnrollmentDto> _filtered => ApplyFilters(_items).ToList();
+    private bool _showClinicActions => _items.Any(r => r.IsClinicEnrollment);
+
+    private string ProgramIcon => _program?.LinkedClinicalModule switch
+    {
+        AppModule.Dental => "bi-emoji-smile",
+        AppModule.Optometrists => "bi-eye",
+        _ when _program?.Name.Contains("ITN", StringComparison.OrdinalIgnoreCase) == true
+              || _program?.Name.Contains("Insecticide", StringComparison.OrdinalIgnoreCase) == true
+            => "bi-shield-check",
+        _ => "bi-droplet"
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _error = null;
+        ClearFilters();
+        try
+        {
+            var programs = await Api.GetAccessibleSecondaryProgramsAsync();
+            _program = programs.FirstOrDefault(p => p.Id == ProgramId);
+
+            if (_program is null && Auth.User?.IsAdministrator == true)
+            {
+                try
+                {
+                    var full = await Api.GetCareProgramAsync(ProgramId);
+                    if (full is not null)
+                    {
+                        _program = new CareProgramSummaryDto
+                        {
+                            Id = full.Id,
+                            Name = full.Name,
+                            ProgramType = full.ProgramType,
+                            LinkedClinicalModule = full.LinkedClinicalModule,
+                            IsClinicLinked = full.IsClinicLinked,
+                            StartDate = full.StartDate,
+                            EndDate = full.EndDate,
+                            TargetCommunity = full.TargetCommunity,
+                            OutreachCode = full.OutreachCode,
+                            PatientIdMode = full.PatientIdMode,
+                            RegisteredCount = full.RegisteredCount,
+                            BatchSize = full.BatchSize
+                        };
+                    }
+                }
+                catch
+                {
+                    _program = null;
+                }
+            }
+
+            _items = await Api.GetSecondaryEnrolledAsync(ProgramId);
+            if (_program is null && _items.Count > 0)
+            {
+                var first = _items[0];
+                _program = new CareProgramSummaryDto
+                {
+                    Id = first.CareProgramId,
+                    Name = first.ProgramName,
+                    LinkedClinicalModule = first.LinkedClinicalModule,
+                    IsClinicLinked = first.IsClinicEnrollment,
+                    StartDate = first.StartDate,
+                    EndDate = first.EndDate,
+                    TargetCommunity = first.OutreachLocation,
+                    RegisteredCount = _items.Count
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _items = [];
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private IEnumerable<SecondaryOutreachEnrollmentDto> ApplyFilters(IEnumerable<SecondaryOutreachEnrollmentDto> source)
+    {
+        IEnumerable<SecondaryOutreachEnrollmentDto> q = source;
+
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            var term = _search.Trim();
+            q = q.Where(r =>
+                r.FullName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || (r.RegistrationCode?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        if (!string.IsNullOrWhiteSpace(_location))
+        {
+            q = q.Where(r => string.Equals(r.OutreachLocation, _location, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(_sex))
+        {
+            q = q.Where(r => string.Equals(r.Sex, _sex, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(_status))
+        {
+            q = q.Where(r => string.Equals(r.Status, _status, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (_fromDate is DateTime from)
+        {
+            var start = DateTime.SpecifyKind(from.Date, DateTimeKind.Utc);
+            q = q.Where(r => r.EnrolledAt is null || r.EnrolledAt.Value.Date >= start.Date);
+        }
+
+        if (_toDate is DateTime to)
+        {
+            var end = DateTime.SpecifyKind(to.Date, DateTimeKind.Utc);
+            q = q.Where(r => r.EnrolledAt is null || r.EnrolledAt.Value.Date <= end.Date);
+        }
+
+        return q;
+    }
+
+    private void ClearFilters()
+    {
+        _search = string.Empty;
+        _location = string.Empty;
+        _sex = string.Empty;
+        _status = string.Empty;
+        _fromDate = null;
+        _toDate = null;
+    }
+
+    private static string SexIcon(string? sex) => sex switch
+    {
+        "Male" => "bi-gender-male",
+        "Female" => "bi-gender-female",
+        _ => "bi-gender-ambiguous"
+    };
+
+    private static string SexClass(string? sex) => sex switch
+    {
+        "Male" => "sex-male",
+        "Female" => "sex-female",
+        _ => "sex-other"
+    };
+}

@@ -56,6 +56,20 @@ jobs:
               Remove-Item $www -Recurse -Force -ErrorAction SilentlyContinue
             }
           }
+          $fieldIndexCandidates = @(
+            "${{ github.workspace }}/artifacts/field/index.html",
+            "${{ github.workspace }}/artifacts/field/wwwroot/index.html"
+          )
+          foreach ($fieldIndex in $fieldIndexCandidates) {
+            if (Test-Path $fieldIndex) {
+              $html = Get-Content $fieldIndex -Raw
+              $updated = [regex]::Replace($html, '<base\s+href\s*=\s*["''][^"'']*["'']\s*/?>', '<base href="/field/" />')
+              if ($updated -ne $html) {
+                Set-Content -Path $fieldIndex -Value $updated -Encoding utf8 -NoNewline
+                Write-Host "Set Field base href to /field/ in $fieldIndex"
+              }
+            }
+          }
 
       - name: Copy server install scripts
         run: |
@@ -84,10 +98,11 @@ jobs:
           tag_name: iis-latest
           name: MedReach IIS package (latest)
           body: |
-            Automated IIS publish from `${{ github.sha }}`.
+            Automated IIS publish from `${{ github.sha }}` — **MedReach v1.1.0**.
             Includes **web**, **api**, and **field** (`/field` PWA).
             Database is not included — use the existing server SQL database.
             On the IIS server, run `deploy/Install-MedReachFromGitHub.ps1` (or extract this zip under `C:\inetpub\MedReach`).
+            After Field deploy, installed tablets pick up the new service worker automatically.
           files: MedReach-IIS.zip
           make_latest: true
         env:

@@ -12,7 +12,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = $PSScriptRoot
-$Version = "1.0.0"
+
+# Keep package folder name in sync with Directory.Build.props
+$propsPath = Join-Path $Root "Directory.Build.props"
+$Version = "1.1.0"
+if (Test-Path $propsPath) {
+    $match = Select-String -Path $propsPath -Pattern '<Version>([^<]+)</Version>' | Select-Object -First 1
+    if ($match) {
+        $Version = $match.Matches[0].Groups[1].Value.Trim()
+    }
+}
 
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
     $OutputRoot = Join-Path (Split-Path $Root -Parent) "publish\MedReach-$Version"
@@ -87,6 +96,22 @@ if (-not (Test-Path (Join-Path $FieldOut "index.html"))) {
             Move-Item $_.FullName -Destination (Join-Path $FieldOut $_.Name) -Force
         }
         Remove-Item $www -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Force production app base path (MSBuild BaseHref is not always applied to index.html)
+$fieldIndexCandidates = @(
+    (Join-Path $FieldOut "index.html"),
+    (Join-Path $FieldOut "wwwroot\index.html")
+)
+foreach ($fieldIndex in $fieldIndexCandidates) {
+    if (Test-Path $fieldIndex) {
+        $html = Get-Content $fieldIndex -Raw
+        $updated = [regex]::Replace($html, '<base\s+href\s*=\s*["''][^"'']*["'']\s*/?>', '<base href="/field/" />')
+        if ($updated -ne $html) {
+            Set-Content -Path $fieldIndex -Value $updated -Encoding utf8 -NoNewline
+            Write-Host "Set Field base href to /field/ in $fieldIndex"
+        }
     }
 }
 
