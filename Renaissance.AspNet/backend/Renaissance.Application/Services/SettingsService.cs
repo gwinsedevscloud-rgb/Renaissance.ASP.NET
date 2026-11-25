@@ -19,17 +19,20 @@ public class SettingsService : ISettingsService
     private readonly DeploymentOptions _deployment;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwt;
+    private readonly ITenantContext _tenant;
 
     public SettingsService(
         IApplicationDbContext db,
         IOptions<DeploymentOptions> deployment,
         IPasswordHasher passwordHasher,
-        IJwtTokenGenerator jwt)
+        IJwtTokenGenerator jwt,
+        ITenantContext tenant)
     {
         _db = db;
         _deployment = deployment.Value;
         _passwordHasher = passwordHasher;
         _jwt = jwt;
+        _tenant = tenant;
     }
 
     public async Task<HospitalSettingsDto> GetHospitalSettingsAsync(CancellationToken cancellationToken = default)
@@ -191,8 +194,9 @@ public class SettingsService : ISettingsService
 
     private async Task<HospitalSettings> EnsureSettingsAsync(CancellationToken cancellationToken)
     {
+        var tenantId = _tenant.TenantId ?? Tenant.DefaultTenantId;
         var settings = await _db.HospitalSettings.FirstOrDefaultAsync(
-            x => x.Id == HospitalSettings.SingletonId,
+            x => x.TenantId == tenantId,
             cancellationToken);
 
         if (settings is not null)
@@ -210,9 +214,10 @@ public class SettingsService : ISettingsService
             return settings;
         }
 
+        // Id is SQL IDENTITY — do not set it explicitly.
         settings = new HospitalSettings
         {
-            Id = HospitalSettings.SingletonId
+            TenantId = tenantId
         };
         _db.HospitalSettings.Add(settings);
         await _db.SaveChangesAsync(cancellationToken);
@@ -272,8 +277,9 @@ public class SettingsService : ISettingsService
 
         if (!request.OutreachModuleEnabled)
         {
+            var tenantId = settings.TenantId;
             var activePrograms = await _db.CarePrograms
-                .Where(p => !p.Archived && p.Status == Domain.Enums.CareProgramStatus.Active)
+                .Where(p => !p.Archived && p.TenantId == tenantId && p.Status == Domain.Enums.CareProgramStatus.Active)
                 .ToListAsync(cancellationToken);
 
             foreach (var program in activePrograms)

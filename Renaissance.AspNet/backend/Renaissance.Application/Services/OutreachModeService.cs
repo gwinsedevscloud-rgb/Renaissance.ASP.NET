@@ -18,19 +18,24 @@ public class OutreachModeService : IOutreachModeService
     ];
 
     private readonly IApplicationDbContext _db;
+    private readonly ITenantContext _tenant;
 
-    public OutreachModeService(IApplicationDbContext db)
+    public OutreachModeService(IApplicationDbContext db, ITenantContext tenant)
     {
         _db = db;
+        _tenant = tenant;
     }
 
     public IReadOnlyList<AppModule> GetFlowModules() => PrimaryFlow;
 
+    private Guid CurrentTenantId() => _tenant.TenantId ?? Tenant.DefaultTenantId;
+
     public async Task<bool> IsOutreachModuleEnabledAsync(CancellationToken cancellationToken = default)
     {
+        var tenantId = CurrentTenantId();
         var settings = await _db.HospitalSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == HospitalSettings.SingletonId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId, cancellationToken);
 
         return settings?.OutreachModuleEnabled ?? true;
     }
@@ -42,8 +47,10 @@ public class OutreachModeService : IOutreachModeService
             return false;
         }
 
+        var tenantId = CurrentTenantId();
         return await _db.CarePrograms.AsNoTracking()
             .AnyAsync(p => !p.Archived
+                && p.TenantId == tenantId
                 && p.Status == CareProgramStatus.Active
                 && p.ProgramType == CareProgramType.Primary, cancellationToken);
     }
@@ -55,8 +62,10 @@ public class OutreachModeService : IOutreachModeService
             return null;
         }
 
+        var tenantId = CurrentTenantId();
         var program = await _db.CarePrograms.AsNoTracking()
             .Where(p => !p.Archived
+                && p.TenantId == tenantId
                 && p.Status == CareProgramStatus.Active
                 && p.ProgramType == CareProgramType.Primary)
             .OrderByDescending(p => p.StartDate)
@@ -114,8 +123,10 @@ public class OutreachModeService : IOutreachModeService
 
     private async Task<List<CareProgramSummaryDto>> GetActiveSecondaryProgramsAsync(CancellationToken cancellationToken)
     {
+        var tenantId = CurrentTenantId();
         var programs = await _db.CarePrograms.AsNoTracking()
             .Where(p => !p.Archived
+                && p.TenantId == tenantId
                 && p.Status == CareProgramStatus.Active
                 && p.ProgramType == CareProgramType.Secondary)
             .OrderBy(p => p.Name)
@@ -132,13 +143,14 @@ public class OutreachModeService : IOutreachModeService
 
     private async Task<CareProgramSummaryDto> ToSummaryAsync(CareProgram program, CancellationToken cancellationToken)
     {
+        var tenantId = CurrentTenantId();
         var registeredCount = program.ProgramType == CareProgramType.Secondary && program.LinkedClinicalModule is null
             ? await _db.SecondaryOutreachRegistrations.AsNoTracking()
                 .CountAsync(r => !r.Archived && r.CareProgramId == program.Id, cancellationToken)
             : program.LinkedClinicalModule.HasValue
                 ? await CountClinicReferralsAsync(program.LinkedClinicalModule.Value, cancellationToken)
                 : await _db.Patients.AsNoTracking()
-                    .CountAsync(p => !p.Archived && p.CareProgramId == program.Id, cancellationToken);
+                    .CountAsync(p => !p.Archived && p.TenantId == tenantId && p.CareProgramId == program.Id, cancellationToken);
 
         return new CareProgramSummaryDto
         {

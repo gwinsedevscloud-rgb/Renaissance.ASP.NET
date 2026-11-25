@@ -196,6 +196,22 @@
             return ["Net Issued", "Pending", "Referred", "Not Eligible"];
         }
 
+        if (programName?.Contains("Malaria", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return ["Tested & Treated", "Tested Negative", "Pending", "Referred", "Not Eligible"];
+        }
+
+        if (programName?.Contains("NCD", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return ["Screened", "On Treatment", "Pending", "Referred", "Not Eligible"];
+        }
+
+        if (programName?.Contains("Lab", StringComparison.OrdinalIgnoreCase) == true
+            || programName?.Contains("Diagnostic", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return ["Test Completed", "Pending", "Referred", "Not Eligible"];
+        }
+
         return ["Dewormed", "Pending", "Referred", "Not Eligible"];
     }
 
@@ -210,6 +226,13 @@
             _ when program.Name.Contains("ITN", StringComparison.OrdinalIgnoreCase)
                   || program.Name.Contains("Insecticide", StringComparison.OrdinalIgnoreCase)
                 => "bi-shield-check",
+            _ when program.Name.Contains("Malaria", StringComparison.OrdinalIgnoreCase)
+                => "bi-virus",
+            _ when program.Name.Contains("NCD", StringComparison.OrdinalIgnoreCase)
+                => "bi-heart-pulse",
+            _ when program.Name.Contains("Lab", StringComparison.OrdinalIgnoreCase)
+                  || program.Name.Contains("Diagnostic", StringComparison.OrdinalIgnoreCase)
+                => "bi-droplet-half",
             _ => "bi-droplet"
         };
 

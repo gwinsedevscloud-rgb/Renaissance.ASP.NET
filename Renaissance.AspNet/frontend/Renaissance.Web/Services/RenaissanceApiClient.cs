@@ -25,10 +25,11 @@ public class RenaissanceApiClient
 
     // ----- Auth -----
 
-    public async Task<LoginResponse> LoginAsync(string userName, string password, CancellationToken ct = default)
+    public async Task<LoginResponse> LoginAsync(string organizationCode, string userName, string password, CancellationToken ct = default)
     {
         var response = await _http.PostAsJsonAsync("api/auth/login", new LoginRequest
         {
+            OrganizationCode = organizationCode,
             UserName = userName,
             Password = password
         }, JsonOptions, ct);
@@ -44,6 +45,23 @@ public class RenaissanceApiClient
 
     public Task<CurrentUserDto?> GetMeAsync(CancellationToken ct = default)
         => GetOrDefaultAsync<CurrentUserDto>("api/auth/me", ct);
+
+    public Task<List<TenantDto>> GetTenantsAsync(CancellationToken ct = default)
+        => GetRequiredAsync<List<TenantDto>>("api/tenants", ct);
+
+    public async Task<TenantDto> CreateTenantAsync(CreateTenantRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/tenants", request, JsonOptions, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<TenantDto>(JsonOptions, ct))!;
+    }
+
+    public async Task<TenantDto> SetTenantActiveAsync(Guid id, bool isActive, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsync($"api/tenants/{id}/active?isActive={isActive}", null, ct);
+        await EnsureSuccessWithMessageAsync(response, ct);
+        return (await response.Content.ReadFromJsonAsync<TenantDto>(JsonOptions, ct))!;
+    }
 
     public Task<List<UserDto>> GetUsersAsync(CancellationToken ct = default)
         => GetRequiredAsync<List<UserDto>>("api/users", ct);

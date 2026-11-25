@@ -225,7 +225,8 @@ h2:focus-visible,
     max(1rem, env(safe-area-inset-bottom));
   transform: translateX(-105%);
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .ren-sidebar-glow {
@@ -334,8 +335,10 @@ h2:focus-visible,
 
 .ren-sidebar-close {
   flex-shrink: 0;
-  width: 2.1rem;
-  height: 2.1rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 44px;
+  min-height: 44px;
   border: 0;
   border-radius: 0.55rem;
   background: var(--ren-side-soft);
@@ -352,8 +355,10 @@ h2:focus-visible,
 
 .ren-sidebar-collapse {
   flex-shrink: 0;
-  width: 2.1rem;
-  height: 2.1rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 44px;
+  min-height: 44px;
   border: 0;
   border-radius: 0.55rem;
   background: var(--ren-side-soft);
@@ -676,8 +681,10 @@ h2:focus-visible,
 }
 
 .ren-mobile-toggle {
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 44px;
+  min-height: 44px;
   border: 0;
   border-radius: 0.55rem;
   background: color-mix(in srgb, var(--ren-primary) 10%, #fff);
@@ -1491,7 +1498,7 @@ h2:focus-visible,
 }
 
 .home-hero-stat-queue {
-  cursor: default;
+  cursor: pointer;
 }
 
 .home-hero-queue-bell {
@@ -1548,11 +1555,29 @@ h2:focus-visible,
 }
 
 .home-hero-stat-queue:hover .home-hero-queue-popover,
-.home-hero-stat-queue:focus-within .home-hero-queue-popover {
+.home-hero-stat-queue:focus-within .home-hero-queue-popover,
+.home-hero-stat-queue.is-open .home-hero-queue-popover {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
   pointer-events: auto;
+}
+
+@media (hover: none) {
+  .home-hero-stat-queue:hover .home-hero-queue-popover {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px);
+    pointer-events: none;
+  }
+
+  .home-hero-stat-queue.is-open .home-hero-queue-popover,
+  .home-hero-stat-queue:focus-within .home-hero-queue-popover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
 }
 
 .home-hero-queue-popover-title {
@@ -6757,10 +6782,12 @@ textarea.form-control::placeholder {
   justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: #ffffff;
+  padding-block: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-bottom));
 }
 
 .login-backdrop {
@@ -9797,8 +9824,8 @@ textarea.form-control::placeholder {
   justify-content: center;
   gap: 0.3rem;
   min-width: 2.75rem;
-  min-height: 2.75rem;
-  padding: 0.45rem 0.7rem;
+  min-height: 44px;
+  padding: 0.55rem 0.85rem;
   border-radius: 0.65rem;
   border: 1px solid color-mix(in srgb, var(--ren-primary) 22%, var(--ren-border));
   background: #fff;

@@ -38,7 +38,8 @@ public sealed class ModuleAuthorizationHandler : AuthorizationHandler<ModuleRequ
             .Where(u => u.Id == userId && u.IsActive && !u.Archived)
             .Select(u => new
             {
-                IsAdmin = u.Role != null && u.Role.IsSystem,
+                TenantId = u.TenantId,
+                IsTenantSystemAdmin = u.TenantId != null && u.Role != null && u.Role.IsSystem,
                 RoleModules = u.Role!.ModuleAccess.Select(m => m.Module),
                 UserModules = u.ModuleAccess.Select(m => m.Module)
             })
@@ -49,13 +50,23 @@ public sealed class ModuleAuthorizationHandler : AuthorizationHandler<ModuleRequ
             return;
         }
 
-        var modules = user.IsAdmin
-            ? AppModuleCatalog.All
-            : user.UserModules.Any()
-                ? user.UserModules
-                : user.RoleModules;
+        // Platform users (no tenant) only get explicitly assigned modules (e.g. Organizations).
+        // Tenant system admins get all modules except platform-only Tenants.
+        IEnumerable<AppModule> modules;
+        if (user.TenantId is null)
+        {
+            modules = user.UserModules.Any() ? user.UserModules : user.RoleModules;
+        }
+        else if (user.IsTenantSystemAdmin)
+        {
+            modules = AppModuleCatalog.All.Where(m => m != AppModule.Tenants);
+        }
+        else
+        {
+            modules = user.UserModules.Any() ? user.UserModules : user.RoleModules;
+        }
 
-        if (user.IsAdmin || modules.Contains(requirement.Module))
+        if (modules.Contains(requirement.Module))
         {
             context.Succeed(requirement);
         }

@@ -117,7 +117,8 @@ public class HospitalModuleService : IHospitalModuleService
 
     public async Task<bool> IsModuleEnabledAsync(AppModule module, CancellationToken cancellationToken = default)
     {
-        if (HospitalModuleCatalog.IsCore(module))
+        // Platform Organizations module is always available (not a hospital toggle).
+        if (module == AppModule.Tenants || HospitalModuleCatalog.IsCore(module))
         {
             return true;
         }

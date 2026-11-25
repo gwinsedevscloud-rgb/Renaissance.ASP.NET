@@ -31,7 +31,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         };
     }
 
-    public string CreateToken(Guid userId, string userName, string fullName, string roleName)
+    public string CreateToken(Guid userId, string userName, string fullName, string roleName, Guid? tenantId = null)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -43,6 +43,15 @@ public class JwtTokenGenerator : IJwtTokenGenerator
             new("full_name", fullName),
             new(ClaimTypes.Role, roleName)
         };
+
+        if (tenantId.HasValue)
+        {
+            claims.Add(new Claim("tenant_id", tenantId.Value.ToString()));
+        }
+        else
+        {
+            claims.Add(new Claim("platform", "true"));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _options.Issuer,

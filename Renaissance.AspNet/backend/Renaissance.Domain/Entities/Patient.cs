@@ -3,6 +3,7 @@ namespace Renaissance.Domain.Entities;
 public class Patient : AuditEntity
 {
     public Guid Id { get; set; }
+    public Guid TenantId { get; set; }
     public string ClientNumber { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public int Age { get; set; }

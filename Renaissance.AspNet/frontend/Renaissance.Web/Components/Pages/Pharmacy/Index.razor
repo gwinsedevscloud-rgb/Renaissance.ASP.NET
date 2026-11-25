@@ -30,7 +30,7 @@
     {
         <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
 
-        <div class="module-mobile-list d-md-none">
+        <div class="module-mobile-list d-lg-none">
             @foreach (var p in _items)
             {
                 var isPendingItn = p.DrugCategory == "ITN" && p.Status == DispensationStatus.PENDING;
@@ -50,7 +50,7 @@
             }
         </div>
 
-        <div class="section-card table-card p-0 d-none d-md-block">
+        <div class="section-card table-card p-0 d-none d-lg-block">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 module-record-table module-table-pharmacy">
                     <ModuleRecordColGroup Widths="@(new[] { "24%", "30%", "16%", "16%", "7.25rem" })" />

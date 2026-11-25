@@ -1,0 +1,105 @@
+@page "/admin/tenants/create"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject AuthStateService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Add organization - MedReach</PageTitle>
+
+<div class="page-header mb-3">
+    <a href="/admin/tenants" class="text-decoration-none small"><i class="bi bi-arrow-left me-1"></i>Organizations</a>
+    <h1 class="h3 mb-1 mt-2">Add organization</h1>
+    <p class="text-muted mb-0">Creates the company, hospital settings, and a Tenant Admin who can set up outreach.</p>
+</div>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="section-card p-3 p-md-4" style="max-width: 36rem;">
+    <EditForm Model="_model" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <div class="mb-3">
+            <label class="form-label">Organization name *</label>
+            <InputText class="form-control" @bind-Value="_model.Name" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Organization code *</label>
+            <InputText class="form-control" @bind-Value="_model.Code" placeholder="e.g. acme-health" />
+            <div class="form-text">Lowercase letters, numbers, hyphens. Staff enter this at login.</div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Facility display name</label>
+            <InputText class="form-control" @bind-Value="_model.FacilityName" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Patient number prefix *</label>
+            <InputText class="form-control" @bind-Value="_model.ClientNumberPrefix" />
+        </div>
+        <hr />
+        <h2 class="h6">Tenant Admin account</h2>
+        <div class="mb-3">
+            <label class="form-label">Admin username *</label>
+            <InputText class="form-control" @bind-Value="_model.AdminUserName" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Admin full name *</label>
+            <InputText class="form-control" @bind-Value="_model.AdminFullName" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Admin password *</label>
+            <InputText type="password" class="form-control" @bind-Value="_model.AdminPassword" />
+            <div class="form-text">Minimum 8 characters.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@_busy">
+                @if (_busy)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                Create organization
+            </button>
+            <a class="btn btn-outline-secondary" href="/admin/tenants">Cancel</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private readonly CreateTenantRequest _model = new()
+    {
+        ClientNumberPrefix = "ORG",
+        AdminUserName = "admin",
+        AdminPassword = "Admin@123"
+    };
+
+    private bool _busy;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        if (!Auth.IsAuthenticated || !Auth.HasModule(AppModule.Tenants))
+        {
+            Nav.NavigateTo(Auth.IsAuthenticated ? "/" : "/login");
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var created = await Api.CreateTenantAsync(_model);
+            Nav.NavigateTo("/admin/tenants");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

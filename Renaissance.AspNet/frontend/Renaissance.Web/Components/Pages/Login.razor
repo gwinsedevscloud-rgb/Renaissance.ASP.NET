@@ -57,6 +57,14 @@
                 <EditForm Model="_model" FormName="login" OnValidSubmit="SignInAsync" class="login-form">
                     <DataAnnotationsValidator />
                     <div class="login-field">
+                        <label class="form-label" for="org">Organization code</label>
+                        <div class="form-input-group">
+                            <span class="form-input-icon"><i class="bi bi-buildings"></i></span>
+                            <InputText id="org" class="form-control" @bind-Value="_model.OrganizationCode" autocomplete="organization" placeholder="medreach" />
+                        </div>
+                        <div class="form-text">Use your org code (e.g. medreach). Platform admins use <code>platform</code>.</div>
+                    </div>
+                    <div class="login-field">
                         <label class="form-label" for="username">Username</label>
                         <div class="form-input-group">
                             <span class="form-input-icon"><i class="bi bi-person"></i></span>
@@ -160,11 +168,18 @@
         _error = null;
         try
         {
-            var result = await Api.LoginAsync(_model.UserName, _model.Password);
+            var result = await Api.LoginAsync(_model.OrganizationCode, _model.UserName, _model.Password);
             await Auth.SignInAsync(result.Token, result.User);
-            await ModuleState.LoadAsync(Api);
-            await Outreach.LoadAsync(Api);
-            Nav.NavigateTo("/");
+            if (result.User.IsPlatformAdmin)
+            {
+                Nav.NavigateTo("/admin/tenants");
+            }
+            else
+            {
+                await ModuleState.LoadAsync(Api);
+                await Outreach.LoadAsync(Api);
+                Nav.NavigateTo("/");
+            }
         }
         catch (Exception ex)
         {
@@ -196,6 +211,9 @@
 
     private sealed class LoginForm
     {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string OrganizationCode { get; set; } = "medreach";
+
         [System.ComponentModel.DataAnnotations.Required]
         public string UserName { get; set; } = "admin";
 

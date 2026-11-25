@@ -126,6 +126,22 @@ else
             return ["Net Issued", "Pending", "Already Has Net", "Not Eligible"];
         }
 
+        if (programName?.Contains("Malaria", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return ["Tested & Treated", "Tested Negative", "Pending", "Referred", "Not Eligible"];
+        }
+
+        if (programName?.Contains("NCD", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return ["Screened", "On Treatment", "Pending", "Referred", "Not Eligible"];
+        }
+
+        if (programName?.Contains("Lab", StringComparison.OrdinalIgnoreCase) == true
+            || programName?.Contains("Diagnostic", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return ["Test Completed", "Pending", "Referred", "Not Eligible"];
+        }
+
         return ["Dewormed", "Pending", "Referred", "Not Eligible"];
     }
 

@@ -22,7 +22,22 @@ public class AuthStateService
     public event Action? Changed;
 
     public bool HasModule(AppModule module)
-        => User?.IsAdministrator == true || (User?.Modules.Contains(module) ?? false);
+    {
+        if (User is null)
+        {
+            return false;
+        }
+
+        // Platform admins only see modules on their token (Organizations).
+        if (User.IsPlatformAdmin)
+        {
+            return User.Modules.Contains(module);
+        }
+
+        return User.IsAdministrator || User.Modules.Contains(module);
+    }
+
+    public bool IsPlatformAdmin => User?.IsPlatformAdmin == true;
 
     public async Task<string?> ReadStoredTokenAsync()
     {

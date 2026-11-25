@@ -43,8 +43,14 @@ window.renaissanceSyncShellMetrics = () => {
     }
 };
 
+window.renaissanceIsDesktopShell = () => window.matchMedia("(min-width: 992px)").matches;
+
 window.renaissanceGetSidebarCollapsed = () => {
     try {
+        // Collapsed icon rail is desktop-only; ignore preference on phone/tablet drawer.
+        if (!window.renaissanceIsDesktopShell()) {
+            return false;
+        }
         return localStorage.getItem("ren-sidebar-collapsed") === "1";
     } catch {
         return false;

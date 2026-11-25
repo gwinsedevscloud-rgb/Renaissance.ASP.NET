@@ -23,7 +23,7 @@
     {
         <div class="record-meta"><strong>@_items.Count</strong> recent records</div>
 
-        <div class="module-mobile-list d-md-none">
+        <div class="module-mobile-list d-lg-none">
             @foreach (var o in _items)
             {
                 <ModuleMobileCard Patient="Patient(o.PatientId)"
@@ -35,7 +35,7 @@
             }
         </div>
 
-        <div class="section-card table-card p-0 d-none d-md-block">
+        <div class="section-card table-card p-0 d-none d-lg-block">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 module-record-table module-table-ophthalmologists">
                     <ModuleRecordColGroup Widths="@(new[] { "28%", "46%", "18%", "4.5rem" })" />

@@ -132,6 +132,9 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("RoleId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
 
@@ -147,8 +150,9 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.HasIndex("UserName")
-                        .IsUnique();
+                    b.HasIndex("TenantId", "UserName")
+                        .IsUnique()
+                        .HasFilter("[TenantId] IS NOT NULL");
 
                     b.ToTable("app_user", (string)null);
                 });
@@ -231,6 +235,9 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
 
@@ -240,6 +247,8 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("care_program", (string)null);
                 });
@@ -519,6 +528,9 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.Property<bool>("OutreachModuleEnabled")
                         .HasColumnType("bit");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("TimeZoneId")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -538,6 +550,9 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
                     b.ToTable("hospital_settings", (string)null);
 
                     b.HasData(
@@ -548,6 +563,7 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                             ClientNumberPrefix = "ACH",
                             FacilityName = "MedReach",
                             OutreachModuleEnabled = true,
+                            TenantId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
                             TimeZoneId = "UTC",
                             WebAccessUrl = ""
                         });
@@ -794,6 +810,9 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Tribe")
                         .HasColumnType("nvarchar(max)");
 
@@ -807,7 +826,9 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CareProgramId");
 
-                    b.HasIndex("ClientNumber")
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "ClientNumber")
                         .IsUnique();
 
                     b.ToTable("patient", (string)null);
@@ -1096,6 +1117,56 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                     b.ToTable("secondary_outreach_registration", (string)null);
                 });
 
+            modelBuilder.Entity("Renaissance.Domain.Entities.Tenant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("FacilityName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("tenant", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                            Code = "medreach",
+                            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "seed",
+                            FacilityName = "MedReach",
+                            IsActive = true,
+                            Name = "MedReach"
+                        });
+                });
+
             modelBuilder.Entity("Renaissance.Domain.Entities.Triage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1193,7 +1264,14 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Renaissance.Domain.Entities.Tenant", "Tenant")
+                        .WithMany("Users")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Role");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Renaissance.Domain.Entities.CareProgramStaff", b =>
@@ -1235,6 +1313,17 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.HospitalSettings", b =>
+                {
+                    b.HasOne("Renaissance.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Renaissance.Domain.Entities.Laboratory", b =>
@@ -1386,6 +1475,11 @@ namespace Renaissance.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Renaissance.Domain.Entities.CareProgram", b =>
                 {
                     b.Navigation("PatientIds");
+                });
+
+            modelBuilder.Entity("Renaissance.Domain.Entities.Tenant", b =>
+                {
+                    b.Navigation("Users");
                 });
 #pragma warning restore 612, 618
         }

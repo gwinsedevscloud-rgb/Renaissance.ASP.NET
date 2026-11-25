@@ -2,6 +2,7 @@ namespace MedReach.Field.Models;
 
 public sealed class LoginRequest
 {
+    public string OrganizationCode { get; set; } = "medreach";
     public string UserName { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 }

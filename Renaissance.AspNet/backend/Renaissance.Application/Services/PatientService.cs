@@ -10,16 +10,19 @@ public class PatientService : IPatientService
 {
     private readonly IApplicationDbContext _db;
     private readonly IClientNumberGenerator _clientNumberGenerator;
+    private readonly ITenantContext _tenant;
 
-    public PatientService(IApplicationDbContext db, IClientNumberGenerator clientNumberGenerator)
+    public PatientService(IApplicationDbContext db, IClientNumberGenerator clientNumberGenerator, ITenantContext tenant)
     {
         _db = db;
         _clientNumberGenerator = clientNumberGenerator;
+        _tenant = tenant;
     }
 
     public async Task<List<PatientListItemDto>> GetAllAsync(string? q, CancellationToken cancellationToken = default)
     {
-        var query = _db.Patients.AsNoTracking().Where(p => !p.Archived);
+        var tenantId = _tenant.RequireTenantId();
+        var query = _db.Patients.AsNoTracking().Where(p => !p.Archived && p.TenantId == tenantId);
 
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -112,6 +115,7 @@ public class PatientService : IPatientService
         }
 
         patient.FullName = patient.FullName.Trim();
+        patient.TenantId = _tenant.RequireTenantId();
 
         AuditHelper.SetCreated(patient);
         _db.Patients.Add(patient);

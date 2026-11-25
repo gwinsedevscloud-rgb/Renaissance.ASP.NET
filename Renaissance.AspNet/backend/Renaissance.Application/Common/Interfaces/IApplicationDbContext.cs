@@ -17,6 +17,7 @@ public interface IApplicationDbContext
     DbSet<Referral> Referrals { get; }
     DbSet<ReferralNotificationRead> ReferralNotificationReads { get; }
     DbSet<ClientNumberSequence> ClientNumberSequences { get; }
+    DbSet<Tenant> Tenants { get; }
     DbSet<AppUser> Users { get; }
     DbSet<AppRole> Roles { get; }
     DbSet<RoleModuleAccess> RoleModuleAccess { get; }

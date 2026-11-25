@@ -71,6 +71,13 @@
 
                     <EditForm Model="_model" OnValidSubmit="LoginAsync" class="login-form">
                         <div class="login-field">
+                            <label class="form-label" for="org">Organization code</label>
+                            <div class="form-input-group">
+                                <span class="form-input-icon"><i class="bi bi-buildings"></i></span>
+                                <InputText id="org" class="form-control" @bind-Value="_model.OrganizationCode" autocomplete="organization" />
+                            </div>
+                        </div>
+                        <div class="login-field">
                             <label class="form-label" for="username">Username</label>
                             <div class="form-input-group">
                                 <span class="form-input-icon"><i class="bi bi-person"></i></span>
@@ -112,7 +119,10 @@
 </div>
 
 @code {
-    private readonly LoginRequest _model = new();
+    private readonly LoginRequest _model = new()
+    {
+        OrganizationCode = "medreach"
+    };
     private bool _busy;
     private string? _error;
     private string? _facilityName;

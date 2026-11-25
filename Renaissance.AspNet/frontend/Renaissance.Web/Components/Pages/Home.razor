@@ -48,7 +48,13 @@
                         <dt>Modules</dt>
                         <dd>@ModuleCount</dd>
                     </div>
-                    <div class="home-hero-stat home-hero-stat-queue @(TotalPending > 0 ? "has-pending" : "")">
+                    <div class="home-hero-stat home-hero-stat-queue @(_queueOpen ? "is-open" : null) @(TotalPending > 0 ? "has-pending" : "")"
+                         role="button"
+                         tabindex="0"
+                         aria-expanded="@_queueOpen"
+                         aria-label="Referral queue"
+                         @onclick="ToggleQueuePopover"
+                         @onkeydown="OnQueueKeyDown">
                         <dt>
                             <i class="bi bi-bell@(TotalPending > 0 ? "-fill" : "") home-hero-queue-bell" aria-hidden="true"></i>
                             Queue
@@ -61,7 +67,7 @@
                             }
                         </dd>
 
-                        <div class="home-hero-queue-popover" role="tooltip">
+                        <div class="home-hero-queue-popover" role="tooltip" @onclick:stopPropagation="true">
                             @if (PendingModules.Count == 0)
                             {
                                 <div class="home-hero-queue-empty">
@@ -243,7 +249,7 @@
                     var accent = ModuleAccentClass(item.Module);
                     var pending = Referrals.GetPendingCount(item.Module);
 
-                    <div class="col-md-4 col-lg-3 home-module-col" style="--home-stagger: @i">
+                    <div class="col-12 col-sm-6 col-lg-4 col-xl-3 home-module-col" style="--home-stagger: @i">
                         <a class="home-module-card @accent text-decoration-none d-block h-100" href="@item.Href">
                             <span class="home-module-stripe" aria-hidden="true"></span>
 
@@ -284,6 +290,21 @@
 @code {
     private string? _facilityName;
     private List<CareProgramSummaryDto> _accessibleSecondary = [];
+    private bool _queueOpen;
+
+    private void ToggleQueuePopover() => _queueOpen = !_queueOpen;
+
+    private void OnQueueKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            _queueOpen = !_queueOpen;
+        }
+        else if (e.Key is "Escape")
+        {
+            _queueOpen = false;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

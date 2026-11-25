@@ -12,17 +12,20 @@ public partial class CareProgramService : ICareProgramService
 {
     private readonly IApplicationDbContext _db;
     private readonly IOutreachModeService _outreach;
+    private readonly ITenantContext _tenant;
 
-    public CareProgramService(IApplicationDbContext db, IOutreachModeService outreach)
+    public CareProgramService(IApplicationDbContext db, IOutreachModeService outreach, ITenantContext tenant)
     {
         _db = db;
         _outreach = outreach;
+        _tenant = tenant;
     }
 
     public async Task<List<CareProgramDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
+        var tenantId = _tenant.RequireTenantId();
         var programs = await _db.CarePrograms.AsNoTracking()
-            .Where(p => !p.Archived)
+            .Where(p => !p.Archived && p.TenantId == tenantId)
             .OrderByDescending(p => p.CreatedDate)
             .ToListAsync(cancellationToken);
 
@@ -50,6 +53,7 @@ public partial class CareProgramService : ICareProgramService
         var program = new CareProgram
         {
             Id = Guid.NewGuid(),
+            TenantId = _tenant.RequireTenantId(),
             Name = request.Name.Trim(),
             StartDate = request.StartDate.Date,
             EndDate = request.EndDate.Date,

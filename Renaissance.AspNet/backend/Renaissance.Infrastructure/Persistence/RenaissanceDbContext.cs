@@ -25,6 +25,7 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
     public DbSet<Referral> Referrals => Set<Referral>();
     public DbSet<ReferralNotificationRead> ReferralNotificationReads => Set<ReferralNotificationRead>();
     public DbSet<ClientNumberSequence> ClientNumberSequences => Set<ClientNumberSequence>();
+    public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<AppRole> Roles => Set<AppRole>();
     public DbSet<RoleModuleAccess> RoleModuleAccess => Set<RoleModuleAccess>();
@@ -54,12 +55,33 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
             property.HasColumnType("nvarchar(max)");
         }
 
+        modelBuilder.Entity<Tenant>(e =>
+        {
+            e.ToTable("tenant");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            e.Property(x => x.Code).HasMaxLength(40).IsRequired();
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.FacilityName).HasMaxLength(150);
+            e.Property(x => x.CreatedBy).HasMaxLength(150);
+            e.HasData(new Tenant
+            {
+                Id = Tenant.DefaultTenantId,
+                Name = "MedReach",
+                Code = Tenant.DefaultTenantCode,
+                FacilityName = "MedReach",
+                IsActive = true,
+                CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                CreatedBy = "seed"
+            });
+        });
+
         modelBuilder.Entity<Patient>(e =>
         {
             e.ToTable("patient");
             e.HasKey(x => x.Id);
             e.Property(x => x.ClientNumber).HasMaxLength(50).IsRequired();
-            e.HasIndex(x => x.ClientNumber).IsUnique();
+            e.HasIndex(x => new { x.TenantId, x.ClientNumber }).IsUnique();
             e.Property(x => x.FullName).HasMaxLength(150).IsRequired();
             e.Property(x => x.AgeUnit).HasMaxLength(20);
             e.Property(x => x.Sex).HasMaxLength(20);
@@ -68,6 +90,7 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
                 .WithMany()
                 .HasForeignKey(x => x.CareProgramId)
                 .OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => x.TenantId);
         });
 
         modelBuilder.Entity<CareProgram>(e =>
@@ -85,6 +108,7 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
             e.Property(x => x.PatientIdMode).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.OutreachCode).HasMaxLength(12).IsRequired();
             e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.TenantId);
         });
 
         modelBuilder.Entity<ProgramPatientId>(e =>
@@ -317,9 +341,13 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
             e.ToTable("app_user");
             e.HasKey(x => x.Id);
             e.Property(x => x.UserName).HasMaxLength(80).IsRequired();
-            e.HasIndex(x => x.UserName).IsUnique();
+            e.HasIndex(x => new { x.TenantId, x.UserName }).IsUnique();
             e.Property(x => x.FullName).HasMaxLength(150).IsRequired();
             e.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
+            e.HasOne(x => x.Tenant)
+                .WithMany(t => t.Users)
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Role)
                 .WithMany(r => r.Users)
                 .HasForeignKey(x => x.RoleId)
@@ -352,6 +380,7 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
         {
             e.ToTable("hospital_settings");
             e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedOnAdd();
             e.Property(x => x.FacilityName).HasMaxLength(150).IsRequired();
             e.Property(x => x.ClientNumberPrefix).HasMaxLength(10).IsRequired();
             e.Property(x => x.WebAccessUrl).HasMaxLength(500);
@@ -359,9 +388,15 @@ public class RenaissanceDbContext : DbContext, IApplicationDbContext
             e.Property(x => x.TimeZoneId).HasMaxLength(100).IsRequired();
             e.Property(x => x.LanAccessPasswordHash).HasMaxLength(500);
             e.Property(x => x.UpdatedBy).HasMaxLength(150);
+            e.HasIndex(x => x.TenantId).IsUnique();
+            e.HasOne(x => x.Tenant)
+                .WithMany()
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
             e.HasData(new Domain.Entities.HospitalSettings
             {
                 Id = 1,
+                TenantId = Tenant.DefaultTenantId,
                 FacilityName = "MedReach",
                 ClientNumberPrefix = "ACH",
                 TimeZoneId = "UTC",

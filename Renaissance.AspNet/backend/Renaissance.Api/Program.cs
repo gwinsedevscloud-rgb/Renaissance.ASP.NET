@@ -42,6 +42,8 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantContext, HttpTenantContext>();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -201,6 +203,7 @@ using (var scope = app.Services.CreateScope())
         var db = scope.ServiceProvider.GetRequiredService<RenaissanceDbContext>();
         db.Database.Migrate();
         await IdentitySeeder.SeedAsync(db, logger);
+        await TenantSeeder.EnsureAsync(db, logger);
         await SampleDataSeeder.SeedAsync(db, logger);
         await SurveillanceDemoSeeder.EnsureAsync(db, logger);
         await ClinicalModuleDemoSeeder.EnsureAsync(db, logger);

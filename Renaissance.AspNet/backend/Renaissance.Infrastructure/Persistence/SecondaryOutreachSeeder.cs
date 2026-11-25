@@ -60,6 +60,7 @@ public static class SecondaryOutreachSeeder
     private static CareProgram CreateDewormingTemplate(DateTime now) => new()
     {
         Id = PatientDewormingProgramId,
+        TenantId = Tenant.DefaultTenantId,
         Name = "Patient Deworming",
         ProgramType = CareProgramType.Secondary,
         StartDate = now.Date,
@@ -83,6 +84,7 @@ public static class SecondaryOutreachSeeder
     private static CareProgram CreateItnTemplate(DateTime now) => new()
     {
         Id = ItnProgramId,
+        TenantId = Tenant.DefaultTenantId,
         Name = "Insecticide Treated Net (ITN)",
         ProgramType = CareProgramType.Secondary,
         StartDate = now.Date,
@@ -106,6 +108,7 @@ public static class SecondaryOutreachSeeder
     private static CareProgram CreateDentalClinicTemplate(DateTime now) => new()
     {
         Id = DentalClinicProgramId,
+        TenantId = Tenant.DefaultTenantId,
         Name = "Dental Clinic",
         ProgramType = CareProgramType.Secondary,
         LinkedClinicalModule = AppModule.Dental,
@@ -130,6 +133,7 @@ public static class SecondaryOutreachSeeder
     private static CareProgram CreateEyeClinicTemplate(DateTime now) => new()
     {
         Id = EyeClinicProgramId,
+        TenantId = Tenant.DefaultTenantId,
         Name = "Eye Clinic",
         ProgramType = CareProgramType.Secondary,
         LinkedClinicalModule = AppModule.Optometrists,

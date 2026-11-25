@@ -15,11 +15,13 @@ public enum AppModule
     Stakeholders = 11,
     Administration = 12,
     CarePrograms = 13,
-    SecondaryOutreach = 14
+    SecondaryOutreach = 14,
+    Tenants = 15
 }
 
 public class LoginRequest
 {
+    public string OrganizationCode { get; set; } = string.Empty;
     public string UserName { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 }
@@ -33,12 +35,40 @@ public class LoginResponse
 public class CurrentUserDto
 {
     public Guid Id { get; set; }
+    public Guid? TenantId { get; set; }
+    public string? TenantName { get; set; }
+    public string? OrganizationCode { get; set; }
     public string UserName { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public Guid RoleId { get; set; }
     public string RoleName { get; set; } = string.Empty;
     public bool IsAdministrator { get; set; }
+    public bool IsPlatformAdmin { get; set; }
+    public bool IsTenantAdmin { get; set; }
     public List<AppModule> Modules { get; set; } = [];
+}
+
+public class TenantDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string? FacilityName { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public int UserCount { get; set; }
+    public string? TenantAdminUserName { get; set; }
+}
+
+public class CreateTenantRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string? FacilityName { get; set; }
+    public string ClientNumberPrefix { get; set; } = "ORG";
+    public string AdminUserName { get; set; } = string.Empty;
+    public string AdminFullName { get; set; } = string.Empty;
+    public string AdminPassword { get; set; } = string.Empty;
 }
 
 public class UserDto
@@ -116,7 +146,8 @@ public static class ModuleNav
         new(AppModule.Stakeholders, "Stakeholders", "/stakeholders", "bi-graph-up-arrow", "KPIs and analytics"),
         new(AppModule.CarePrograms, "Care Programs", "/admin/care-programs", "bi-megaphone", "Outreach programs and patient ID batches"),
         new(AppModule.SecondaryOutreach, "Secondary Outreach", "/secondary-outreach", "bi-droplet", "Registration-only outreach e.g. deworming"),
-        new(AppModule.Administration, "Administration", "/admin/users", "bi-shield-lock", "Users, roles, settings, backups, and module access")
+        new(AppModule.Administration, "Administration", "/admin/users", "bi-shield-lock", "Users, roles, settings, backups, and module access"),
+        new(AppModule.Tenants, "Organizations", "/admin/tenants", "bi-buildings", "Create organizations and Tenant Admins")
     ];
 
     public static IReadOnlyList<ModuleNavItem> Clinical { get; } =
@@ -151,6 +182,7 @@ public static class ModuleNav
         if (path.StartsWith("ophthalmologists", StringComparison.OrdinalIgnoreCase)) return AppModule.Ophthalmologists;
         if (path.StartsWith("stakeholders", StringComparison.OrdinalIgnoreCase)) return AppModule.Stakeholders;
         if (path.StartsWith("admin/care-programs", StringComparison.OrdinalIgnoreCase)) return AppModule.CarePrograms;
+        if (path.StartsWith("admin/tenants", StringComparison.OrdinalIgnoreCase)) return AppModule.Tenants;
         if (path.StartsWith("secondary-outreach", StringComparison.OrdinalIgnoreCase)) return AppModule.SecondaryOutreach;
         if (path.StartsWith("admin", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("users", StringComparison.OrdinalIgnoreCase)

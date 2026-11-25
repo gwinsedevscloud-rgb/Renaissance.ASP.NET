@@ -112,6 +112,15 @@
                 </a>
             }
 
+            @if (Auth.HasModule(AppModule.Tenants))
+            {
+                <p class="ren-side-label ren-side-label-spaced">Platform</p>
+                <a class="ren-side-link @(IsPathActive("admin/tenants") ? "active" : null)" href="/admin/tenants" @onclick="CloseSidebar" title="Organizations">
+                    <span class="ren-side-ico"><i class="bi bi-buildings"></i></span>
+                    <span>Organizations</span>
+                </a>
+            }
+
             @if (Auth.HasModule(AppModule.Administration))
             {
                 <p class="ren-side-label ren-side-label-spaced">Manage</p>
@@ -419,8 +428,31 @@
 
     private void CloseSidebar() => _sidebarOpen = false;
 
+    private bool IsPathActive(string prefix)
+    {
+        var path = Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/');
+        return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task ToggleSidebarCollapsedAsync()
     {
+        try
+        {
+            var desktop = await JS.InvokeAsync<bool>("renaissanceIsDesktopShell");
+            if (!desktop)
+            {
+                return;
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            return;
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+
         _sidebarCollapsed = !_sidebarCollapsed;
         if (_sidebarCollapsed)
         {

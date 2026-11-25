@@ -12,11 +12,13 @@ public class SecondaryOutreachService : ISecondaryOutreachService
 {
     private readonly IApplicationDbContext _db;
     private readonly IUserModuleAccessService _modules;
+    private readonly ITenantContext _tenant;
 
-    public SecondaryOutreachService(IApplicationDbContext db, IUserModuleAccessService modules)
+    public SecondaryOutreachService(IApplicationDbContext db, IUserModuleAccessService modules, ITenantContext tenant)
     {
         _db = db;
         _modules = modules;
+        _tenant = tenant;
     }
 
     public async Task<List<CareProgramSummaryDto>> GetAccessibleProgramsAsync(
@@ -24,8 +26,10 @@ public class SecondaryOutreachService : ISecondaryOutreachService
         bool isSystemAdmin,
         CancellationToken cancellationToken = default)
     {
+        var tenantId = _tenant.RequireTenantId();
         var programs = await _db.CarePrograms.AsNoTracking()
             .Where(p => !p.Archived
+                && p.TenantId == tenantId
                 && p.ProgramType == CareProgramType.Secondary
                 && (p.Status == CareProgramStatus.Active || p.Status == CareProgramStatus.Draft))
             .OrderBy(p => p.Name)

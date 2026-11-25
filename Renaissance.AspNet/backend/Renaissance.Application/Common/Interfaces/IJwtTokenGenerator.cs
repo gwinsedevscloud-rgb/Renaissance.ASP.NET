@@ -2,7 +2,7 @@ namespace Renaissance.Application.Common.Interfaces;
 
 public interface IJwtTokenGenerator
 {
-    string CreateToken(Guid userId, string userName, string fullName, string roleName);
+    string CreateToken(Guid userId, string userName, string fullName, string roleName, Guid? tenantId = null);
 
     string CreateLanAccessToken(Guid userId, string userName);
 

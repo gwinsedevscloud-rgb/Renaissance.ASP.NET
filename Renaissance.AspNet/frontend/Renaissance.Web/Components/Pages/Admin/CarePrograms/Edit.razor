@@ -425,6 +425,36 @@
             _form.TargetedTreatment = "Eye health screening, refraction, and minor ocular care";
             _form.OutreachCode = "EYE";
         }
+        else if (!_isEdit && uri.Query.Contains("type=malaria", StringComparison.OrdinalIgnoreCase))
+        {
+            _form.ProgramType = CareProgramType.Secondary;
+            _form.Name = "Malaria";
+            _form.TargetAudience = "Community members at risk of malaria";
+            _form.TargetAgeGroup = "All ages";
+            _form.TargetCommunity = "Outreach site";
+            _form.TargetedTreatment = "Malaria RDTs; ACT adult/paediatric; injectable artesunate; supportive antibiotics, analgesics, anthelminthics, haematinics, multivitamins, Vitamin A";
+            _form.OutreachCode = "MALARIA";
+        }
+        else if (!_isEdit && uri.Query.Contains("type=ncd", StringComparison.OrdinalIgnoreCase))
+        {
+            _form.ProgramType = CareProgramType.Secondary;
+            _form.Name = "NCD Screening";
+            _form.TargetAudience = "Adults for hypertension, diabetes and related NCD screening";
+            _form.TargetAgeGroup = "Adults";
+            _form.TargetCommunity = "Outreach site";
+            _form.TargetedTreatment = "Antihypertensives; antidiabetics; antihistamines; antifungals; antacids/PPIs; ORS/zinc; ophthalmic prep; spectacles; wound care; IV consumables; IPC/PPE; waste management";
+            _form.OutreachCode = "NCD";
+        }
+        else if (!_isEdit && uri.Query.Contains("type=lab", StringComparison.OrdinalIgnoreCase))
+        {
+            _form.ProgramType = CareProgramType.Secondary;
+            _form.Name = "Laboratory Diagnostics";
+            _form.TargetAudience = "Outreach clients needing point-of-care and rapid diagnostics";
+            _form.TargetAgeGroup = "All ages";
+            _form.TargetCommunity = "Outreach site";
+            _form.TargetedTreatment = "Malaria RDT; HIV; Hep B/C; pregnancy; glucose; Hb/PCV; urinalysis; lipid profile; sickle cell/blood group; microscopy reagents";
+            _form.OutreachCode = "LABDX";
+        }
         else if (!_isEdit)
         {
             _form.OutreachCode = "OUT";

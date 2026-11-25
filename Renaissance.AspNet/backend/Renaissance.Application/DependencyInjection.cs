@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Renaissance.Application.Common.Interfaces;
 using Renaissance.Application.Services;
 
 namespace Renaissance.Application;
@@ -19,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<IClientDashboardService, ClientDashboardService>();
         services.AddScoped<IStakeholdersDashboardService, StakeholdersDashboardService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IReferralService, ReferralService>();
         services.AddScoped<IRoleService, RoleService>();

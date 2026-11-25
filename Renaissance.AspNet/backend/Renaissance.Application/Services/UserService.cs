@@ -11,17 +11,20 @@ public class UserService : IUserService
 {
     private readonly IApplicationDbContext _db;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly ITenantContext _tenant;
 
-    public UserService(IApplicationDbContext db, IPasswordHasher passwordHasher)
+    public UserService(IApplicationDbContext db, IPasswordHasher passwordHasher, ITenantContext tenant)
     {
         _db = db;
         _passwordHasher = passwordHasher;
+        _tenant = tenant;
     }
 
     public async Task<List<UserDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
+        var tenantId = _tenant.RequireTenantId();
         var users = await _db.Users.AsNoTracking()
-            .Where(u => !u.Archived)
+            .Where(u => !u.Archived && u.TenantId == tenantId)
             .Include(u => u.Role)
             .Include(u => u.ModuleAccess)
             .OrderBy(u => u.FullName)
@@ -45,7 +48,8 @@ public class UserService : IUserService
         ValidateFullName(request.FullName);
         ValidatePassword(request.Password);
 
-        if (await _db.Users.AnyAsync(u => u.UserName == userName && !u.Archived, cancellationToken))
+        var tenantId = _tenant.RequireTenantId();
+        if (await _db.Users.AnyAsync(u => u.TenantId == tenantId && u.UserName == userName && !u.Archived, cancellationToken))
         {
             throw new InvalidOperationException("That username is already in use.");
         }
@@ -55,12 +59,20 @@ public class UserService : IUserService
             .FirstOrDefaultAsync(r => r.Id == request.RoleId && !r.Archived, cancellationToken)
             ?? throw new InvalidOperationException("Role not found.");
 
+        if (string.Equals(role.Name, "Platform Administrator", StringComparison.OrdinalIgnoreCase)
+            || role.Id == TenantService.PlatformAdministratorRoleId)
+        {
+            throw new InvalidOperationException("Platform Administrator accounts can only be created by the platform.");
+        }
+
         var modules = ResolveRequestedModules(request.Modules, role);
         UserModuleResolver.ValidateModules(modules, role.IsSystem);
+        modules = modules.Where(m => m != AppModule.Tenants).ToList();
 
         var user = new AppUser
         {
             Id = Guid.NewGuid(),
+            TenantId = tenantId,
             UserName = userName,
             FullName = request.FullName.Trim(),
             PasswordHash = _passwordHasher.Hash(request.Password),

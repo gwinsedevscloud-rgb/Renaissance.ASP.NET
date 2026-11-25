@@ -1,0 +1,142 @@
+@page "/admin/tenants"
+@rendermode InteractiveServer
+@inject RenaissanceApiClient Api
+@inject AuthStateService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Organizations - MedReach</PageTitle>
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Organizations</h1>
+        <p class="text-muted mb-0">Platform: create companies and their Tenant Admins. Each org runs its own outreach.</p>
+    </div>
+    <a class="btn btn-primary" href="/admin/tenants/create">
+        <i class="bi bi-plus-lg me-1"></i>Add organization
+    </a>
+</div>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_loading)
+{
+    <div class="text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</div>
+}
+else if (_tenants.Count == 0)
+{
+    <div class="empty-state py-5">
+        <i class="bi bi-buildings d-block fs-1 mb-2"></i>
+        <p>No organizations yet.</p>
+        <a class="btn btn-primary" href="/admin/tenants/create">Add the first organization</a>
+    </div>
+}
+else
+{
+    <div class="section-card table-card p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Code</th>
+                        <th>Facility</th>
+                        <th>Tenant Admin</th>
+                        <th>Users</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in _tenants)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@t.Name</td>
+                            <td><code>@t.Code</code></td>
+                            <td>@(t.FacilityName ?? "—")</td>
+                            <td>@(t.TenantAdminUserName ?? "—")</td>
+                            <td>@t.UserCount</td>
+                            <td>
+                                @if (t.IsActive)
+                                {
+                                    <span class="badge text-bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-secondary">Inactive</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (t.Id != Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleActiveAsync(t)">
+                                        @(t.IsActive ? "Deactivate" : "Activate")
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="alert alert-light border mt-3 mb-0">
+        <strong>How staff sign in:</strong> Organization code + username + password.
+        Default MedReach org code is <code>medreach</code>. Platform admins use <code>platform</code> / <code>platform</code> / <code>Platform@123</code>.
+    </div>
+}
+
+@code {
+    private List<TenantDto> _tenants = [];
+    private bool _loading = true;
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsAuthenticated || !Auth.HasModule(AppModule.Tenants))
+        {
+            Nav.NavigateTo(Auth.IsAuthenticated ? "/" : "/login");
+            return;
+        }
+
+        try
+        {
+            _tenants = await Api.GetTenantsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ToggleActiveAsync(TenantDto tenant)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var updated = await Api.SetTenantActiveAsync(tenant.Id, !tenant.IsActive);
+            var idx = _tenants.FindIndex(t => t.Id == updated.Id);
+            if (idx >= 0)
+            {
+                _tenants[idx] = updated;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

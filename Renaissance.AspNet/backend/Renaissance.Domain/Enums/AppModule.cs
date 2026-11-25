@@ -15,7 +15,9 @@ public enum AppModule
     Stakeholders = 11,
     Administration = 12,
     CarePrograms = 13,
-    SecondaryOutreach = 14
+    SecondaryOutreach = 14,
+    /// <summary>Platform-only: create and manage organizations (tenants).</summary>
+    Tenants = 15
 }
 
 public static class AppModuleCatalog
@@ -38,6 +40,7 @@ public static class AppModuleCatalog
         AppModule.Administration => "Administration",
         AppModule.CarePrograms => "Care Programs",
         AppModule.SecondaryOutreach => "Secondary Outreach",
+        AppModule.Tenants => "Organizations",
         _ => module.ToString()
     };
 
@@ -57,6 +60,11 @@ public static class AppModuleCatalog
         AppModule.Administration => "Manage users, roles, and module access.",
         AppModule.CarePrograms => "Configure outreach care programs and patient ID batches.",
         AppModule.SecondaryOutreach => "Registration-only secondary outreach programs such as deworming.",
+        AppModule.Tenants => "Create organizations and their Tenant Admins (platform only).",
         _ => string.Empty
     };
+
+    /// <summary>Modules a Tenant Administrator receives by default (everything except platform Tenants).</summary>
+    public static IReadOnlyList<AppModule> TenantAdminDefaults { get; } =
+        All.Where(m => m != AppModule.Tenants).ToList();
 }

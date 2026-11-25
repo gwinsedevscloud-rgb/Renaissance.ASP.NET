@@ -4,6 +4,8 @@ namespace Renaissance.Application.DTOs;
 
 public class LoginRequest
 {
+    /// <summary>Organization code (e.g. medreach). Use "platform" for platform super-admin.</summary>
+    public string OrganizationCode { get; set; } = string.Empty;
     public string UserName { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 }
@@ -23,11 +25,16 @@ public class RefreshTokenRequest
 public class CurrentUserDto
 {
     public Guid Id { get; set; }
+    public Guid? TenantId { get; set; }
+    public string? TenantName { get; set; }
+    public string? OrganizationCode { get; set; }
     public string UserName { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public Guid RoleId { get; set; }
     public string RoleName { get; set; } = string.Empty;
     public bool IsAdministrator { get; set; }
+    public bool IsPlatformAdmin { get; set; }
+    public bool IsTenantAdmin { get; set; }
     public List<AppModule> Modules { get; set; } = [];
 }
 

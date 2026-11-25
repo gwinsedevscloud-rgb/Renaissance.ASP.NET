@@ -68,6 +68,7 @@ public static class SampleDataSeeder
         var patient = new Patient
         {
             Id = Guid.NewGuid(),
+            TenantId = Tenant.DefaultTenantId,
             ClientNumber = $"ACH{sequence:D4}",
             FullName = fullName,
             Sex = sex,
